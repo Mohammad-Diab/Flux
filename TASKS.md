@@ -68,12 +68,12 @@ Constants: 160×90 tiles, 8 px/tile, 16 px quiet zone → canonical PNG **1312×
 
 ## Phase 4 — FluxCore v2: Orchestration
 
-- [ ] 4.1 `Encoding/ContentSignature.cs` — file: SHA-256 over name‖length‖content (streamed); folder: SHA-256 over sorted (relPath‖length‖lastWriteUtc) + encode options; 16-hex-char session name
-  - **Test:** stable across runs; changes when content/options change
-- [ ] 4.2 `Encoding/FluxEncodeService.cs` — session folder `{root}/{signature}/` with `payload.7z` + `manifest.json` + `frames/frame_NNNNNN.png`; compress via existing `CompressionService`; chunk at 53×k; frame 0 at Max ECC; parallel render. **Resume: reuse existing payload.7z** (7z is not byte-deterministic), render only missing frames
-  - **Test:** resume run reuses archive + renders only missing frames; cancellation cleans up
-- [ ] 4.3 `Decoding/PayloadAssembler.cs` — accumulate per-frame payloads (HashSet of ids), completeness check, SHA-256 verify vs metadata, `DecompressAsync`
-  - **Test:** out-of-order frames, duplicate frames, missing-frame reporting, SHA mismatch surfaces failed frame list
+- [x] 4.1 `Transfer/ContentSignature.cs` — file: SHA-256 over name‖length‖content (streamed); folder: SHA-256 over sorted (relPath‖length‖lastWriteUtc) + encode options; 16-hex-char session name
+  - **Test:** ✅ 7 tests — stable across runs; changes with content/name/options/timestamps
+- [x] 4.2 `Transfer/FluxEncodeService.cs` (+ EncodeOptions/Progress/SessionResult) — session folder `{root}/{signature}/` with `payload.dat` + `manifest.json` + `frames/frame_NNNNNN.png`; compress via `CompressionService`; chunk at 53×k; frame 0 at Max ECC; parallel render (temp-file + atomic move). **Resume: reuse verified payload.dat**, render only missing frames
+  - **Test:** ✅ 6 tests — fresh session, full resume (0 rendered), single-missing-frame re-render, cancel-then-resume, changed-content fresh session, folder source decoded+extracted byte-identical. Found+fixed: CompressionService wrapped OperationCanceledException in CompressionException (cancellation now propagates properly)
+- [x] 4.3 `Decoding/PayloadAssembler.cs` — accumulate per-frame payloads, completeness check, SHA-256 verify vs metadata, extract (7z decompress / raw write with sanitized name)
+  - **Test:** ✅ 6 tests — out-of-order, duplicates ignored, missing-id reporting, tampered-frame SHA failure, inconsistent-frame rejection, raw extract. **Phase 4 gate: 216/216 green — FluxCore feature-complete**
 
 ---
 

@@ -225,7 +225,7 @@ public sealed class CompressionService
                 throw new CompressionException($"7z failed with exit code {process.ExitCode}. Error: {error}");
             }
         }
-        catch (Exception ex) when (ex is not CompressionException)
+        catch (Exception ex) when (ex is not CompressionException and not OperationCanceledException)
         {
             throw new CompressionException($"Failed to run 7z: {ex.Message}", ex);
         }
@@ -271,7 +271,7 @@ public sealed class CompressionService
 
             return result;
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             throw new CompressionException($"SharpCompress compression failed: {ex.Message}", ex);
         }
@@ -314,7 +314,7 @@ public sealed class CompressionService
 
             _logger?.LogInformation("Built-in decompression complete.");
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             throw new CompressionException($"SharpCompress decompression failed: {ex.Message}", ex);
         }
