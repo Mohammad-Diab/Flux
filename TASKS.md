@@ -56,10 +56,13 @@ Constants: 160×90 tiles, 8 px/tile, 16 px quiet zone → canonical PNG **1312×
 
 ## 🚩 Milestone A — Golden Round-Trip (codec quality gate)
 
-- [ ] A.1 Integration test: real file → encode → PNG folder → decode every frame → assemble → SHA-256 match. Variants: 1-frame file, exact-multiple-of-capacity, tiny file, long unicode name
-- [ ] A.2 Degradation matrix: re-render PNGs at scale {0.8, 1.0, 1.25} × JPEG quality {85, 75} × offset. **Medium must survive q85 at all scales**; beyond limits → clean `Undecodable`, never silent corruption (CRC catches all)
-- [ ] A.3 Delete remaining v1 pipeline: `FrameEncoder/FrameDecoder/FrameEncodingService/FrameDecodingService/FrameLayout` (old Framing versions)
-  - **Gate:** `dotnet test` fully green. No optical or UI work before this passes.
+- [x] A.1 Integration test: payload → encode → PNG frames → decode every frame → assemble → SHA-256 match. Variants: multi-frame, 1-frame, exact-multiple-of-capacity, tiny, long unicode name, all ECC levels
+  - ✅ 9 round-trip tests in `Integration/GoldenRoundTripTests.cs` (permanent codec regression gate)
+- [x] A.2 Degradation matrix: scale {0.8, 1.0, 1.25} × JPEG quality {85, 75} × offset-on-gray. **Medium survives q85 at all scales, High survives q75 at all scales**; Medium@q75 and extreme JPEG (q30/q15) never silently corrupt; full multi-frame transfer through JPEG85+scale+offset round-trips
+  - ✅ 11 tests in `Integration/DegradationMatrixTests.cs`. **Two design changes were required to pass:** (1) `ColorMap.Default` rebuilt as an evenly spaced 8×8×4 RGB lattice — the old palette packed 41 filler colors 1–3 RGB units apart, making ~16% of tiles unclassifiable under any lossy channel (ECC failed even at JPEG q85; this was almost certainly a v1 root-cause too). New minimum pairwise distance: 36 (pinned by test). Palette still fixed + embedded in frame 0, so no format change. (2) TileSampler switched to bilinear sub-pixel sampling (3×3 pattern at ±22% pitch) — integer-rounded window sampling broke down at 0.8× downscale (6.4px tiles). Also: the pre-ECC CaptureUnstable gate now runs *post-hoc* — decoder always attempts ECC, and reports CaptureUnstable only when recovery fails on a low-confidence capture.
+- [x] A.3 Delete remaining v1 pipeline remnants
+  - ✅ v1 pipeline files were already deleted in tasks 1.2/1.3; orphaned `EccException` removed here.
+  - **Gate: ✅ 197/197 green.** Codec frozen; UI/optical work may begin.
 
 ---
 

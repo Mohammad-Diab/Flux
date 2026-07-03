@@ -45,23 +45,20 @@ public class PaletteClassifierTests
     [Fact]
     public void Classify_BetweenTwoNearNeighbors_FlagsAmbiguity()
     {
-        (byte a, byte b, double distance) = FindClosestPalettePair();
-        Assert.True(distance < 8, $"Expected a tightly packed pair in the default palette, closest is {distance}.");
+        var palette = ColorMap.Default.Palette.ToArray();
+        palette[0] = new Rgb24(100, 100, 100);
+        palette[1] = new Rgb24(102, 100, 100);
+        var cramped = new PaletteClassifier(new ColorMap(palette));
 
-        var colorA = ColorMap.Default.GetColor(a);
-        var colorB = ColorMap.Default.GetColor(b);
-        var midpoint = Classifier.Classify(
-            (colorA.R + colorB.R) / 2.0,
-            (colorA.G + colorB.G) / 2.0,
-            (colorA.B + colorB.B) / 2.0);
+        var midpoint = cramped.Classify(101, 100, 100);
 
         Assert.True(midpoint.AmbiguityRatio > TileClassification.MaxTrustedAmbiguity);
         Assert.True(midpoint.IsLowConfidence);
     }
 
-    private static (byte A, byte B, double Distance) FindClosestPalettePair()
+    [Fact]
+    public void DefaultPalette_MinimumPairwiseDistance_SupportsLossyCapture()
     {
-        byte bestA = 0, bestB = 1;
         double best = double.MaxValue;
 
         for (int i = 0; i < 256; i++)
@@ -71,16 +68,10 @@ public class PaletteClassifierTests
             {
                 var cj = ColorMap.Default.GetColor((byte)j);
                 double dr = ci.R - cj.R, dg = ci.G - cj.G, db = ci.B - cj.B;
-                double d = Math.Sqrt(dr * dr + dg * dg + db * db);
-                if (d < best)
-                {
-                    best = d;
-                    bestA = (byte)i;
-                    bestB = (byte)j;
-                }
+                best = Math.Min(best, Math.Sqrt(dr * dr + dg * dg + db * db));
             }
         }
 
-        return (bestA, bestB, best);
+        Assert.True(best >= 30, $"Default palette minimum pairwise distance is {best:F1}; must stay >= 30.");
     }
 }

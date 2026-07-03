@@ -8,9 +8,11 @@ namespace FluxCore.Decoding;
 
 /// <summary>
 /// Capture-tolerant frame decoder: registers the frame via its corner finder patterns,
-/// resolves orientation with the timing pattern, samples and classifies every tile,
-/// refuses unstable captures before spending ECC work, then recovers header and payload
-/// with full CRC verification. Also offers a cheap probe for click-confirmation polling.
+/// resolves orientation with the timing pattern, samples and classifies every tile, then
+/// recovers header and payload with full CRC verification. When recovery fails on a capture
+/// with many low-confidence tiles, the failure is reported as CaptureUnstable so callers know
+/// to wait for the remote-desktop codec to converge and recapture. Also offers a cheap probe
+/// for click-confirmation polling.
 /// </summary>
 public sealed class FrameDecoder
 {
@@ -55,14 +57,13 @@ public sealed class FrameDecoder
             MaxPaletteDistance = maxDistance,
         };
 
-        if (lowConfidence > FrameFormat.DataTileCount * MaxLowConfidenceFraction)
-        {
-            return Undecodable(DecodeFailureReason.CaptureUnstable, baseDiagnostics);
-        }
+        bool unstable = lowConfidence > FrameFormat.DataTileCount * MaxLowConfidenceFraction;
 
         if (!TryRecoverHeader(samples, out var header, out int copiesAgreeing))
         {
-            return Undecodable(DecodeFailureReason.HeaderUnreadable, baseDiagnostics);
+            return Undecodable(
+                unstable ? DecodeFailureReason.CaptureUnstable : DecodeFailureReason.HeaderUnreadable,
+                baseDiagnostics);
         }
 
         var diagnostics = With(baseDiagnostics, copiesAgreeing: copiesAgreeing);
@@ -97,7 +98,9 @@ public sealed class FrameDecoder
         var payload = new byte[header.EccLevel.PayloadBytesPerFrame()];
         if (!ReedSolomonBlockCodec.TryDecodePayload(codewords, header.EccLevel, payload, out int correctedErrors))
         {
-            return Undecodable(DecodeFailureReason.EccFailure, With(diagnostics, correctedErrors: correctedErrors));
+            return Undecodable(
+                unstable ? DecodeFailureReason.CaptureUnstable : DecodeFailureReason.EccFailure,
+                With(diagnostics, correctedErrors: correctedErrors));
         }
 
         diagnostics = With(diagnostics, correctedErrors: correctedErrors);

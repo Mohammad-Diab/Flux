@@ -156,71 +156,28 @@ public sealed class ColorMap
     /// Creates the default deterministic 256-color palette.
     /// Uses a spread across RGB space, avoiding white (255,255,255).
     /// </summary>
+    // The default palette is an evenly spaced 8x8x4 RGB lattice (8 red x 8 green x 4 blue
+    // levels = 256). Minimum pairwise distance is ~36 RGB units, so classification stays
+    // unambiguous under lossy capture noise. The lattice point that would be white (index 255)
+    // is replaced with a lattice-gap color, keeping white reserved for structural tiles.
     private static ColorMap CreateDefault()
     {
+        ReadOnlySpan<byte> redGreenLevels = [0, 36, 73, 109, 146, 182, 219, 255];
+        ReadOnlySpan<byte> blueLevels = [0, 85, 170, 255];
         var palette = new Rgb24[256];
-        var used = new HashSet<Rgb24>();
-        int index = 0;
 
-        // Strategy 1: Sample RGB cube with 6�6�6 grid (216 colors) avoiding white
-        for (int r = 0; r < 6; r++)
+        for (int r = 0; r < 8; r++)
         {
-            for (int g = 0; g < 6; g++)
+            for (int g = 0; g < 8; g++)
             {
-                for (int b = 0; b < 6; b++)
+                for (int b = 0; b < 4; b++)
                 {
-                    byte red = (byte)(r * 51);   // 0, 51, 102, 153, 204, 255
-                    byte green = (byte)(g * 51); // 0, 51, 102, 153, 204, 255
-                    byte blue = (byte)(b * 51);  // 0, 51, 102, 153, 204, 255
-
-                    var color = new Rgb24(red, green, blue);
-
-                    // Skip white (255, 255, 255)
-                    if (color.IsWhite)
-                        continue;
-
-                    if (used.Add(color))
-                    {
-                        palette[index++] = color;
-                    }
+                    palette[(r * 8 + g) * 4 + b] = new Rgb24(redGreenLevels[r], redGreenLevels[g], blueLevels[b]);
                 }
             }
         }
 
-        // Strategy 2: Add intermediate values to reach 256 total
-        // Generate additional colors from remaining RGB space
-        for (int val = 0; index < 256 && val < 256; val++)
-        {
-            // Try different color combinations
-            var candidates = new[]
-                   {
-     new Rgb24((byte)val, (byte)val, (byte)val),   // Grayscale
-                new Rgb24((byte)val, 0, 0),       // Red spectrum
-           new Rgb24(0, (byte)val, 0),        // Green spectrum
-           new Rgb24(0, 0, (byte)val),       // Blue spectrum
-                new Rgb24((byte)val, (byte)val, 0),  // Yellow tones
-                new Rgb24((byte)val, 0, (byte)val),       // Magenta tones
- new Rgb24(0, (byte)val, (byte)val),   // Cyan tones
-           new Rgb24((byte)(255 - val), (byte)val, (byte)(val/2)),  // Mixed
-            };
-
-            foreach (var candidate in candidates)
-            {
-                if (index >= 256)
-                    break;
-
-                if (!candidate.IsWhite && used.Add(candidate))
-                {
-                    palette[index++] = candidate;
-                }
-            }
-        }
-
-        // Ensure we have exactly 256 colors
-        if (index != 256)
-        {
-            throw new InvalidOperationException($"Default palette generation failed: got {index} colors instead of 256.");
-        }
+        palette[255] = new Rgb24(18, 18, 43);
 
         return new ColorMap(palette);
     }
