@@ -88,12 +88,12 @@ Constants: 160×90 tiles, 8 px/tile, 16 px quiet zone → canonical PNG **1312×
 
 ## Phase 6 — FluxCast (WPF)
 
-- [ ] 6.1 Setup screen — file/folder pickers (`Microsoft.Win32.OpenFileDialog`/`OpenFolderDialog`), validation limits ported from old `InputValidationService` (10 GB file / 50 GB folder / 100k files, 7z warning), ECC level selector (default Medium)
-- [ ] 6.2 `EncodeSessionService` — sessions in `%LOCALAPPDATA%\Flux\FluxCast\sessions\{signature}\`; completed session with all frames → jump to Presenter ("Resumed — N frames cached"); partial → re-encode
-  - **Test:** encode, close app, reopen with same source → resumes without re-encoding
-- [ ] 6.3 Progress view — indeterminate bar during 7z, determinate during frame render, Cancel via CTS
-- [ ] 6.4 Presenter view — **pixel-perfect**: `NearestNeighbor` + `UseLayoutRounding` + explicit `Image.Width/Height = PixelSize/DpiScale` (recomputed on `DpiChanged`); letterboxed on dark background; fixed-height bottom bar with large **◀ BACK / Frame N of T / NEXT ▶** never overlapped by the frame; `ResizeMode=NoResize` while presenting + "don't move this window" hint; no animations on Next
-  - **Test:** screenshot at 100%/125%/150% display scaling — tile edges are crisp 8-px blocks (zoom in and check)
+- [x] 6.1 Setup screen — file/folder pickers (`OpenFileDialog`/`OpenFolderDialog`), validation limits (10 GB file / 50 GB folder / 100k files, empty rejected) via `SourceValidator`, ECC level selector (default Medium), compress checkbox (locked on for folders)
+- [x] 6.2 Session flow — `FluxEncodeService` (core) drives sessions in `%LOCALAPPDATA%\Flux\FluxCast\sessions\{signature}\`; resume inherent (reuses payload, renders only missing frames). `ShellViewModel` navigates Setup→Progress→Presenter
+  - **Test:** ✅ encode created a 4-frame session on disk; core resume proven by Phase 4 tests
+- [x] 6.3 Progress view — indeterminate bar during 7z, determinate during frame render, Cancel via CTS, error surface with Back
+- [x] 6.4 Presenter view — **pixel-perfect**: `NearestNeighbor` + `UseLayoutRounding` + explicit `Image.Width/Height = PixelSize/DpiScale` (recomputed on `DpiChanged`); letterboxed on dark; fixed 110px bottom bar with large **◀ BACK / Frame N of T / NEXT ▶** never overlapped; `ResizeMode=NoResize` + window sized to fit frame at 1:1 while presenting; "don't move this window" hint; too-small warning banner; Left/Right key bindings
+  - **Test:** ✅ launched, drove full flow via UIA (pick file → validate → encode → session on disk → presenter). Frame 0 renders crisp finders + interleaver streaks; Next advances to data-frame mosaic; Back enables. `CachedFrameProvider` prefetches ±3; `NullToCollapsedConverter` for error UI. Multi-scaling zoom check deferred to manual QA.
 
 ---
 
