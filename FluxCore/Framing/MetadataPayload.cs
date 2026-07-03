@@ -1,227 +1,244 @@
-using FluxCore.Imaging;
 using System.Buffers.Binary;
 using System.Text;
+using FluxCore.Ecc;
+using FluxCore.Imaging;
 
 namespace FluxCore.Framing;
 
 /// <summary>
-/// Metadata payload for Frame 0, containing encoding parameters and integrity information.
+/// Payload of frame 0: transfer parameters and integrity information. Lets a decoder fail fast
+/// on version or geometry mismatch and verify the reassembled payload end to end. Always encoded
+/// at <see cref="EccLevel.Max"/> regardless of the transfer's payload level.
 /// </summary>
 public sealed class MetadataPayload
 {
-    /// <summary>
-    /// Metadata version (current = 1).
-    /// </summary>
-    public const byte CurrentVersion = 1;
+    /// <summary>Metadata format version (current = 2).</summary>
+    public const byte CurrentVersion = 2;
 
-    /// <summary>
-    /// Gets the metadata version.
-    /// </summary>
+    /// <summary>Serialized size in bytes excluding the variable-length name.</summary>
+    public const int FixedSize = 1 + 32 + 1 + 1 + 1 + 2 + 2 + 4 + 8 + 2 + 8 + 32 + ColorMap.SerializedSize;
+
+    /// <summary>Gets the metadata format version.</summary>
     public byte Version { get; init; } = CurrentVersion;
 
-    /// <summary>
-    /// Gets the SHA-256 hash of the full payload (after compression if applicable).
-    /// </summary>
-    public byte[] Sha256 { get; init; }
+    /// <summary>Gets the SHA-256 hash of the transferred payload (after compression if applicable).</summary>
+    public byte[] Sha256 { get; }
 
-    /// <summary>
-    /// Gets the tile size in pixels.
-    /// </summary>
-    public byte TileSize { get; init; }
+    /// <summary>Gets the payload type (raw or 7z).</summary>
+    public PayloadType PayloadType { get; }
 
-    /// <summary>
-    /// Gets the number of ECC symbols per 16 data symbols (1-8).
-    /// </summary>
-    public byte EccPer16 { get; init; }
+    /// <summary>Gets the ECC level used for payload frames (frame 0 itself always uses Max).</summary>
+    public EccLevel EccLevel { get; }
 
-    /// <summary>
-    /// Gets the separator interval in tiles (typically 8).
-    /// </summary>
-    public byte SeparatorEvery { get; init; }
+    /// <summary>Gets the tile edge length in pixels, echoed so a decoder can verify geometry.</summary>
+    public byte TilePixelSize { get; init; } = FrameFormat.TilePixelSize;
 
-    /// <summary>
-    /// Gets the ECC algorithm identifier (1 = Reed-Solomon, 0 = none).
-    /// </summary>
-    public byte Algorithm { get; init; }
+    /// <summary>Gets the grid width in tiles, echoed so a decoder can verify geometry.</summary>
+    public ushort GridWidthTiles { get; init; } = FrameFormat.GridWidthTiles;
 
-    /// <summary>
-    /// Gets the specification version.
-    /// </summary>
-    public byte SpecVersion { get; init; } = 1;
+    /// <summary>Gets the grid height in tiles, echoed so a decoder can verify geometry.</summary>
+    public ushort GridHeightTiles { get; init; } = FrameFormat.GridHeightTiles;
 
-    /// <summary>
-    /// Gets the payload type (raw or 7z).
-    /// </summary>
-    public PayloadType PayloadType { get; init; }
+    /// <summary>Gets the total number of frames in the transfer, including frame 0.</summary>
+    public uint TotalFrames { get; }
 
-    /// <summary>
-  /// Gets the original file/folder name.
-    /// </summary>
-    public string OriginalName { get; init; }
+    /// <summary>Gets the total transferred payload length in bytes (compressed size for 7z payloads).</summary>
+    public long PayloadLength { get; }
 
-    /// <summary>
-    /// Gets the original uncompressed length in bytes.
-    /// </summary>
-    public long OriginalLength { get; init; }
+    /// <summary>Gets the original file or folder name.</summary>
+    public string OriginalName { get; }
 
-    /// <summary>
-    /// Gets the color map used for encoding.
-    /// </summary>
-    public ColorMap ColorMap { get; init; }
+    /// <summary>Gets the original uncompressed length in bytes.</summary>
+    public long OriginalLength { get; }
+
+    /// <summary>Gets the 32-byte content signature identifying the source (used for session/resume naming).</summary>
+    public byte[] ContentSignature { get; }
+
+    /// <summary>Gets the color map used for data tiles.</summary>
+    public ColorMap ColorMap { get; }
 
     /// <summary>
     /// Initializes a new instance of the <see cref="MetadataPayload"/> class.
     /// </summary>
+    /// <param name="sha256">SHA-256 of the transferred payload (32 bytes).</param>
+    /// <param name="payloadType">Payload type.</param>
+    /// <param name="eccLevel">ECC level of the payload frames.</param>
+    /// <param name="totalFrames">Total frames including frame 0.</param>
+    /// <param name="payloadLength">Transferred payload length in bytes.</param>
+    /// <param name="originalName">Original file or folder name.</param>
+    /// <param name="originalLength">Original uncompressed length in bytes.</param>
+    /// <param name="contentSignature">32-byte content signature of the source.</param>
+    /// <param name="colorMap">Color map used for data tiles.</param>
     public MetadataPayload(
         byte[] sha256,
-        byte tileSize,
-    byte eccPer16,
-   byte separatorEvery,
-      byte algorithm,
-   PayloadType payloadType,
+        PayloadType payloadType,
+        EccLevel eccLevel,
+        uint totalFrames,
+        long payloadLength,
         string originalName,
-  long originalLength,
+        long originalLength,
+        byte[] contentSignature,
         ColorMap colorMap)
     {
-    ArgumentNullException.ThrowIfNull(sha256);
+        ArgumentNullException.ThrowIfNull(sha256);
         ArgumentNullException.ThrowIfNull(originalName);
+        ArgumentNullException.ThrowIfNull(contentSignature);
         ArgumentNullException.ThrowIfNull(colorMap);
 
         if (sha256.Length != 32)
             throw new ArgumentException("SHA-256 must be 32 bytes.", nameof(sha256));
+        if (contentSignature.Length != 32)
+            throw new ArgumentException("Content signature must be 32 bytes.", nameof(contentSignature));
+        if ((byte)eccLevel > (byte)EccLevel.Max)
+            throw new ArgumentException($"Unknown ECC level: {eccLevel}.", nameof(eccLevel));
+        if (totalFrames < 1)
+            throw new ArgumentException("Total frames must be at least 1.", nameof(totalFrames));
+        if (payloadLength < 0)
+            throw new ArgumentException("Payload length cannot be negative.", nameof(payloadLength));
+        if (originalLength < 0)
+            throw new ArgumentException("Original length cannot be negative.", nameof(originalLength));
 
-        if (eccPer16 < 0 || eccPer16 > 8)
-     throw new ArgumentException("ECC per 16 must be between 0 and 8.", nameof(eccPer16));
-
-     Sha256 = sha256;
-        TileSize = tileSize;
-        EccPer16 = eccPer16;
-        SeparatorEvery = separatorEvery;
-    Algorithm = algorithm;
+        Sha256 = sha256;
         PayloadType = payloadType;
-   OriginalName = originalName;
+        EccLevel = eccLevel;
+        TotalFrames = totalFrames;
+        PayloadLength = payloadLength;
+        OriginalName = originalName;
         OriginalLength = originalLength;
+        ContentSignature = contentSignature;
         ColorMap = colorMap;
     }
 
     /// <summary>
-    /// Serializes the metadata payload to a byte array.
-    /// Format:
-    ///   - Version: 1 byte
-    ///   - SHA256: 32 bytes
-    ///   - TileSize: 1 byte
-    ///   - EccPer16: 1 byte
-    ///   - SeparatorEvery: 1 byte
-    ///   - Algorithm: 1 byte
-    ///   - SpecVersion: 1 byte
-    ///   - PayloadType: 1 byte
-    ///   - OriginalNameLength: 2 bytes (ushort)
-    ///   - OriginalName: variable UTF-8
-    ///   - OriginalLength: 8 bytes (long)
-    ///   - ColorMap: 768 bytes (256 colors × 3 RGB)
+    /// Determines whether the echoed geometry matches this library's fixed frame format.
+    /// A decoder must refuse the transfer when this returns false.
+    /// </summary>
+    public bool MatchesFrameFormat() =>
+        Version == CurrentVersion &&
+        TilePixelSize == FrameFormat.TilePixelSize &&
+        GridWidthTiles == FrameFormat.GridWidthTiles &&
+        GridHeightTiles == FrameFormat.GridHeightTiles;
+
+    /// <summary>
+    /// Serializes the metadata payload. Layout (little-endian):
+    /// Version(1) | Sha256(32) | PayloadType(1) | EccLevel(1) | TilePixelSize(1) |
+    /// GridWidthTiles(2) | GridHeightTiles(2) | TotalFrames(4) | PayloadLength(8) |
+    /// NameLength(2) | Name(UTF-8) | OriginalLength(8) | ContentSignature(32) | ColorMap(768).
     /// </summary>
     public byte[] Serialize()
     {
-      var nameBytes = Encoding.UTF8.GetBytes(OriginalName);
-    if (nameBytes.Length > ushort.MaxValue)
-  throw new InvalidOperationException($"Original name is too long: {nameBytes.Length} bytes (max {ushort.MaxValue}).");
+        var nameBytes = Encoding.UTF8.GetBytes(OriginalName);
+        if (nameBytes.Length > ushort.MaxValue)
+            throw new InvalidOperationException(
+                $"Original name is too long: {nameBytes.Length} bytes (max {ushort.MaxValue}).");
 
-        var colorMapBytes = ColorMap.Serialize();
+        var buffer = new byte[FixedSize + nameBytes.Length];
+        int offset = 0;
 
-        // Calculate total size
-        int totalSize = 1 + 32 + 1 + 1 + 1 + 1 + 1 + 1 + 2 + nameBytes.Length + 8 + 768;
-        var buffer = new byte[totalSize];
-  int offset = 0;
-
-  // Write fields
         buffer[offset++] = Version;
-        
-      Sha256.CopyTo(buffer.AsSpan(offset));
+
+        Sha256.CopyTo(buffer.AsSpan(offset));
         offset += 32;
 
-        buffer[offset++] = TileSize;
-        buffer[offset++] = EccPer16;
-        buffer[offset++] = SeparatorEvery;
-        buffer[offset++] = Algorithm;
-   buffer[offset++] = SpecVersion;
         buffer[offset++] = (byte)PayloadType;
+        buffer[offset++] = (byte)EccLevel;
+        buffer[offset++] = TilePixelSize;
+
+        BinaryPrimitives.WriteUInt16LittleEndian(buffer.AsSpan(offset), GridWidthTiles);
+        offset += 2;
+        BinaryPrimitives.WriteUInt16LittleEndian(buffer.AsSpan(offset), GridHeightTiles);
+        offset += 2;
+        BinaryPrimitives.WriteUInt32LittleEndian(buffer.AsSpan(offset), TotalFrames);
+        offset += 4;
+        BinaryPrimitives.WriteInt64LittleEndian(buffer.AsSpan(offset), PayloadLength);
+        offset += 8;
 
         BinaryPrimitives.WriteUInt16LittleEndian(buffer.AsSpan(offset), (ushort)nameBytes.Length);
         offset += 2;
+        nameBytes.CopyTo(buffer.AsSpan(offset));
+        offset += nameBytes.Length;
 
-  nameBytes.CopyTo(buffer.AsSpan(offset));
-  offset += nameBytes.Length;
-
-   BinaryPrimitives.WriteInt64LittleEndian(buffer.AsSpan(offset), OriginalLength);
+        BinaryPrimitives.WriteInt64LittleEndian(buffer.AsSpan(offset), OriginalLength);
         offset += 8;
 
-   colorMapBytes.CopyTo(buffer.AsSpan(offset));
+        ContentSignature.CopyTo(buffer.AsSpan(offset));
+        offset += 32;
+
+        ColorMap.Serialize().CopyTo(buffer.AsSpan(offset));
 
         return buffer;
     }
 
-    /// <summary>
-    /// Deserializes metadata payload from a byte array.
-    /// </summary>
+    /// <summary>Deserializes a metadata payload from a byte array.</summary>
+    /// <param name="data">Serialized metadata.</param>
     public static MetadataPayload Deserialize(byte[] data)
     {
         ArgumentNullException.ThrowIfNull(data);
         return Deserialize(data.AsSpan());
     }
 
-    /// <summary>
-    /// Deserializes metadata payload from a span.
-    /// </summary>
+    /// <summary>Deserializes a metadata payload from a span.</summary>
+    /// <param name="data">Serialized metadata.</param>
     public static MetadataPayload Deserialize(ReadOnlySpan<byte> data)
     {
-        // Minimum size check (without name and color map)
-        if (data.Length < 1 + 32 + 1 + 1 + 1 + 1 + 1 + 1 + 2 + 8 + 768)
-       throw new ArgumentException("Data is too short to be a valid metadata payload.", nameof(data));
+        if (data.Length < FixedSize)
+            throw new ArgumentException("Data is too short to be a valid metadata payload.", nameof(data));
 
         int offset = 0;
 
-     var version = data[offset++];
+        var version = data[offset++];
         if (version != CurrentVersion)
-    throw new NotSupportedException($"Unsupported metadata version: {version}. Expected {CurrentVersion}.");
+            throw new NotSupportedException(
+                $"Unsupported metadata version: {version}. Expected {CurrentVersion}.");
 
         var sha256 = data.Slice(offset, 32).ToArray();
         offset += 32;
 
-        var tileSize = data[offset++];
- var eccPer16 = data[offset++];
-        var separatorEvery = data[offset++];
-        var algorithm = data[offset++];
-        var specVersion = data[offset++];
         var payloadType = (PayloadType)data[offset++];
+        var eccLevel = (EccLevel)data[offset++];
+        var tilePixelSize = data[offset++];
 
-var nameLength = BinaryPrimitives.ReadUInt16LittleEndian(data[offset..]);
-offset += 2;
-
-      if (offset + nameLength + 8 + 768 > data.Length)
-            throw new ArgumentException("Data is corrupted or truncated.", nameof(data));
-
-    var originalName = Encoding.UTF8.GetString(data.Slice(offset, nameLength));
-        offset += nameLength;
-
-      var originalLength = BinaryPrimitives.ReadInt64LittleEndian(data[offset..]);
+        var gridWidthTiles = BinaryPrimitives.ReadUInt16LittleEndian(data[offset..]);
+        offset += 2;
+        var gridHeightTiles = BinaryPrimitives.ReadUInt16LittleEndian(data[offset..]);
+        offset += 2;
+        var totalFrames = BinaryPrimitives.ReadUInt32LittleEndian(data[offset..]);
+        offset += 4;
+        var payloadLength = BinaryPrimitives.ReadInt64LittleEndian(data[offset..]);
         offset += 8;
 
-  var colorMapBytes = data.Slice(offset, 768).ToArray();
-var colorMap = ColorMap.Deserialize(colorMapBytes);
+        var nameLength = BinaryPrimitives.ReadUInt16LittleEndian(data[offset..]);
+        offset += 2;
+
+        if (offset + nameLength + 8 + 32 + ColorMap.SerializedSize > data.Length)
+            throw new ArgumentException("Data is corrupted or truncated.", nameof(data));
+
+        var originalName = Encoding.UTF8.GetString(data.Slice(offset, nameLength));
+        offset += nameLength;
+
+        var originalLength = BinaryPrimitives.ReadInt64LittleEndian(data[offset..]);
+        offset += 8;
+
+        var contentSignature = data.Slice(offset, 32).ToArray();
+        offset += 32;
+
+        var colorMap = ColorMap.Deserialize(data.Slice(offset, ColorMap.SerializedSize).ToArray());
 
         return new MetadataPayload(
-sha256,
-            tileSize,
-       eccPer16,
-            separatorEvery,
-            algorithm,
-   payloadType,
+            sha256,
+            payloadType,
+            eccLevel,
+            totalFrames,
+            payloadLength,
             originalName,
-      originalLength,
+            originalLength,
+            contentSignature,
             colorMap)
         {
             Version = version,
- SpecVersion = specVersion
+            TilePixelSize = tilePixelSize,
+            GridWidthTiles = gridWidthTiles,
+            GridHeightTiles = gridHeightTiles,
         };
     }
 }

@@ -8,6 +8,11 @@ namespace FluxCore.Imaging;
 /// </summary>
 public sealed class ColorMap
 {
+    /// <summary>
+    /// Size of a serialized color map in bytes (256 colors x 3 RGB bytes).
+    /// </summary>
+    public const int SerializedSize = 768;
+
     private readonly Rgb24[] _byteToColor;
     private readonly Dictionary<Rgb24, byte> _colorToByte;
 
@@ -101,12 +106,12 @@ public sealed class ColorMap
     public ReadOnlySpan<Rgb24> Palette => _byteToColor;
 
     /// <summary>
-    /// Serializes the color map to a byte array (256 colors × 3 bytes RGB = 768 bytes).
+    /// Serializes the color map to a byte array (256 colors ï¿½ 3 bytes RGB = 768 bytes).
     /// </summary>
     /// <returns>Byte array containing the serialized palette.</returns>
     public byte[] Serialize()
     {
-        var buffer = new byte[768]; // 256 colors * 3 bytes
+        var buffer = new byte[SerializedSize];
         int offset = 0;
 
         for (int i = 0; i < 256; i++)
@@ -130,8 +135,8 @@ public sealed class ColorMap
         if (data == null)
             throw new ArgumentNullException(nameof(data));
 
-        if (data.Length != 768)
-            throw new ArgumentException($"Serialized color map must be 768 bytes (256 colors × 3), got {data.Length}.", nameof(data));
+        if (data.Length != SerializedSize)
+            throw new ArgumentException($"Serialized color map must be 768 bytes (256 colors ï¿½ 3), got {data.Length}.", nameof(data));
 
         var palette = new Rgb24[256];
         int offset = 0;
@@ -157,7 +162,7 @@ public sealed class ColorMap
         var used = new HashSet<Rgb24>();
         int index = 0;
 
-        // Strategy 1: Sample RGB cube with 6×6×6 grid (216 colors) avoiding white
+        // Strategy 1: Sample RGB cube with 6ï¿½6ï¿½6 grid (216 colors) avoiding white
         for (int r = 0; r < 6; r++)
         {
             for (int g = 0; g < 6; g++)

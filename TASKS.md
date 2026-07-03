@@ -22,14 +22,14 @@ Tasks are dependency-ordered. Each task has a **Test** gate — do not start the
 
 Constants: 160×90 tiles, 8 px/tile, 16 px quiet zone → canonical PNG **1312×752**. Reserved tiles: 4× QR-style finder corners (8×8 blocks, 256), timing patterns (218), 3× header copies (144), beacon (16) → **13,515 data tiles = 53×255**, 251 white pad.
 
-- [ ] 1.1 `Framing/FrameFormat.cs` — all constants, tile role map (`TileRole GetRole(x,y)`), data-tile scan order, stride-53 interleaver (`tile t → codeword t%53, symbol t/53`), finder/timing/header/beacon coordinates
-  - **Test:** reserved-tile accounting (256+218+144+16=634); role-map golden hash (format freeze); interleaver property — any 53 consecutive data tiles hit 53 distinct codewords
-- [ ] 1.2 `Framing/FrameHeader.cs` — rewrite as 16-byte v2: `FormatVersion=2 | Flags(IsMetadata, EccLevel) | FrameId(u32) | TotalFrames(u32) | PayloadLength(u16) | PayloadCrc32(u32)`
-  - **Test:** serialize/deserialize round-trip, bounds, version rejection (replace old FrameHeader usage)
-- [ ] 1.3 `Ecc/EccLevel.cs` + `Ecc/ReedSolomonBlockCodec.cs` — real RS(255,k) via ZXing, ONE call per 255-symbol codeword. Levels: Low k=223, **Medium k=191 (default)**, High k=159, Max k=127. Header codec: RS(48,16). Delete `Ecc/ReedSolomonEcc.cs` + its tests
-  - **Test:** round-trip per level; corrupt exactly t symbols → recovers; t+1 → `TryDecode` false; header survives 16/48 corrupt symbols
-- [ ] 1.4 `Framing/MetadataPayload.cs` — extend to v2 (Version=2): add EccLevel, TilePixelSize, GridW/H, TotalFrames, PayloadLength, ContentSignature; drop TileSize/EccPer16/SeparatorEvery/Algorithm
-  - **Test:** update MetadataPayloadTests for v2 round-trips; v1 payload rejected cleanly
+- [x] 1.1 `Framing/FrameFormat.cs` — all constants, tile role map (`TileRole GetRole(x,y)`), data-tile scan order, stride-53 interleaver (`tile t → codeword t%53, symbol t/53`), finder/timing/header/beacon coordinates
+  - **Test:** ✅ 13 tests — accounting, golden hash `64073E66…B01A`, interleaver properties
+- [x] 1.2 `Framing/FrameHeader.cs` — rewrite as 16-byte v2: `FormatVersion=2 | Flags(IsMetadata, EccLevel) | FrameId(u32) | TotalFrames(u32) | PayloadLength(u16) | PayloadCrc32(u32)`
+  - **Test:** ✅ 15 tests. Old broken pipeline (FrameEncoder/Decoder/Frame*Service/FrameLayout) deleted here (was A.3) since the header rewrite broke it anyway
+- [x] 1.3 `Ecc/EccLevel.cs` + `Ecc/ReedSolomonBlockCodec.cs` — real RS(255,k) via ZXing, ONE call per 255-symbol codeword. Levels: Low k=223, **Medium k=191 (default)**, High k=159, Max k=127. Header codec: RS(48,16). Delete `Ecc/ReedSolomonEcc.cs` + its tests
+  - **Test:** ✅ 20 tests — incl. exactly-t recovers / t+1 fails per level, 400-tile contiguous burst recovers at Medium through the interleaver, header survives 16/48. Root cause of v1 silent corruption found: old code discarded ZXing's bool decode result
+- [x] 1.4 `Framing/MetadataPayload.cs` — extend to v2 (Version=2): add EccLevel, TilePixelSize, GridW/H, TotalFrames, PayloadLength, ContentSignature; drop TileSize/EccPer16/SeparatorEvery/Algorithm
+  - **Test:** ✅ 12 tests — v2 round-trips incl. unicode/long names, v1 rejected, geometry-mismatch detection, frame-0-fits-in-Max guarantee. **Phase 1 gate: 124/124 green**
 
 ---
 
