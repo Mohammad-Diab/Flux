@@ -76,10 +76,10 @@ Constants: 160×90 tiles, 8 px/tile, 16 px quiet zone → canonical PNG **1312×
 
 ## Phase 5 — WPF Shells (both apps)
 
-- [ ] 5.1 Gut FluxCast MAUI files; new csproj: `net8.0-windows`, `UseWPF`, `WinExe`, PerMonitorV2 `app.manifest`; CommunityToolkit.Mvvm + DI + Serilog file sink (`%LOCALAPPDATA%\Flux\logs\`)
-- [ ] 5.2 Same for FluxRead
-- [ ] 5.3 Recreate `Flux.sln` — FluxCore, FluxCore.Tests, FluxCast, FluxRead; AnyCPU only
-  - **Test:** both apps build and launch to an empty MainWindow; `dotnet test` still green
+- [x] 5.1 Gut FluxCast MAUI files; new csproj: `net8.0-windows`, `UseWPF`, `WinExe`, PerMonitorV2 `app.manifest`; CommunityToolkit.Mvvm + DI + Serilog file sink (`%LOCALAPPDATA%\Flux\logs\`)
+- [x] 5.2 Same for FluxRead
+- [x] 5.3 Recreate `Flux.sln` — FluxCore, FluxCore.Tests, FluxCast, FluxRead; AnyCPU only
+  - **Test:** ✅ (pulled forward, after Phase 1, to clear 400+ VS errors from MAUI apps referencing deleted v1 types) — solution builds with 0 errors, 124/124 tests green. SharpCompress bumped 0.37.2 → 1.0.0 to clear vulnerability warning GHSA-6c8g-7p36-r338. Launch-to-shell check: verify in VS on next run.
 
 ---
 

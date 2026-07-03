@@ -1,51 +1,47 @@
-﻿using FluxCast.Services;
+using System.IO;
+using System.Windows;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Serilog;
 
 namespace FluxCast;
 
+/// <summary>
+/// Application entry point: builds the service container and shows the main window.
+/// </summary>
 public partial class App : Application
 {
-    private readonly SessionManager _sessionManager;
+    private ServiceProvider? _services;
 
-    public App(SessionManager sessionManager)
+    /// <inheritdoc/>
+    protected override void OnStartup(StartupEventArgs e)
     {
-        InitializeComponent();
-        _sessionManager = sessionManager;
+        base.OnStartup(e);
 
-        MainPage = new AppShell();
+        var logDirectory = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Flux", "logs");
+        Log.Logger = new LoggerConfiguration()
+            .WriteTo.File(Path.Combine(logDirectory, "fluxcast-.log"), rollingInterval: RollingInterval.Day)
+            .CreateLogger();
+
+        var services = new ServiceCollection();
+        ConfigureServices(services);
+        _services = services.BuildServiceProvider();
+
+        _services.GetRequiredService<MainWindow>().Show();
     }
 
-    protected override async void OnStart()
+    /// <inheritdoc/>
+    protected override void OnExit(ExitEventArgs e)
     {
-        base.OnStart();
+        _services?.Dispose();
+        Log.CloseAndFlush();
+        base.OnExit(e);
+    }
 
-        // Check for incomplete sessions
-        var incompleteSessions = _sessionManager.GetIncompleteSessions();
-
-        if (incompleteSessions.Any())
-        {
-            var session = incompleteSessions.First();
-            var resume = await MainPage.DisplayAlert(
-                "Resume Session?",
-                $"Found incomplete encoding session:\n\n" +
-                $"Source: {session.EncodingConfig.SourcePath}\n" +
-                $"Progress: {session.Progress.EncodedFrames}/{session.Progress.TotalFrames} frames\n" +
-                $"Started: {session.Progress.StartTime:g}\n\n" +
-                "Would you like to resume?",
-                "Resume", "Discard");
-
-            if (resume)
-            {
-                // Navigate to main page with session
-                await Shell.Current.GoToAsync("//MainPage", new Dictionary<string, object>
-                {
-                    { "ResumeSession", session }
-                });
-            }
-            else
-            {
-                // Cleanup session
-                await _sessionManager.CleanupSessionAsync(session.SessionId);
-            }
-        }
+    private static void ConfigureServices(ServiceCollection services)
+    {
+        services.AddLogging(builder => builder.AddSerilog(dispose: true));
+        services.AddSingleton<MainWindow>();
     }
 }

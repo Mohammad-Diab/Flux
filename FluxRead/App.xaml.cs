@@ -1,49 +1,47 @@
-﻿using FluxRead.Services;
+using System.IO;
+using System.Windows;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Serilog;
 
 namespace FluxRead;
 
+/// <summary>
+/// Application entry point: builds the service container and shows the main window.
+/// </summary>
 public partial class App : Application
 {
-    private readonly DecoderSessionManager _sessionManager;
+    private ServiceProvider? _services;
 
-    public App(DecoderSessionManager sessionManager)
+    /// <inheritdoc/>
+    protected override void OnStartup(StartupEventArgs e)
     {
-        InitializeComponent();
-        _sessionManager = sessionManager;
+        base.OnStartup(e);
 
-        MainPage = new AppShell();
+        var logDirectory = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Flux", "logs");
+        Log.Logger = new LoggerConfiguration()
+            .WriteTo.File(Path.Combine(logDirectory, "fluxread-.log"), rollingInterval: RollingInterval.Day)
+            .CreateLogger();
+
+        var services = new ServiceCollection();
+        ConfigureServices(services);
+        _services = services.BuildServiceProvider();
+
+        _services.GetRequiredService<MainWindow>().Show();
     }
 
-    protected override Window CreateWindow(IActivationState? activationState)
+    /// <inheritdoc/>
+    protected override void OnExit(ExitEventArgs e)
     {
-        var window = base.CreateWindow(activationState);
+        _services?.Dispose();
+        Log.CloseAndFlush();
+        base.OnExit(e);
+    }
 
-        // Check for incomplete sessions on startup
-        window.Created += async (s, e) =>
-        {
-            await Task.Delay(1000); // Brief delay for UI initialization
-
-            var tempFolder = Path.Combine(Path.GetTempPath(), "FluxRead");
-            var incompleteSessions = _sessionManager.GetIncompleteSessionFiles(tempFolder);
-
-            if (incompleteSessions.Any())
-            {
-                var resume = await MainPage.DisplayAlert(
-                    "Resume Incomplete Session?",
-                    $"Found {incompleteSessions.Count} incomplete decoding session(s).\n\n" +
-                    "Would you like to resume the most recent one?",
-                    "Resume", "Ignore");
-
-                if (resume)
-                {
-                    await Shell.Current.GoToAsync("//MainPage", new Dictionary<string, object>
-                    {
-                        { "ResumeProgressFile", incompleteSessions.First() }
-                    });
-                }
-            }
-        };
-
-        return window;
+    private static void ConfigureServices(ServiceCollection services)
+    {
+        services.AddLogging(builder => builder.AddSerilog(dispose: true));
+        services.AddSingleton<MainWindow>();
     }
 }

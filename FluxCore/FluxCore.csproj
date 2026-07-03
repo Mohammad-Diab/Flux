@@ -12,7 +12,7 @@
 		<PackageReference Include="System.IO.Hashing" Version="8.0.0" />
 		<PackageReference Include="ZXing.Net" Version="0.16.9" />
 		<PackageReference Include="SkiaSharp" Version="2.88.8" />
-		<PackageReference Include="SharpCompress" Version="0.37.2" />
+		<PackageReference Include="SharpCompress" Version="1.0.0" />
 	</ItemGroup>
 
 </Project>

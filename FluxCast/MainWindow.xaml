@@ -1,0 +1,12 @@
+<Window x:Class="FluxCast.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="FluxCast"
+        Width="900" Height="600"
+        WindowStartupLocation="CenterScreen">
+    <Grid>
+        <TextBlock Text="FluxCast — sender shell (Phase 6 builds the UI here)"
+                   HorizontalAlignment="Center" VerticalAlignment="Center"
+                   FontSize="16" Foreground="Gray"/>
+    </Grid>
+</Window>
