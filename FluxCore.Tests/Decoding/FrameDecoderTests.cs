@@ -19,10 +19,15 @@ public class FrameDecoderTests
         return payload;
     }
 
-    private static SKBitmap RenderFrame(uint frameId, uint totalFrames, byte[] payload, EccLevel level,
-        bool isMetadata = false)
+    private static SKBitmap RenderFrame(uint frameId, uint totalFrames, byte[] payload, EccLevel level)
     {
-        var map = FrameEncoder.BuildFrame(frameId, totalFrames, payload, level, isMetadata);
+        var map = FrameEncoder.BuildFrame(frameId, totalFrames, payload, level);
+        return SKBitmap.Decode(FrameRenderer.RenderPng(map, ColorMap.Default));
+    }
+
+    private static SKBitmap RenderMetadataFrame(byte[] content, uint totalFrames)
+    {
+        var map = FrameEncoder.BuildMetadataFrame(content, totalFrames);
         return SKBitmap.Decode(FrameRenderer.RenderPng(map, ColorMap.Default));
     }
 
@@ -70,9 +75,9 @@ public class FrameDecoderTests
             originalLength: 150_000,
             contentSignature: DeterministicPayload(32, seed: 2),
             colorMap: ColorMap.Default);
-        using var bitmap = RenderFrame(0, 7, metadata.Serialize(), EccLevel.Max, isMetadata: true);
+        using var bitmap = RenderMetadataFrame(metadata.Serialize(), 7);
 
-        var result = Decoder.Decode(bitmap);
+        var result = Decoder.DecodeMetadataFrame(bitmap);
 
         Assert.Equal(DecodeStatus.Success, result.Status);
         Assert.True(result.Header!.Value.IsMetadataFrame);
@@ -80,6 +85,24 @@ public class FrameDecoderTests
         var restored = MetadataPayload.Deserialize(result.Payload!);
         Assert.Equal("archive.7z", restored.OriginalName);
         Assert.True(restored.MatchesFrameFormat());
+    }
+
+    [Fact]
+    public void DecodeMetadataFrame_SurvivesHeavyJpeg()
+    {
+        var metadata = new MetadataPayload(
+            sha256: DeterministicPayload(32), payloadType: PayloadType.SevenZip, eccLevel: EccLevel.Medium,
+            totalFrames: 12, payloadLength: 500_000, originalName: "rugged.7z", originalLength: 1_000_000,
+            contentSignature: DeterministicPayload(32, seed: 4), colorMap: ColorMap.Default);
+        using var source = RenderMetadataFrame(metadata.Serialize(), 12);
+
+        using var jpeg = SKImage.FromBitmap(source).Encode(SKEncodedImageFormat.Jpeg, 40);
+        using var degraded = SKBitmap.Decode(jpeg.ToArray());
+
+        var result = Decoder.DecodeMetadataFrame(degraded);
+
+        Assert.Equal(DecodeStatus.Success, result.Status);
+        Assert.Equal("rugged.7z", MetadataPayload.Deserialize(result.Payload!).OriginalName);
     }
 
     [Fact]

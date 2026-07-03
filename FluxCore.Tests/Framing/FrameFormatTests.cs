@@ -191,6 +191,34 @@ public class FrameFormatTests
     }
 
     [Fact]
+    public void MetadataFrameTiles_CoverHeaderAndDataRoles_WithEnoughCapacity()
+    {
+        Assert.Equal(144 + 13515, FrameFormat.MetadataFrameTiles.Count);
+        Assert.Equal(12 * 255, FrameFormat.MetadataEncodedBytes);
+        Assert.Equal(12 * 127, FrameFormat.MetadataContentBytes);
+        Assert.Equal(8160, FrameFormat.MetadataTilesUsed);
+        Assert.True(FrameFormat.MetadataTilesUsed <= FrameFormat.MetadataFrameTiles.Count);
+
+        foreach (var (x, y) in FrameFormat.MetadataFrameTiles)
+        {
+            var role = FrameFormat.GetRole(x, y);
+            Assert.True(role is TileRole.Header or TileRole.Data);
+        }
+    }
+
+    [Fact]
+    public void MetadataFrameTiles_AreInRowMajorScanOrder()
+    {
+        int previous = -1;
+        foreach (var (x, y) in FrameFormat.MetadataFrameTiles)
+        {
+            int scanIndex = y * FrameFormat.GridWidthTiles + x;
+            Assert.True(scanIndex > previous);
+            previous = scanIndex;
+        }
+    }
+
+    [Fact]
     public void GetRole_ThrowsOnOutOfRangeCoordinates()
     {
         Assert.Throws<ArgumentOutOfRangeException>(() => FrameFormat.GetRole(-1, 0));

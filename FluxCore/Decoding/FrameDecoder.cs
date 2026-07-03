@@ -121,6 +121,82 @@ public sealed class FrameDecoder
     }
 
     /// <summary>
+    /// Decodes the metadata frame (frame 0). The caller identifies frame 0 by position (first
+    /// frame). Uses cube-corner threshold classification independent of the payload palette, so
+    /// the frame is decodable even before the palette is known. Returns the serialized metadata
+    /// bytes as the payload for the caller to deserialize.
+    /// </summary>
+    /// <param name="capture">Captured image of frame 0.</param>
+    public FrameDecodeResult DecodeMetadataFrame(SKBitmap capture)
+    {
+        ArgumentNullException.ThrowIfNull(capture);
+
+        if (!TryRegister(capture, out var registration))
+            return registration.FailureResult!;
+
+        var sampler = registration.Sampler!;
+        var diagnostics = new DecodeDiagnostics
+        {
+            FinderPoints = registration.Corners,
+            TimingMatchRatio = registration.TimingMatchRatio,
+        };
+
+        var stream = new byte[FrameFormat.MetadataEncodedBytes];
+        var positions = FrameFormat.MetadataFrameTiles;
+        for (int t = 0; t < FrameFormat.MetadataTilesUsed; t++)
+        {
+            var (x, y) = positions[t];
+            var sample = sampler.Sample(x, y);
+            int value = CubeCornerColors.Classify(sample.R, sample.G, sample.B);
+            WriteCubeCornerBits(stream, t, value);
+        }
+
+        var content = new byte[FrameFormat.MetadataContentBytes];
+        int parity = FrameFormat.CodewordLength - FrameFormat.MetadataCodewordDataBytes;
+        int correctedErrors = 0;
+
+        for (int c = 0; c < FrameFormat.MetadataCodewordCount; c++)
+        {
+            Span<byte> block = stackalloc byte[FrameFormat.CodewordLength];
+            for (int s = 0; s < FrameFormat.CodewordLength; s++)
+            {
+                block[s] = stream[s * FrameFormat.MetadataCodewordCount + c];
+            }
+
+            if (!ReedSolomonBlockCodec.TryDecodeBlock(
+                    block, parity,
+                    content.AsSpan(c * FrameFormat.MetadataCodewordDataBytes, FrameFormat.MetadataCodewordDataBytes),
+                    out int corrected))
+            {
+                return Undecodable(DecodeFailureReason.EccFailure, With(diagnostics, correctedErrors: correctedErrors));
+            }
+
+            correctedErrors += corrected;
+        }
+
+        var header = new FrameHeader(0, 0, 0, 0, EccLevel.Max, isMetadataFrame: true);
+        return new FrameDecodeResult
+        {
+            Status = DecodeStatus.Success,
+            Header = header,
+            Payload = content,
+            Diagnostics = With(diagnostics, correctedErrors: correctedErrors),
+        };
+    }
+
+    private static void WriteCubeCornerBits(byte[] stream, int tileIndex, int value)
+    {
+        int baseBit = tileIndex * 3;
+        for (int k = 0; k < 3; k++)
+        {
+            int bit = (value >> (2 - k)) & 1;
+            int globalBit = baseBit + k;
+            if (bit != 0)
+                stream[globalBit >> 3] |= (byte)(1 << (7 - (globalBit & 7)));
+        }
+    }
+
+    /// <summary>
     /// Cheap poll: registration, beacon parity, and header only. No payload sampling or ECC.
     /// </summary>
     /// <param name="capture">Captured image.</param>

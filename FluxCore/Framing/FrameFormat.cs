@@ -53,11 +53,32 @@ public static class FrameFormat
     /// <summary>Edge length of a reserved corner block (finder plus quiet ring) in tiles.</summary>
     public const int CornerBlockSizeTiles = 8;
 
+    /// <summary>Reed-Solomon codewords in the metadata frame (frame 0), each RS(255,127).</summary>
+    public const int MetadataCodewordCount = 12;
+
+    /// <summary>Data bytes per metadata-frame codeword (RS(255,127), maximum protection).</summary>
+    public const int MetadataCodewordDataBytes = 127;
+
+    /// <summary>Usable payload bytes in the metadata frame (12 x 127).</summary>
+    public const int MetadataContentBytes = MetadataCodewordCount * MetadataCodewordDataBytes;
+
+    /// <summary>Encoded bytes across all metadata codewords (12 x 255).</summary>
+    public const int MetadataEncodedBytes = MetadataCodewordCount * CodewordLength;
+
+    /// <summary>
+    /// Metadata-frame tiles consumed at 3 bits per tile to carry the encoded codewords
+    /// (12 x 255 x 8 / 3 = 8160). Remaining metadata-frame tiles render black.
+    /// </summary>
+    public const int MetadataTilesUsed = MetadataEncodedBytes * 8 / CubeCornerBitsPerTile;
+
+    private const int CubeCornerBitsPerTile = 3;
+
     private static readonly TileRole[] Roles = new TileRole[TotalTiles];
     private static readonly (int X, int Y)[] DataTilePositions;
     private static readonly (int X, int Y)[] PadTilePositions;
     private static readonly (int X, int Y)[][] HeaderCopyPositions;
     private static readonly (int X, int Y)[] BeaconPositions;
+    private static readonly (int X, int Y)[] MetadataFrameTilePositions;
 
     /// <summary>
     /// Finder pattern centers in tile coordinates, order: top-left, top-right, bottom-left, bottom-right.
@@ -79,6 +100,7 @@ public static class FrameFormat
         HeaderCopyPositions = MarkHeaderCopies();
         BeaconPositions = MarkBeacon();
         (DataTilePositions, PadTilePositions) = AssignDataAndPadTiles();
+        MetadataFrameTilePositions = CollectMetadataFrameTiles();
     }
 
     /// <summary>Gets the role of the tile at the given grid coordinates.</summary>
@@ -100,6 +122,13 @@ public static class FrameFormat
 
     /// <summary>Positions of the 4x4 beacon block tiles.</summary>
     public static IReadOnlyList<(int X, int Y)> BeaconTiles => BeaconPositions;
+
+    /// <summary>
+    /// All header-role and data-role tiles in row-major scan order. On the metadata frame these
+    /// carry cube-corner colors (3 bits each) rather than palette symbols; the header region is
+    /// repurposed as extra metadata capacity since frame 0 carries no in-image FrameHeader.
+    /// </summary>
+    public static IReadOnlyList<(int X, int Y)> MetadataFrameTiles => MetadataFrameTilePositions;
 
     /// <summary>Gets the tile positions of one header copy, in symbol order.</summary>
     /// <param name="copyIndex">Header copy index (0-2).</param>
@@ -253,6 +282,26 @@ public static class FrameFormat
                 $"Frame format geometry is inconsistent: {data.Count} data tiles, expected {DataTileCount}.");
 
         return (data.ToArray(), pad.ToArray());
+    }
+
+    private static (int X, int Y)[] CollectMetadataFrameTiles()
+    {
+        var tiles = new List<(int X, int Y)>(HeaderCopyCount * HeaderCopyLength + DataTileCount);
+        for (int y = 0; y < GridHeightTiles; y++)
+        {
+            for (int x = 0; x < GridWidthTiles; x++)
+            {
+                var role = Roles[y * GridWidthTiles + x];
+                if (role is TileRole.Header or TileRole.Data)
+                    tiles.Add((x, y));
+            }
+        }
+
+        if (tiles.Count < MetadataTilesUsed)
+            throw new InvalidOperationException(
+                $"Metadata frame needs {MetadataTilesUsed} tiles but only {tiles.Count} are available.");
+
+        return tiles.ToArray();
     }
 
     private static IEnumerable<(int X, int Y)> CornerBlockOrigins()

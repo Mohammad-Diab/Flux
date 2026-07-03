@@ -198,7 +198,7 @@ public sealed class FluxEncodeService
         FrameTileMap map;
         if (frameId == 0)
         {
-            map = FrameEncoder.BuildFrame(0, totalFrames, metadata.Serialize(), EccLevel.Max, isMetadataFrame: true);
+            map = FrameEncoder.BuildMetadataFrame(metadata.Serialize(), totalFrames);
         }
         else
         {

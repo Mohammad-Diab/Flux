@@ -141,7 +141,7 @@ public class FluxEncodeServiceTests : IDisposable
         {
             using var bitmap = SKBitmap.Decode(
                 Path.Combine(result.FramesDirectory, FluxEncodeService.FrameFileName(id)));
-            var decode = decoder.Decode(bitmap);
+            var decode = id == 0 ? decoder.DecodeMetadataFrame(bitmap) : decoder.Decode(bitmap);
             Assert.Equal(DecodeStatus.Success, decode.Status);
 
             if (id == 0)

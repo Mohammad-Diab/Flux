@@ -35,6 +35,7 @@ Constants: 160×90 tiles, 8 px/tile, 16 px quiet zone → canonical PNG **1312×
 
 ## Phase 2 — FluxCore v2: Encode Side
 
+- [x] **Frame 0 is an 8-color frame** (added after Phase 6): the metadata frame uses the 8 RGB cube corners (black/R/G/B/cyan/yellow/magenta/white) at 3 bits/tile, decoded by per-channel threshold — min pairwise distance 255, palette-independent, self-bootstrapping, keeps the embedded color map. Header+data tiles become 12× interleaved RS(255,127) codewords (`FrameEncoder.BuildMetadataFrame` / `FrameDecoder.DecodeMetadataFrame`, `CubeCornerColors`). Payload frames 1..N unchanged. White is a data color on frame 0 only. See "Future ideas: rugged payload mode".
 - [x] 2.1 `Framing/FrameEncoder.cs` + `Framing/FrameTileMap.cs` — payload slice + header → RS encode (header ×3 copies + 53 payload codewords) → interleave → full 160×90 tile byte map incl. structural tiles (finders, timing, beacon parity = FrameId even/odd, pad)
   - **Test:** ✅ 13 tests — header copies decode back, data tiles decode to payload per level, partial last frame + CRC, beacon parity, real MetadataPayload round-trip. (Moved from planned `Encoding/` folder: that namespace shadows `System.Text.Encoding`.)
 - [x] 2.2 `Imaging/FrameRenderer.cs` — tile map + ColorMap → 1312×752 PNG via SkiaSharp (8×8 rects, quiet zone, no antialiasing)
@@ -150,6 +151,10 @@ All in `FluxRead/Interop/`, each exercisable from a hidden dev panel:
 - [ ] 10.3 Dead-code sweep, final `dotnet test`, tag `v1.0`
 
 ---
+
+## Future ideas (post-v1, not scheduled)
+
+- **Rugged payload mode** — reuse the frame-0 cube-corner scheme (8 colors, 3 bits/tile, per-channel threshold, min RGB distance 255) as an alternative *payload* encoding tier for truly awful channels, instead of the 256-color/1-byte-per-tile mode. Trades ~62% capacity for near-black/white robustness. Would be a per-transfer mode flag echoed in frame 0's metadata so the decoder picks the right payload scheme. Frame 0 itself already uses this scheme as of the 8-color metadata frame work.
 
 ## Accepted v1 limitations
 

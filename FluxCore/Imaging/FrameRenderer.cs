@@ -65,7 +65,10 @@ public static class FrameRenderer
 
             case TileRole.Data:
             case TileRole.Header:
-                var rgb = colorMap.GetColor(tiles.GetPaletteValue(x, y));
+                var value = tiles.GetTileValue(x, y);
+                var rgb = tiles.ColorScheme == TileColorScheme.CubeCorner8
+                    ? CubeCornerColors.ToColor(value)
+                    : colorMap.GetColor(value);
                 color = new SKColor(rgb.R, rgb.G, rgb.B);
                 return true;
         }

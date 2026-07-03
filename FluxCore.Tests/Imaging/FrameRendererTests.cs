@@ -104,7 +104,7 @@ public class FrameRendererTests
 
         foreach (var (x, y) in samples)
         {
-            var expected = ColorMap.Default.GetColor(map.GetPaletteValue(x, y));
+            var expected = ColorMap.Default.GetColor(map.GetTileValue(x, y));
             var actual = CenterPixel(bitmap, x, y);
             Assert.Equal(new SKColor(expected.R, expected.G, expected.B), actual);
         }
@@ -135,11 +135,12 @@ public class FrameRendererTests
             contentSignature: DeterministicPayload(32, seed: 3),
             colorMap: ColorMap.Default);
 
-        var map = FrameEncoder.BuildFrame(0, 5, metadata.Serialize(), EccLevel.Max, isMetadataFrame: true);
+        var map = FrameEncoder.BuildMetadataFrame(metadata.Serialize(), 5);
         var png = FrameRenderer.RenderPng(map, ColorMap.Default);
 
         using var bitmap = SKBitmap.Decode(png);
         Assert.Equal(1312, bitmap.Width);
+        Assert.Equal(TileColorScheme.CubeCorner8, map.ColorScheme);
         Assert.Equal(Black, CenterPixel(bitmap, 78, 2));
     }
 

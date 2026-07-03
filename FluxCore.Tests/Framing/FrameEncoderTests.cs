@@ -43,7 +43,7 @@ public class FrameEncoderTests
             var positions = FrameFormat.GetHeaderCopyTiles(copy);
             for (int i = 0; i < symbols.Length; i++)
             {
-                symbols[i] = map.GetPaletteValue(positions[i].X, positions[i].Y);
+                symbols[i] = map.GetTileValue(positions[i].X, positions[i].Y);
             }
 
             Assert.True(ReedSolomonBlockCodec.TryDecodeHeader(symbols, out var decoded));
@@ -65,7 +65,7 @@ public class FrameEncoderTests
         {
             var (c, s) = FrameFormat.ToCodewordSymbol(t);
             var (x, y) = FrameFormat.DataTiles[t];
-            codewords[c * FrameFormat.CodewordLength + s] = map.GetPaletteValue(x, y);
+            codewords[c * FrameFormat.CodewordLength + s] = map.GetTileValue(x, y);
         }
 
         var decoded = new byte[level.PayloadBytesPerFrame()];
@@ -86,7 +86,7 @@ public class FrameEncoderTests
         {
             var (c, s) = FrameFormat.ToCodewordSymbol(t);
             var (x, y) = FrameFormat.DataTiles[t];
-            codewords[c * FrameFormat.CodewordLength + s] = map.GetPaletteValue(x, y);
+            codewords[c * FrameFormat.CodewordLength + s] = map.GetTileValue(x, y);
         }
 
         var decoded = new byte[EccLevel.Medium.PayloadBytesPerFrame()];
@@ -109,28 +109,40 @@ public class FrameEncoderTests
     }
 
     [Fact]
-    public void BuildFrame_MetadataFrame_MustBeFrameZero()
-    {
-        var payload = DeterministicPayload(100);
-
-        var map = FrameEncoder.BuildFrame(0, 5, payload, EccLevel.Max, isMetadataFrame: true);
-        Assert.True(map.Header.IsMetadataFrame);
-
-        Assert.Throws<ArgumentException>(() =>
-            FrameEncoder.BuildFrame(1, 5, payload, EccLevel.Max, isMetadataFrame: true));
-    }
-
-    [Fact]
     public void BuildFrame_ThrowsWhenPayloadExceedsCapacity()
     {
         var payload = DeterministicPayload(EccLevel.Max.PayloadBytesPerFrame() + 1);
 
         Assert.Throws<ArgumentException>(() =>
-            FrameEncoder.BuildFrame(0, 1, payload, EccLevel.Max));
+            FrameEncoder.BuildFrame(1, 2, payload, EccLevel.Max));
     }
 
     [Fact]
-    public void BuildFrame_RealMetadataPayload_RoundTrips()
+    public void BuildMetadataFrame_IsCubeCornerScheme_WithBlackBeacon()
+    {
+        var map = FrameEncoder.BuildMetadataFrame(DeterministicPayload(500), 42);
+
+        Assert.Equal(TileColorScheme.CubeCorner8, map.ColorScheme);
+        Assert.True(map.Header.IsMetadataFrame);
+        Assert.Equal(0u, map.Header.FrameId);
+        Assert.True(map.BeaconIsBlack);
+
+        foreach (var (x, y) in FrameFormat.MetadataFrameTiles.Take(FrameFormat.MetadataTilesUsed))
+        {
+            Assert.InRange(map.GetTileValue(x, y), (byte)0, (byte)7);
+        }
+    }
+
+    [Fact]
+    public void BuildMetadataFrame_ThrowsWhenContentExceedsCapacity()
+    {
+        var content = DeterministicPayload(FrameFormat.MetadataContentBytes + 1);
+
+        Assert.Throws<ArgumentException>(() => FrameEncoder.BuildMetadataFrame(content, 2));
+    }
+
+    [Fact]
+    public void BuildMetadataFrame_RealMetadataPayload_DecodesBack()
     {
         var metadata = new MetadataPayload(
             sha256: DeterministicPayload(32),
@@ -142,22 +154,39 @@ public class FrameEncoderTests
             originalLength: 900_000,
             contentSignature: DeterministicPayload(32, seed: 5),
             colorMap: FluxCore.Imaging.ColorMap.Default);
-        var serialized = metadata.Serialize();
 
-        var map = FrameEncoder.BuildFrame(0, 42, serialized, EccLevel.Max, isMetadataFrame: true);
+        var map = FrameEncoder.BuildMetadataFrame(metadata.Serialize(), 42);
 
-        var codewords = new byte[ReedSolomonBlockCodec.EncodedFrameLength];
-        for (int t = 0; t < FrameFormat.DataTileCount; t++)
+        var stream = new byte[FrameFormat.MetadataEncodedBytes];
+        var positions = FrameFormat.MetadataFrameTiles;
+        for (int t = 0; t < FrameFormat.MetadataTilesUsed; t++)
         {
-            var (c, s) = FrameFormat.ToCodewordSymbol(t);
-            var (x, y) = FrameFormat.DataTiles[t];
-            codewords[c * FrameFormat.CodewordLength + s] = map.GetPaletteValue(x, y);
+            var (x, y) = positions[t];
+            int value = map.GetTileValue(x, y);
+            for (int k = 0; k < 3; k++)
+            {
+                int bit = (value >> (2 - k)) & 1;
+                int globalBit = t * 3 + k;
+                if (bit != 0)
+                    stream[globalBit >> 3] |= (byte)(1 << (7 - (globalBit & 7)));
+            }
         }
 
-        var decoded = new byte[EccLevel.Max.PayloadBytesPerFrame()];
-        Assert.True(ReedSolomonBlockCodec.TryDecodePayload(codewords, EccLevel.Max, decoded, out _));
+        var content = new byte[FrameFormat.MetadataContentBytes];
+        int parity = FrameFormat.CodewordLength - FrameFormat.MetadataCodewordDataBytes;
+        for (int c = 0; c < FrameFormat.MetadataCodewordCount; c++)
+        {
+            var block = new byte[FrameFormat.CodewordLength];
+            for (int s = 0; s < FrameFormat.CodewordLength; s++)
+            {
+                block[s] = stream[s * FrameFormat.MetadataCodewordCount + c];
+            }
 
-        var restored = MetadataPayload.Deserialize(decoded[..map.Header.PayloadLength]);
+            Assert.True(ReedSolomonBlockCodec.TryDecodeBlock(
+                block, parity, content.AsSpan(c * FrameFormat.MetadataCodewordDataBytes, FrameFormat.MetadataCodewordDataBytes), out _));
+        }
+
+        var restored = MetadataPayload.Deserialize(content);
         Assert.Equal("vacation-photos.7z", restored.OriginalName);
         Assert.Equal(42u, restored.TotalFrames);
         Assert.True(restored.MatchesFrameFormat());

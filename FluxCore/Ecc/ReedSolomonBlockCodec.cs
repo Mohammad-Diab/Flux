@@ -185,4 +185,74 @@ public static class ReedSolomonBlockCodec
         header = FrameHeader.Deserialize(serialized);
         return true;
     }
+
+    /// <summary>
+    /// Encodes one RS(n,k) codeword over GF(256): the first <paramref name="data"/> bytes are
+    /// data, the remaining parity symbols are appended. Total length must not exceed 255.
+    /// </summary>
+    /// <param name="data">Data symbols (k bytes).</param>
+    /// <param name="parity">Parity symbol count (n - k).</param>
+    /// <param name="destination">Destination for the n encoded symbols.</param>
+    public static void EncodeBlock(ReadOnlySpan<byte> data, int parity, Span<byte> destination)
+    {
+        int total = data.Length + parity;
+        if (parity < 1 || total > FrameFormat.CodewordLength)
+            throw new ArgumentOutOfRangeException(nameof(parity));
+        if (destination.Length < total)
+            throw new ArgumentException($"Destination must be at least {total} bytes.", nameof(destination));
+
+        var codeword = new int[total];
+        for (int i = 0; i < data.Length; i++)
+        {
+            codeword[i] = data[i];
+        }
+
+        Encoder.Value!.encode(codeword, parity);
+
+        for (int i = 0; i < total; i++)
+        {
+            destination[i] = (byte)codeword[i];
+        }
+    }
+
+    /// <summary>
+    /// Decodes one RS(n,k) codeword in place, correcting up to parity/2 symbol errors, and
+    /// writes the recovered k data bytes to <paramref name="data"/>.
+    /// </summary>
+    /// <param name="block">The n encoded symbols; corrected in place.</param>
+    /// <param name="parity">Parity symbol count (n - k).</param>
+    /// <param name="data">Destination for the k recovered data bytes.</param>
+    /// <param name="correctedErrors">Number of symbols corrected.</param>
+    /// <returns>True if the codeword decoded; false if damaged beyond repair.</returns>
+    public static bool TryDecodeBlock(ReadOnlySpan<byte> block, int parity, Span<byte> data, out int correctedErrors)
+    {
+        correctedErrors = 0;
+        if (parity < 1 || block.Length > FrameFormat.CodewordLength)
+            throw new ArgumentOutOfRangeException(nameof(parity));
+        int dataLength = block.Length - parity;
+        if (data.Length < dataLength)
+            throw new ArgumentException($"Data destination must be at least {dataLength} bytes.", nameof(data));
+
+        var work = new int[block.Length];
+        for (int i = 0; i < block.Length; i++)
+        {
+            work[i] = block[i];
+        }
+
+        if (!Decoder.Value!.decode(work, parity))
+            return false;
+
+        for (int i = 0; i < block.Length; i++)
+        {
+            if (work[i] != block[i])
+                correctedErrors++;
+        }
+
+        for (int i = 0; i < dataLength; i++)
+        {
+            data[i] = (byte)work[i];
+        }
+
+        return true;
+    }
 }

@@ -44,7 +44,7 @@ public class GoldenRoundTripTests
         var pngs = new List<byte[]>
         {
             FrameRenderer.RenderPng(
-                FrameEncoder.BuildFrame(0, totalFrames, metadata.Serialize(), EccLevel.Max, isMetadataFrame: true),
+                FrameEncoder.BuildMetadataFrame(metadata.Serialize(), totalFrames),
                 ColorMap.Default),
         };
 
@@ -55,7 +55,7 @@ public class GoldenRoundTripTests
             var slice = payload.AsSpan(offset, Math.Max(0, length));
 
             pngs.Add(FrameRenderer.RenderPng(
-                FrameEncoder.BuildFrame(frameId, totalFrames, slice, level, isMetadataFrame: false),
+                FrameEncoder.BuildFrame(frameId, totalFrames, slice, level),
                 ColorMap.Default));
         }
 
@@ -69,7 +69,7 @@ public class GoldenRoundTripTests
         var decoder = new FrameDecoder(ColorMap.Default);
 
         using var frame0 = loader(pngs[0]);
-        var metadataResult = decoder.Decode(frame0);
+        var metadataResult = decoder.DecodeMetadataFrame(frame0);
         Assert.Equal(DecodeStatus.Success, metadataResult.Status);
         Assert.True(metadataResult.Header!.Value.IsMetadataFrame);
 
