@@ -44,15 +44,15 @@ Constants: 160×90 tiles, 8 px/tile, 16 px quiet zone → canonical PNG **1312×
 
 ## Phase 3 — FluxCore v2: Decode Side (capture-tolerant)
 
-- [ ] 3.1 `Decoding/Homography.cs` — 4-point DLT, `Map(x,y)`
-  - **Test:** identity/affine/projective on known point sets; inverse consistency
-- [ ] 3.2 `Decoding/PaletteClassifier.cs` — nearest-palette by squared RGB distance + confidence (`d1>24` or `d1/d2>0.7` = low confidence)
-  - **Test:** exact match on pristine colors; low-confidence flags on perturbed near-black cluster (palette indices 215–255)
-- [ ] 3.3 `Decoding/FiducialDetector.cs` — run-length 1:1:3:1:1 scan (±50%), vertical cross-check, clustering, sub-pixel centroid refine
-  - **Test:** detects on pristine PNG; at 0.75× and 1.5× scale; with ±30 px offset padding; fails cleanly on a blank image
-- [ ] 3.4 `Decoding/TileSampler.cs` — tile centers through homography, average ~0.3×pitch neighborhood
-- [ ] 3.5 `Decoding/FrameDecoder.cs` + result types — full pipeline: binarize → fiducials → homography + orientation via timing (≥95% match) → sample → classify → **confidence gate (>8% low-conf → `CaptureUnstable`, no RS attempt)** → header (≥2 of 3 copies agree) → `SameFrameAsBefore`/`WrongFrame` short-circuit → de-interleave → 53× RS decode → CRC verify. Plus cheap `TryProbe` (fiducials + beacon + header only)
-  - **Test:** decode Phase-2 pristine PNGs; correct status for wrong/same/corrupt frames; diagnostics populated (corrected-error counts, header-copy agreement)
+- [x] 3.1 `Decoding/Homography.cs` — 4-point DLT, `Map(x,y)`
+  - **Test:** ✅ 5 tests — identity/affine/projective, inverse consistency, degenerate rejection
+- [x] 3.2 `Decoding/PaletteClassifier.cs` — nearest-palette by RGB distance + confidence (`d1>24` or `d1/d2>0.7` = low confidence)
+  - **Test:** ✅ 4 tests — all 256 exact matches, perturbed-still-confident, white low-confidence, closest-pair-midpoint ambiguity flagged
+- [x] 3.3 `Decoding/FiducialDetector.cs` — run-length 1:1:3:1:1 scan (±50%), vertical cross-check, clustering (sub-pixel centers from scanline averaging), extremal corner pick
+  - **Test:** ✅ 6 tests — pristine within 2px of canonical centers, 0.75×/1.5× scale, +30/+45px offset on gray, blank fails cleanly, module size tracks scale. Plus `Decoding/LumaImage.cs` (Rec. 601 luma + bimodal threshold)
+- [x] 3.4 `Decoding/TileSampler.cs` — tile centers through homography, average ~0.3×pitch neighborhood (exercised by all decoder tests)
+- [x] 3.5 `Decoding/FrameDecoder.cs` + result types — full pipeline: binarize → fiducials → homography + orientation via timing (≥95% match, tries 180° flip) → sample → classify → **confidence gate (>8% low-conf → `CaptureUnstable`, no RS attempt)** → header (≥2 of 3 copies agree, or 1 plausible) → `SameFrameAsBefore`/`WrongFrame` short-circuit → de-interleave → 53× RS decode → CRC verify. Plus cheap `TryProbe` (fiducials + beacon + header only)
+  - **Test:** ✅ 14 tests — pristine per level, partial payload, metadata frame, same/wrong-frame short-circuits, 1.25× scale, offset-on-gray, **180° rotation**, damaged-region ECC recovery with corrected-error diagnostics, blank-image failure, TryProbe beacon parity both ways. **Phase 3 gate: 176/176 green**
 
 ## 🚩 Milestone A — Golden Round-Trip (codec quality gate)
 
