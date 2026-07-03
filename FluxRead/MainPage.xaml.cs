@@ -1,25 +1,61 @@
-﻿namespace FluxRead
+﻿using FluxRead.ViewModels;
+using FluxRead.Models;
+
+namespace FluxRead;
+
+public partial class MainPage : ContentPage, IQueryAttributable
 {
-    public partial class MainPage : ContentPage
+    private readonly MainViewModel _viewModel;
+
+    public MainPage(MainViewModel viewModel)
     {
-        int count = 0;
+        InitializeComponent();
+        _viewModel = viewModel;
+        BindingContext = _viewModel;
+    }
 
-        public MainPage()
+    public async void ApplyQueryAttributes(IDictionary<string, object> query)
+    {
+        if (query.TryGetValue("InputMode", out var modeObj) && modeObj is InputMode mode)
         {
-            InitializeComponent();
+            if (mode == InputMode.Folder)
+            {
+                if (query.TryGetValue("SourceFolder", out var sourceObj) &&
+                    query.TryGetValue("OutputFolder", out var outputObj))
+                {
+                    var sourceFolder = sourceObj as string ?? string.Empty;
+                    var outputFolder = outputObj as string ?? string.Empty;
+
+                    await _viewModel.StartFolderDecodeAsync(sourceFolder, outputFolder);
+                }
+            }
+            else if (mode == InputMode.ScreenCapture)
+            {
+                if (query.TryGetValue("FramePeriod", out var periodObj) &&
+                    query.TryGetValue("OutputFolder", out var outputObj))
+                {
+                    var framePeriod = (double)periodObj;
+                    var outputFolder = outputObj as string ?? string.Empty;
+
+                    await _viewModel.StartScreenCaptureAsync(framePeriod, outputFolder);
+                }
+            }
         }
-
-        private void OnCounterClicked(object sender, EventArgs e)
+        else if (query.TryGetValue("ResumeProgressFile", out var progressFileObj))
         {
-            count++;
-
-            if (count == 1)
-                CounterBtn.Text = $"Clicked {count} time";
-            else
-                CounterBtn.Text = $"Clicked {count} times";
-
-            SemanticScreenReader.Announce(CounterBtn.Text);
+            var progressFile = progressFileObj as string ?? string.Empty;
+            await _viewModel.ResumeSessionAsync(progressFile);
         }
     }
 
+    protected override void OnDisappearing()
+    {
+        base.OnDisappearing();
+
+        // Stop capture if active
+        if (_viewModel.IsCapturing)
+        {
+            _viewModel.StopScreenCaptureCommand.Execute(null);
+        }
+    }
 }

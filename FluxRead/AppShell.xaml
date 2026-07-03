@@ -7,6 +7,26 @@
     Shell.FlyoutBehavior="Disabled"
     Title="FluxRead">
 
+    <!-- Menu Bar -->
+    <Shell.MenuBarItems>
+        <MenuBarItem Text="File">
+            <MenuFlyoutItem Text="Start Reading..."
+                Clicked="OnStartReadingClicked"/>
+            <MenuFlyoutSeparator/>
+            <MenuFlyoutItem Text="Resume Session..."
+                Clicked="OnResumeSessionClicked"/>
+            <MenuFlyoutSeparator/>
+            <MenuFlyoutItem Text="Exit"
+                Clicked="OnExitClicked"/>
+        </MenuBarItem>
+        <MenuBarItem Text="Help">
+            <MenuFlyoutItem Text="About"
+                Clicked="OnAboutClicked"/>
+            <MenuFlyoutItem Text="Documentation"
+                Clicked="OnDocumentationClicked"/>
+        </MenuBarItem>
+    </Shell.MenuBarItems>
+
     <ShellContent
         Title="Home"
         ContentTemplate="{DataTemplate local:MainPage}"
