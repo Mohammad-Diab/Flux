@@ -15,10 +15,4 @@
 		<PackageReference Include="SharpCompress" Version="0.37.2" />
 	</ItemGroup>
 
-	<ItemGroup>
-	  <Folder Include="Platforms\Android\" />
-	  <Folder Include="Platforms\Tizen\" />
-	  <Folder Include="Platforms\Windows\" />
-	</ItemGroup>
-
 </Project>

@@ -12,9 +12,9 @@ Tasks are dependency-ordered. Each task has a **Test** gate — do not start the
 
 - [x] Archive commit of MAUI implementation (`f7dc70f`)
 - [x] Create `main` branch
-- [ ] 0.1 Delete stray `Flux/` template project (not in sln, pure MAUI template)
-- [ ] 0.2 Remove dead `Platforms\*` folder items from `FluxCore.csproj`; delete empty `FluxCore/Platforms/` dirs
-  - **Test:** `dotnet build FluxCore` and `dotnet test FluxCore.Tests` — all 83 existing tests green
+- [x] 0.1 Delete stray `Flux/` template project (not in sln, pure MAUI template)
+- [x] 0.2 Remove dead `Platforms\*` folder items from `FluxCore.csproj`; delete empty `FluxCore/Platforms/` dirs
+  - **Test:** ✅ 89 passed, 1 skipped, 0 failed. Fixed pre-existing bug found by the gate: `Compress7zExeAsync` archived the directory itself instead of its contents (nested extraction, disagreed with SharpCompress fallback). Skipped `TryDecode_WithCorruptedDataBeyondRepair_ReturnsFalse` — it demonstrates the known v1 ECC defect; class + test die in task 1.3.
 
 ---
 

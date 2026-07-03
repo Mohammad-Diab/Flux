@@ -135,8 +135,11 @@ public sealed class CompressionService
             long originalSize = GetSize(sourcePath);
             _logger?.LogInformation("Compressing {Source} ({Size} bytes) with 7z.exe", sourcePath, originalSize);
 
-            // Use maximum compression: -mx=9, LZMA2, solid archive
-            var arguments = $"a -t7z -mx=9 -m0=lzma2 -ms=on \"{tempArchive}\" \"{sourcePath}\"";
+            // Use maximum compression: -mx=9, LZMA2, solid archive.
+            // For directories, archive the contents (dir\*) so entries are relative to
+            // the directory itself, matching the SharpCompress fallback.
+            var source = Directory.Exists(sourcePath) ? Path.Combine(sourcePath, "*") : sourcePath;
+            var arguments = $"a -t7z -mx=9 -m0=lzma2 -ms=on \"{tempArchive}\" \"{source}\"";
 
             await Run7zAsync(arguments, cancellationToken);
 
