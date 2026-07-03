@@ -35,10 +35,10 @@ Constants: 160×90 tiles, 8 px/tile, 16 px quiet zone → canonical PNG **1312×
 
 ## Phase 2 — FluxCore v2: Encode Side
 
-- [ ] 2.1 `Encoding/FrameEncoder.cs` — payload slice + header → RS encode (header ×3 copies + 53 payload codewords) → interleave → full 160×90 tile byte map incl. structural tiles (finders, timing, beacon parity = FrameId even/odd, pad)
-  - **Test:** tile map has correct roles everywhere; beacon flips with frame id; last-frame partial payload honored via `PayloadLength`
-- [ ] 2.2 `Encoding/FrameRenderer.cs` — tile map + ColorMap → 1312×752 PNG via SkiaSharp (8×8 rects, quiet zone)
-  - **Test:** output PNG is exactly 1312×752; sampled tile centers exactly match palette colors; frame 0 renders
+- [x] 2.1 `Framing/FrameEncoder.cs` + `Framing/FrameTileMap.cs` — payload slice + header → RS encode (header ×3 copies + 53 payload codewords) → interleave → full 160×90 tile byte map incl. structural tiles (finders, timing, beacon parity = FrameId even/odd, pad)
+  - **Test:** ✅ 13 tests — header copies decode back, data tiles decode to payload per level, partial last frame + CRC, beacon parity, real MetadataPayload round-trip. (Moved from planned `Encoding/` folder: that namespace shadows `System.Text.Encoding`.)
+- [x] 2.2 `Imaging/FrameRenderer.cs` — tile map + ColorMap → 1312×752 PNG via SkiaSharp (8×8 rects, quiet zone, no antialiasing)
+  - **Test:** ✅ 10 tests — canonical dims, quiet zone/finders/timing/beacon/pad pixel-exact, data+header tiles match palette exactly, frame 0 renders, deterministic output. Visual check of rendered frames confirmed structure. **Phase 2 gate: 147/147 green**
 
 ---
 
