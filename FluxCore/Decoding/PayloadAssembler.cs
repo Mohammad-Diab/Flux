@@ -39,6 +39,13 @@ public sealed class PayloadAssembler
     /// <summary>Gets a value indicating whether every payload frame has been received.</summary>
     public bool IsComplete => _frames.Count == ExpectedPayloadFrames;
 
+    /// <summary>Gets the highest payload frame id accepted so far (0 if none).</summary>
+    public uint LastAcceptedId { get; private set; }
+
+    /// <summary>Determines whether a payload frame with the given id has been received.</summary>
+    /// <param name="frameId">Payload frame id.</param>
+    public bool HasFrame(uint frameId) => _frames.ContainsKey(frameId);
+
     /// <summary>Gets the frame ids not yet received, in ascending order.</summary>
     public IReadOnlyList<uint> MissingFrameIds
     {
@@ -77,7 +84,12 @@ public sealed class PayloadAssembler
             throw new ArgumentException(
                 $"Frame {header.FrameId} carries {payload.Length} bytes; expected {expectedLength}.");
 
-        return _frames.TryAdd(header.FrameId, payload);
+        if (!_frames.TryAdd(header.FrameId, payload))
+            return false;
+
+        if (header.FrameId > LastAcceptedId)
+            LastAcceptedId = header.FrameId;
+        return true;
     }
 
     /// <summary>
