@@ -42,6 +42,7 @@
     <Style x:Key="SubtleText" TargetType="TextBlock">
         <Setter Property="FontSize" Value="13"/>
         <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+        <Setter Property="TextWrapping" Value="Wrap"/>
     </Style>
 
     <!-- Buttons: rounded, flat, hover/pressed/disabled states -->

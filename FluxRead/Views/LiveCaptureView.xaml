@@ -60,8 +60,26 @@
             </StackPanel>
 
             <Border Grid.Column="1" Style="{StaticResource Card}" Margin="16,0,0,0" Padding="4">
-                <ListBox ItemsSource="{Binding Log}" FontFamily="Consolas" FontSize="11" BorderThickness="0"
-                         Background="Transparent" ScrollViewer.VerticalScrollBarVisibility="Auto"/>
+                <Grid>
+                    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="360" Margin="20">
+                        <StackPanel.Style>
+                            <Style TargetType="StackPanel">
+                                <Setter Property="Visibility" Value="Collapsed"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding Log.Count}" Value="0">
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </StackPanel.Style>
+                        <TextBlock Text="Activity log" FontSize="14" FontWeight="SemiBold"
+                                   Foreground="{StaticResource TextSecondaryBrush}" HorizontalAlignment="Center"/>
+                        <TextBlock Style="{StaticResource SubtleText}" TextAlignment="Center" Margin="0,8,0,0"
+                                   Text="Once you select a region, calibrate the Next button, and press Start, each decoded frame, re-click, stall, and the final result will appear here."/>
+                    </StackPanel>
+                    <ListBox ItemsSource="{Binding Log}" FontFamily="Consolas" FontSize="11" BorderThickness="0"
+                             Background="Transparent" ScrollViewer.VerticalScrollBarVisibility="Auto"/>
+                </Grid>
             </Border>
         </Grid>
 
