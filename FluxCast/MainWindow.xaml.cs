@@ -1,3 +1,4 @@
+using System;
 using System.ComponentModel;
 using System.Windows;
 using FluxCast.ViewModels;
@@ -16,7 +17,16 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        Controls.WindowChromeAnimator.Attach(this, RootContent);
         DataContextChanged += OnDataContextChanged;
+    }
+
+    /// <inheritdoc/>
+    protected override void OnSourceInitialized(EventArgs e)
+    {
+        base.OnSourceInitialized(e);
+        Controls.NativeChrome.EnableWindowAnimations(this);
+        Controls.Win11Corners.Apply(this);
     }
 
     private void OnDataContextChanged(object sender, DependencyPropertyChangedEventArgs e)

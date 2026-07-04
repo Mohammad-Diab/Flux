@@ -43,6 +43,10 @@
 
     <sys:Double x:Key="RadiusLg">14</sys:Double>
 
+    <!-- ============ Sizing tokens (one control height everywhere) ============ -->
+    <sys:Double x:Key="ControlHeight">40</sys:Double>
+    <sys:Double x:Key="CtaHeight">46</sys:Double>
+
     <!-- ============ Typography ============ -->
     <Style TargetType="TextBlock">
         <Setter Property="FontFamily" Value="Segoe UI Variable Display, Segoe UI"/>
@@ -63,6 +67,14 @@
         <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
     </Style>
 
+    <!-- Centered, oversized brand wordmark painted with the spectrum gradient. -->
+    <Style x:Key="BrandTitle" TargetType="TextBlock" BasedOn="{StaticResource DisplayText}">
+        <Setter Property="FontSize" Value="46"/>
+        <Setter Property="HorizontalAlignment" Value="Center"/>
+        <Setter Property="TextAlignment" Value="Center"/>
+        <Setter Property="Foreground" Value="{StaticResource AccentGradientHorizontal}"/>
+    </Style>
+
     <Style x:Key="SubtleText" TargetType="TextBlock">
         <Setter Property="FontSize" Value="13"/>
         <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
@@ -75,7 +87,10 @@
         <Setter Property="FontSize" Value="14"/>
         <Setter Property="FontWeight" Value="SemiBold"/>
         <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
-        <Setter Property="Padding" Value="18,10"/>
+        <Setter Property="MinHeight" Value="{StaticResource ControlHeight}"/>
+        <Setter Property="Padding" Value="18,0"/>
+        <Setter Property="HorizontalContentAlignment" Value="Center"/>
+        <Setter Property="VerticalContentAlignment" Value="Center"/>
         <Setter Property="Cursor" Value="Hand"/>
         <Setter Property="SnapsToDevicePixels" Value="True"/>
         <Setter Property="RenderTransformOrigin" Value="0.5,0.5"/>
@@ -129,8 +144,9 @@
                             </Trigger.ExitActions>
                         </Trigger>
                         <Trigger Property="IsEnabled" Value="False">
-                            <Setter TargetName="Bd" Property="Opacity" Value="0.4"/>
-                            <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+                            <!-- Dim the whole button so the text dims too (the global TextBlock
+                                 style would otherwise keep disabled text bright white). -->
+                            <Setter Property="Opacity" Value="0.38"/>
                             <Setter Property="Cursor" Value="Arrow"/>
                         </Trigger>
                     </ControlTemplate.Triggers>
@@ -143,6 +159,9 @@
         <Setter Property="Background" Value="{StaticResource AccentGradient}"/>
         <Setter Property="Foreground" Value="White"/>
         <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="MinHeight" Value="{StaticResource CtaHeight}"/>
+        <Setter Property="FontSize" Value="15"/>
+        <Setter Property="Padding" Value="26,0"/>
         <Setter Property="Effect" Value="{StaticResource SoftShadow}"/>
     </Style>
 
@@ -157,6 +176,70 @@
         <Setter Property="Background" Value="{StaticResource DangerBrush}"/>
         <Setter Property="Foreground" Value="White"/>
         <Setter Property="BorderThickness" Value="0"/>
+    </Style>
+
+    <!-- Compact, borderless tertiary action (dev tools, inline links). -->
+    <Style x:Key="SubtleButton" TargetType="Button" BasedOn="{StaticResource BaseButton}">
+        <Setter Property="MinHeight" Value="0"/>
+        <Setter Property="Padding" Value="12,6"/>
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="FontWeight" Value="Normal"/>
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+        <Setter Property="BorderThickness" Value="0"/>
+    </Style>
+
+    <!-- Ghost danger action: red text at rest, solid red fill with white text on hover. -->
+    <Style x:Key="DangerGhostButton" TargetType="Button" BasedOn="{StaticResource BaseButton}">
+        <Setter Property="MinHeight" Value="0"/>
+        <Setter Property="Padding" Value="14,8"/>
+        <Setter Property="FontSize" Value="12.5"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="Foreground" Value="{StaticResource DangerBrush}"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Grid>
+                        <!-- Red fill fades in on hover; explicit TextBlock brush (its own instance, so the
+                             animation never mutates the shared DangerBrush) cross-fades red -> white. -->
+                        <Border x:Name="Fill" CornerRadius="8" Background="{StaticResource DangerBrush}" Opacity="0"/>
+                        <TextBlock x:Name="Txt" Text="{TemplateBinding Content}" Margin="{TemplateBinding Padding}"
+                                   FontSize="{TemplateBinding FontSize}" FontWeight="{TemplateBinding FontWeight}"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center">
+                            <TextBlock.Foreground>
+                                <SolidColorBrush Color="{StaticResource DangerColor}"/>
+                            </TextBlock.Foreground>
+                        </TextBlock>
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Trigger.EnterActions>
+                                <BeginStoryboard>
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetName="Fill" Storyboard.TargetProperty="Opacity"
+                                                         To="1" Duration="0:0:0.15"/>
+                                        <ColorAnimation Storyboard.TargetName="Txt" To="White" Duration="0:0:0.15"
+                                                        Storyboard.TargetProperty="(TextBlock.Foreground).(SolidColorBrush.Color)"/>
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </Trigger.EnterActions>
+                            <Trigger.ExitActions>
+                                <BeginStoryboard>
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetName="Fill" Storyboard.TargetProperty="Opacity"
+                                                         To="0" Duration="0:0:0.2"/>
+                                        <ColorAnimation Storyboard.TargetName="Txt" To="{StaticResource DangerColor}" Duration="0:0:0.2"
+                                                        Storyboard.TargetProperty="(TextBlock.Foreground).(SolidColorBrush.Color)"/>
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </Trigger.ExitActions>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
     </Style>
 
     <Style TargetType="Button" BasedOn="{StaticResource SecondaryButton}"/>
@@ -218,7 +301,8 @@
     <Style TargetType="TextBox">
         <Setter Property="FontFamily" Value="Segoe UI"/>
         <Setter Property="FontSize" Value="13"/>
-        <Setter Property="Padding" Value="10,7"/>
+        <Setter Property="MinHeight" Value="{StaticResource ControlHeight}"/>
+        <Setter Property="Padding" Value="12,0"/>
         <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
         <Setter Property="CaretBrush" Value="{StaticResource TextPrimaryBrush}"/>
         <Setter Property="VerticalContentAlignment" Value="Center"/>
@@ -245,6 +329,23 @@
     <Style TargetType="CheckBox">
         <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
         <Setter Property="FontFamily" Value="Segoe UI"/>
+    </Style>
+
+    <!-- Dark tooltip (default WPF tooltip is light, which hides our near-white text). -->
+    <Style TargetType="ToolTip">
+        <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+        <Setter Property="FontFamily" Value="Segoe UI"/>
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ToolTip">
+                    <Border Background="{StaticResource SurfaceAltBrush}" BorderBrush="{StaticResource BorderBrush}"
+                            BorderThickness="1" CornerRadius="8" Padding="10,6" Effect="{StaticResource SoftShadow}">
+                        <ContentPresenter TextElement.Foreground="{StaticResource TextPrimaryBrush}"/>
+                    </Border>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
     </Style>
 
     <!-- ============ Card ============ -->
@@ -364,7 +465,7 @@
         <Setter Property="FontFamily" Value="Segoe UI"/>
         <Setter Property="FontSize" Value="13"/>
         <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
-        <Setter Property="Height" Value="38"/>
+        <Setter Property="MinHeight" Value="{StaticResource ControlHeight}"/>
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="ComboBox">

@@ -13,6 +13,14 @@ public class TransitionHost : ContentControl
 {
     private static readonly TimeSpan Duration = TimeSpan.FromMilliseconds(380);
 
+    /// <summary>
+    /// Horizontal offset (in px) the incoming content slides in from. Positive = enters from the
+    /// right (moving left, the default "forward" direction); negative = enters from the left.
+    /// Set this before changing <see cref="ContentControl.Content"/> to make the slide directional
+    /// (e.g. a right-hand tab enters from the right, a left-hand tab from the left).
+    /// </summary>
+    public double SlideFrom { get; set; } = 36;
+
     /// <inheritdoc/>
     protected override void OnContentChanged(object oldContent, object newContent)
     {
@@ -21,7 +29,7 @@ public class TransitionHost : ContentControl
         if (newContent is null)
             return;
 
-        var translate = new TranslateTransform(36, 0);
+        var translate = new TranslateTransform(SlideFrom, 0);
         var scale = new ScaleTransform(0.985, 0.985);
         var group = new TransformGroup();
         group.Children.Add(scale);
@@ -31,7 +39,7 @@ public class TransitionHost : ContentControl
 
         var ease = new QuinticEase { EasingMode = EasingMode.EaseOut };
         BeginAnimation(OpacityProperty, new DoubleAnimation(0, 1, Duration) { EasingFunction = ease });
-        translate.BeginAnimation(TranslateTransform.XProperty, new DoubleAnimation(36, 0, Duration) { EasingFunction = ease });
+        translate.BeginAnimation(TranslateTransform.XProperty, new DoubleAnimation(SlideFrom, 0, Duration) { EasingFunction = ease });
         scale.BeginAnimation(ScaleTransform.ScaleXProperty, new DoubleAnimation(0.985, 1, Duration) { EasingFunction = ease });
         scale.BeginAnimation(ScaleTransform.ScaleYProperty, new DoubleAnimation(0.985, 1, Duration) { EasingFunction = ease });
     }

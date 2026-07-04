@@ -7,9 +7,14 @@
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>enable</Nullable>
 		<ApplicationManifest>app.manifest</ApplicationManifest>
+		<ApplicationIcon>Assets\AppIcon.ico</ApplicationIcon>
 		<RootNamespace>FluxCast</RootNamespace>
 		<AssemblyName>FluxCast</AssemblyName>
 	</PropertyGroup>
+
+	<ItemGroup>
+		<Resource Include="Assets\AppIcon.ico" />
+	</ItemGroup>
 
 	<ItemGroup>
 		<PackageReference Include="CommunityToolkit.Mvvm" Version="8.3.2" />

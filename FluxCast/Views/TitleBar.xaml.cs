@@ -1,3 +1,4 @@
+using System;
 using System.Windows;
 using System.Windows.Controls;
 
@@ -20,9 +21,34 @@ public partial class TitleBar : UserControl
     /// <summary>
     /// Initializes a new instance of the <see cref="TitleBar"/> class.
     /// </summary>
+    private Window? _hostWindow;
+
     public TitleBar()
     {
         InitializeComponent();
+        Loaded += OnLoaded;
+    }
+
+    private void OnLoaded(object sender, RoutedEventArgs e)
+    {
+        _hostWindow = Window.GetWindow(this);
+        if (_hostWindow is not null)
+        {
+            _hostWindow.StateChanged -= OnHostStateChanged;
+            _hostWindow.StateChanged += OnHostStateChanged;
+            UpdateMaxState();
+        }
+    }
+
+    private void OnHostStateChanged(object? sender, EventArgs e) => UpdateMaxState();
+
+    // Swap the maximize/restore glyph (and tooltip) to reflect the current window state.
+    private void UpdateMaxState()
+    {
+        bool maximized = _hostWindow?.WindowState == WindowState.Maximized;
+        MaxGlyph.Visibility = maximized ? Visibility.Collapsed : Visibility.Visible;
+        RestoreGlyph.Visibility = maximized ? Visibility.Visible : Visibility.Collapsed;
+        MaxButton.ToolTip = maximized ? "Restore" : "Maximize";
     }
 
     /// <summary>Gets or sets the title text.</summary>
@@ -42,7 +68,7 @@ public partial class TitleBar : UserControl
     private void OnMinimize(object sender, RoutedEventArgs e)
     {
         if (Window.GetWindow(this) is { } window)
-            window.WindowState = WindowState.Minimized;
+            Controls.WindowChromeAnimator.Minimize(window);
     }
 
     private void OnMaximize(object sender, RoutedEventArgs e)

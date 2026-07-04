@@ -1,3 +1,4 @@
+using System;
 using System.Windows;
 using FluxRead.Views;
 
@@ -22,7 +23,16 @@ public partial class MainWindow : Window
         _folderView = folderView;
         _liveView = liveView;
         InitializeComponent();
+        Controls.WindowChromeAnimator.Attach(this, RootContent);
         ModeHost.Content = _liveView;
+    }
+
+    /// <inheritdoc/>
+    protected override void OnSourceInitialized(EventArgs e)
+    {
+        base.OnSourceInitialized(e);
+        Controls.NativeChrome.EnableWindowAnimations(this);
+        Controls.Win11Corners.Apply(this);
     }
 
     private void OnModeChanged(object sender, RoutedEventArgs e)
@@ -30,6 +40,10 @@ public partial class MainWindow : Window
         if (ModeHost is null)
             return;
 
-        ModeHost.Content = LiveModeButton.IsChecked == true ? _liveView : _folderView;
+        // Directional slide: the left tab (Live) enters from the left, the right tab (Folder)
+        // from the right — so switching tabs slides the way you'd expect.
+        bool live = LiveModeButton.IsChecked == true;
+        ModeHost.SlideFrom = live ? -36 : 36;
+        ModeHost.Content = live ? _liveView : _folderView;
     }
 }

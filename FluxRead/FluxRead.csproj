@@ -7,9 +7,14 @@
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>enable</Nullable>
 		<ApplicationManifest>app.manifest</ApplicationManifest>
+		<ApplicationIcon>Assets\AppIcon.ico</ApplicationIcon>
 		<RootNamespace>FluxRead</RootNamespace>
 		<AssemblyName>FluxRead</AssemblyName>
 	</PropertyGroup>
+
+	<ItemGroup>
+		<Resource Include="Assets\AppIcon.ico" />
+	</ItemGroup>
 
 	<ItemGroup>
 		<PackageReference Include="CommunityToolkit.Mvvm" Version="8.3.2" />

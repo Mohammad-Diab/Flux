@@ -27,6 +27,14 @@ public partial class InteropDevWindow : Window
         Closed += (_, _) => _hotkey?.Dispose();
     }
 
+    /// <inheritdoc/>
+    protected override void OnSourceInitialized(EventArgs e)
+    {
+        base.OnSourceInitialized(e);
+        Controls.NativeChrome.EnableWindowAnimations(this);
+        Controls.Win11Corners.Apply(this);
+    }
+
     private async void OnReadDpi(object sender, RoutedEventArgs e)
     {
         DpiResult.Text = "Move the cursor to the target monitor…";

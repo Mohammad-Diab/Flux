@@ -4,15 +4,16 @@
         xmlns:views="clr-namespace:FluxRead.Views"
         xmlns:controls="clr-namespace:FluxRead.Controls"
         Title="FluxRead"
+        Icon="/Assets/AppIcon.ico"
         Width="1040" Height="720"
         MinWidth="760" MinHeight="540"
         Style="{StaticResource FluxWindow}"
         WindowStartupLocation="CenterScreen">
     <Grid>
         <views:AmbientBackground/>
-        <DockPanel>
+        <DockPanel x:Name="RootContent">
             <views:TitleBar DockPanel.Dock="Top" Title="FluxRead" Subtitle="Optical receiver"/>
-            <Border DockPanel.Dock="Top" Padding="18,4,18,0">
+            <Border DockPanel.Dock="Top" Padding="24,8,24,2">
                 <StackPanel Orientation="Horizontal">
                     <RadioButton x:Name="LiveModeButton" Content="Live optical capture" GroupName="Mode"
                                  Style="{StaticResource TabRadio}" IsChecked="True" Checked="OnModeChanged"/>
