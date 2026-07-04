@@ -1,0 +1,59 @@
+<UserControl x:Class="FluxRead.Views.LiveCaptureView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <TextBlock Grid.Row="0" Text="FluxRead — Live Optical Capture" FontSize="22" FontWeight="Light"/>
+
+        <StackPanel Grid.Row="1" Margin="0,14,0,0">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <Button Grid.Column="0" Content="1 · Select region…" MinWidth="180" Padding="12,6"
+                        Click="OnSelectRegion" IsEnabled="{Binding CanConfigure}"/>
+                <TextBlock Grid.Column="1" Text="{Binding RegionText}" VerticalAlignment="Center" Margin="12,0,0,0" FontSize="13"/>
+            </Grid>
+            <Grid Margin="0,8,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <Button Grid.Column="0" Content="2 · Calibrate Next (F8)…" MinWidth="180" Padding="12,6"
+                        Click="OnCalibrate" IsEnabled="{Binding CanConfigure}"/>
+                <TextBlock Grid.Column="1" Text="{Binding CalibrationText}" VerticalAlignment="Center" Margin="12,0,0,0" FontSize="13"/>
+            </Grid>
+        </StackPanel>
+
+        <Grid Grid.Row="2" Margin="0,16,0,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="260"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            <StackPanel Grid.Column="0">
+                <TextBlock Text="{Binding StateText}" FontSize="20" FontWeight="SemiBold"/>
+                <TextBlock Text="{Binding ProgressText}" FontSize="13" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                <Border BorderBrush="#FFCCCCCC" BorderThickness="1" Margin="0,12,0,0" HorizontalAlignment="Left">
+                    <Image Source="{Binding LastThumbnail}" Width="240" Stretch="Uniform"/>
+                </Border>
+            </StackPanel>
+            <ListBox Grid.Column="1" ItemsSource="{Binding Log}" Margin="16,0,0,0" FontFamily="Consolas" FontSize="11"
+                     ScrollViewer.VerticalScrollBarVisibility="Auto"/>
+        </Grid>
+
+        <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,14,0,0">
+            <Button x:Name="StartButton" Content="Start transfer" MinWidth="150" Padding="16,10"
+                    Background="#1976D2" Foreground="White" BorderThickness="0"
+                    Click="OnStart" IsEnabled="{Binding CanStart}"/>
+            <Button x:Name="StopButton" Content="Stop" MinWidth="100" Padding="16,10" Margin="10,0,0,0"
+                    Click="OnStop" IsEnabled="{Binding IsRunning}"/>
+        </StackPanel>
+    </Grid>
+</UserControl>

@@ -79,15 +79,15 @@ public sealed class DecodePipelineService
     /// <param name="result">A readable, complete decode result.</param>
     /// <param name="outputPath">Target file (raw) or folder (7z).</param>
     /// <param name="cancellationToken">Cancellation token.</param>
-    public async Task SaveAsync(FolderDecodeResult result, string outputPath, CancellationToken cancellationToken = default)
+    public async Task SaveAsync(
+        PayloadAssembler assembler, MetadataPayload metadata, string outputPath, CancellationToken cancellationToken = default)
     {
-        ArgumentNullException.ThrowIfNull(result);
-        if (result.Assembler is null || result.Metadata is null)
-            throw new InvalidOperationException("Nothing to save: the transfer was not readable.");
+        ArgumentNullException.ThrowIfNull(assembler);
+        ArgumentNullException.ThrowIfNull(metadata);
 
-        var payload = result.Assembler.AssembleAndVerify();
+        var payload = assembler.AssembleAndVerify();
 
-        if (result.Metadata.PayloadType == PayloadType.Raw)
+        if (metadata.PayloadType == PayloadType.Raw)
         {
             await File.WriteAllBytesAsync(outputPath, payload, cancellationToken);
         }
@@ -97,7 +97,7 @@ public sealed class DecodePipelineService
             await _compression.DecompressAsync(payload, outputPath, cancellationToken);
         }
 
-        _logger?.LogInformation("Saved transfer '{Name}' to {Path}", result.Metadata.OriginalName, outputPath);
+        _logger?.LogInformation("Saved transfer '{Name}' to {Path}", metadata.OriginalName, outputPath);
     }
 
     private FolderDecodeResult DecodeFolder(

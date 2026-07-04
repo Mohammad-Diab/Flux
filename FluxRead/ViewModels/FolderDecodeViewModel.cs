@@ -81,7 +81,7 @@ public partial class FolderDecodeViewModel : ObservableObject
         try
         {
             StatusText = "Saving…";
-            await _pipeline.SaveAsync(_result, target);
+            await _pipeline.SaveAsync(_result.Assembler!, metadata, target);
             StatusText = $"Saved to {target}";
         }
         catch (Exception ex)

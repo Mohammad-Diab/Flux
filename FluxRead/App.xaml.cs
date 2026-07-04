@@ -3,6 +3,7 @@ using System.Windows;
 using FluxCore.Compression;
 using FluxRead.Services;
 using FluxRead.ViewModels;
+using FluxRead.Views;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Serilog;
@@ -52,10 +53,15 @@ public partial class App : Application
             provider.GetRequiredService<ILogger<DecodePipelineService>>()));
         services.AddSingleton<DialogService>();
         services.AddSingleton<FolderDecodeViewModel>();
-        services.AddSingleton<ShellViewModel>();
-        services.AddSingleton(provider => new MainWindow
+        services.AddSingleton(provider => new FolderDecodeView
         {
-            DataContext = provider.GetRequiredService<ShellViewModel>(),
+            DataContext = provider.GetRequiredService<FolderDecodeViewModel>(),
         });
+        services.AddSingleton(provider => new LiveCaptureView(
+            provider.GetRequiredService<DecodePipelineService>(),
+            provider.GetRequiredService<DialogService>()));
+        services.AddSingleton(provider => new MainWindow(
+            provider.GetRequiredService<FolderDecodeView>(),
+            provider.GetRequiredService<LiveCaptureView>()));
     }
 }

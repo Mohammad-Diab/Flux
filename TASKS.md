@@ -133,20 +133,17 @@ All in `FluxRead/Interop/`, each exercisable from a hidden dev panel:
 
 ## Phase 9 — FluxRead: Live Optical Mode
 
-- [ ] 9.1 `RegionSelectorWindow` — fullscreen transparent Topmost overlay spanning the virtual screen, drag rectangle, Esc cancels; result stored as physical-px RECT
-- [ ] 9.2 Next-button calibration — "Hover over FluxCast's NEXT button, press F8" → `GetCursorPos` → stored point
-- [ ] 9.3 `CaptureLoopService` state machine — `WaitingForFrame0 → Decoding → ClickingNext → WaitingForAdvance → … → Reassembling → Complete` + `Stalled/Failed/Cancelled`. Rules:
-  - **Stability precondition:** two consecutive pixel-identical captures before any decode (palette-risk mitigation)
-  - Advance confirmation = decoded frame id incremented (via `TryProbe` beacon+header first). Never a timer.
-  - `SameFrameAsBefore` after K=8 polls → re-click; max R=3 re-clicks → **Stalled** (banner: Retry / Recalibrate / Abort — never spins forever)
-  - Unexpected-but-missing frame id (user touched FluxCast) → accept + resync; completeness = HashSet
-  - **Test:** unit-test the state machine with a scripted fake decoder (advance, stall, out-of-order, unstable-capture sequences)
-- [ ] 9.4 Live UI — big state label, frame N/T, retries, last-capture thumbnail, capped scrolling log, Stop button
+- [x] 9.1 `RegionSelectorWindow` — fullscreen transparent Topmost overlay spanning the virtual screen, drag rectangle, Esc cancels; result → physical-px RECT via `DpiUtil.DipRectToPhysical`
+- [x] 9.2 Next-button calibration — "Hover over the Client's NEXT button, press F8" → `HotkeyListener` + `GetCursorPos` → stored point (`PointNextClicker`, mutable for recalibration)
+- [x] 9.3 `CaptureLoopService` (FluxCore/Transfer) — full state machine with all rules: two-identical stability precondition, advance = decoded frame id incremented (TryProbe gates full decode, never a timer), re-click after K polls → Stalled after R re-clicks → user resolver (Retry/Recalibrate/Abort), HashSet completeness accepts manual jumps
+  - **Test:** ✅ 6 tests — clean transfer, dropped-click recovery, stall→abort, stall→retry→complete, manual jump, cancellation (fake screen renders real frames + advances on click, driving the real FrameDecoder)
+- [x] 9.4 Live UI — `LiveCaptureView` + `LiveCaptureViewModel`: 2-step setup (select region / F8 calibrate), state label, frame N/T + re-clicks, last-capture thumbnail, capped scrolling log, Start/Stop, stall dialog (Retry/Recalibrate/Abort). `RegionScreenCapture`/`PointNextClicker` adapters; MainWindow mode switch (folder ↔ live)
 
 ## 🚩 Milestone C — Optical Loop
 
-- [ ] C.1 **Local:** FluxCast + FluxRead side-by-side on one machine, region over the FluxCast window — complete a multi-frame transfer purely optically (capture + synthesized clicks), SHA verified
-- [ ] C.2 **Real:** same through an actual RDP session — **this is the v1 acceptance test**
+- [~] C.1 **Local:** partially verified autonomously — the optical loop's pieces were each proven live: real GDI capture of FluxCast's on-screen 8-color frame 0 **decoded successfully**, real `SendInput` clicks land on-screen, and the loop state machine passes 6 tests against the real decoder. Full multi-frame auto-run was blocked only by the environment (a maximized browser covered FluxCast on the primary monitor, so blind clicks hit the browser — no code defect). **Left as an interactive user run** since it needs FluxCast uncovered/foreground and driving the real mouse is intrusive.
+  - **User steps:** run FluxCast (present a file) and FluxRead side by side → FluxRead → *Live optical capture* → *Select region* (drag around FluxCast's frame) → *Calibrate Next (F8)* (hover FluxCast's NEXT, press F8) → *Start transfer* → save → compare hash.
+- [ ] C.2 **Real:** same through an actual RDP session — **the v1 acceptance test** (user-run)
 
 ---
 
