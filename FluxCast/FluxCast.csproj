@@ -10,6 +10,10 @@
 		<ApplicationIcon>Assets\AppIcon.ico</ApplicationIcon>
 		<RootNamespace>FluxCast</RootNamespace>
 		<AssemblyName>FluxCast</AssemblyName>
+		<Version>0.9.0-beta</Version>
+		<Product>Flux</Product>
+		<Authors>Mohammad Diab</Authors>
+		<Description>FluxCast — optical sender for the Flux one-way data bridge.</Description>
 	</PropertyGroup>
 
 	<ItemGroup>

@@ -10,6 +10,10 @@
 		<ApplicationIcon>Assets\AppIcon.ico</ApplicationIcon>
 		<RootNamespace>FluxRead</RootNamespace>
 		<AssemblyName>FluxRead</AssemblyName>
+		<Version>0.9.0-beta</Version>
+		<Product>Flux</Product>
+		<Authors>Mohammad Diab</Authors>
+		<Description>FluxRead — optical receiver for the Flux one-way data bridge.</Description>
 	</PropertyGroup>
 
 	<ItemGroup>
