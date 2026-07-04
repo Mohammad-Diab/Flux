@@ -21,4 +21,6 @@ public enum EncodePhase
 /// <param name="Phase">Current phase.</param>
 /// <param name="CompletedFrames">Frames confirmed on disk so far (rendering phase only).</param>
 /// <param name="TotalFrames">Total frames in the transfer (rendering phase only).</param>
-public sealed record EncodeProgress(EncodePhase Phase, int CompletedFrames = 0, int TotalFrames = 0);
+/// <param name="CompressionPercent">Compression progress 0-100 (compressing phase, 7z only; -1 if unknown).</param>
+public sealed record EncodeProgress(
+    EncodePhase Phase, int CompletedFrames = 0, int TotalFrames = 0, int CompressionPercent = -1);

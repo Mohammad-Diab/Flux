@@ -1,3 +1,4 @@
+using System.IO;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using FluxCast.Services;
@@ -64,6 +65,12 @@ public partial class EncodeSetupViewModel : ObservableObject
         var info => $"File — {FormatBytes(info.TotalBytes)}",
     };
 
+    /// <summary>Gets the source name, type, and modified time for the details panel.</summary>
+    public string SourceDetails { get; private set; } = "";
+
+    /// <summary>Gets the estimated frame count / Next-click count for the details panel.</summary>
+    public string EstimatedFrames { get; private set; } = "";
+
     /// <summary>
     /// Initializes a new instance of the <see cref="EncodeSetupViewModel"/> class.
     /// </summary>
@@ -116,9 +123,53 @@ public partial class EncodeSetupViewModel : ObservableObject
         finally
         {
             IsValidating = false;
+            UpdateDetails();
             OnPropertyChanged(nameof(SourceSummary));
             StartCommand.NotifyCanExecuteChanged();
         }
+    }
+
+    partial void OnSelectedEccLevelChanged(EccChoice value) => UpdateDetails();
+
+    partial void OnCompressChanged(bool value) => UpdateDetails();
+
+    private void UpdateDetails()
+    {
+        if (SelectedPath is null || SourceInfo is not { IsValid: true } info)
+        {
+            SourceDetails = "";
+            EstimatedFrames = "";
+        }
+        else if (info.IsFolder)
+        {
+            var name = Path.GetFileName(Path.TrimEndingDirectorySeparator(SelectedPath));
+            SourceDetails = $"Folder “{name}” · {info.FileCount:N0} files · {FormatBytes(info.TotalBytes)} · modified {FormatModified(SelectedPath)}";
+            EstimatedFrames = $"≈ up to {FrameEstimate(info.TotalBytes)} frames (usually fewer after compression)";
+        }
+        else
+        {
+            var fi = new FileInfo(SelectedPath);
+            var kind = string.IsNullOrEmpty(fi.Extension) ? "file" : fi.Extension.TrimStart('.').ToUpperInvariant() + " file";
+            SourceDetails = $"“{fi.Name}” · {kind} · {FormatBytes(info.TotalBytes)} · modified {fi.LastWriteTime:g}";
+            EstimatedFrames = Compress
+                ? $"≈ up to {FrameEstimate(info.TotalBytes)} frames (usually fewer after compression)"
+                : $"{FrameEstimate(info.TotalBytes)} frames to display";
+        }
+
+        OnPropertyChanged(nameof(SourceDetails));
+        OnPropertyChanged(nameof(EstimatedFrames));
+    }
+
+    private long FrameEstimate(long payloadBytes)
+    {
+        int perFrame = SelectedEccLevel.Level.PayloadBytesPerFrame();
+        return (payloadBytes + perFrame - 1) / perFrame + 1;
+    }
+
+    private static string FormatModified(string folderPath)
+    {
+        try { return Directory.GetLastWriteTime(folderPath).ToString("g"); }
+        catch { return "unknown"; }
     }
 
     private static string FormatBytes(long bytes) => bytes switch

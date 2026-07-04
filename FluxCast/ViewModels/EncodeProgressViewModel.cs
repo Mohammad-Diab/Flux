@@ -96,8 +96,17 @@ public partial class EncodeProgressViewModel : ObservableObject
         {
             case EncodePhase.Compressing:
                 PhaseText = "Compressing…";
-                DetailText = "Archiving the source with 7-Zip. This can take a while for large inputs.";
-                IsIndeterminate = true;
+                if (report.CompressionPercent >= 0)
+                {
+                    IsIndeterminate = false;
+                    ProgressValue = report.CompressionPercent / 100.0;
+                    DetailText = $"Archiving the source with 7-Zip — {report.CompressionPercent}%";
+                }
+                else
+                {
+                    IsIndeterminate = true;
+                    DetailText = "Archiving the source with 7-Zip. This can take a while for large inputs.";
+                }
                 break;
 
             case EncodePhase.RenderingFrames:

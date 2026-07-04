@@ -104,6 +104,11 @@ Constants: 160×90 tiles, 8 px/tile, 16 px quiet zone → canonical PNG **1312×
 - [x] 7.2 `DecodePipelineService` (shared tail) — `DecodeFolderAsync` (order-tolerant, feeds `PayloadAssembler`) + `SaveAsync` → assemble → SHA verify → raw payloads to `SaveFileDialog(OriginalName)`, 7z payloads decompressed into `OpenFolderDialog`. `DialogService`, `ShellViewModel` (room for Phase 9 mode switch), converters, DI wiring
   - **Test:** ✅ covered by `FluxEncodeServiceTests.Encode_FolderSource_DecodesAndExtractsToIdenticalContent`
 
+### FluxCast UX enhancements (user-requested, done)
+- [x] Richer source info on selection — name, type, size, modified date, and estimated frame count (updates with ECC level / compress toggle)
+- [x] Real compression percentage — 7z `-bsp1` progress parsed into `EncodeProgress.CompressionPercent`, shown as a determinate bar (indeterminate for the SharpCompress fallback)
+- [x] Presenter frame navigation — First / Back / go-to-frame box / Next / Last
+
 ## 🚩 Milestone B — App-Level Round Trip
 
 - [x] B.1 Encoded a 3-file folder (incl. 220 KB binary + nested file) via FluxCore encode → **23 frames** → FluxRead folder-decode

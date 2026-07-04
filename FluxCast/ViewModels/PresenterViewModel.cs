@@ -25,11 +25,16 @@ public partial class PresenterViewModel : ObservableObject
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(NextCommand))]
     [NotifyCanExecuteChangedFor(nameof(BackCommand))]
+    [NotifyCanExecuteChangedFor(nameof(FirstCommand))]
+    [NotifyCanExecuteChangedFor(nameof(LastCommand))]
     [NotifyPropertyChangedFor(nameof(ProgressText))]
     private int _currentIndex;
 
     [ObservableProperty]
     private ImageSource? _currentFrame;
+
+    [ObservableProperty]
+    private string _gotoText = "";
 
     /// <summary>Gets the progress label.</summary>
     public string ProgressText => $"Frame {CurrentIndex + 1} of {TotalFrames}";
@@ -58,6 +63,20 @@ public partial class PresenterViewModel : ObservableObject
     private void Back() => CurrentIndex--;
 
     private bool CanBack() => CurrentIndex > 0;
+
+    [RelayCommand(CanExecute = nameof(CanBack))]
+    private void First() => CurrentIndex = 0;
+
+    [RelayCommand(CanExecute = nameof(CanNext))]
+    private void Last() => CurrentIndex = (int)TotalFrames - 1;
+
+    [RelayCommand]
+    private void Goto()
+    {
+        if (int.TryParse(GotoText, out int frame) && frame >= 1 && frame <= TotalFrames)
+            CurrentIndex = frame - 1;
+        GotoText = "";
+    }
 
     [RelayCommand]
     private void Close() => _onClose();

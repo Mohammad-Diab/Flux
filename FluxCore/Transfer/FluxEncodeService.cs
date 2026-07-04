@@ -130,7 +130,10 @@ public sealed class FluxEncodeService
 
         if (isFolder || options.Compress)
         {
-            var result = await _compression.CompressAsync(sourcePath, cancellationToken);
+            var compressionProgress = progress is null
+                ? null
+                : new Progress<int>(pct => progress.Report(new EncodeProgress(EncodePhase.Compressing, CompressionPercent: pct)));
+            var result = await _compression.CompressAsync(sourcePath, compressionProgress, cancellationToken);
             payload = result.Data;
             payloadType = PayloadType.SevenZip;
         }

@@ -4,6 +4,7 @@ using SharpCompress.Writers;
 using SharpCompress.Readers;
 using System.Diagnostics;
 using System.Text;
+using System.Text.RegularExpressions;
 
 namespace FluxCore.Compression;
 
@@ -13,6 +14,8 @@ namespace FluxCore.Compression;
 /// </summary>
 public sealed class CompressionService
 {
+    private static readonly Regex ProgressPercentPattern = new(@"(\d{1,3})%", RegexOptions.Compiled);
+
     private readonly ILogger<CompressionService>? _logger;
     private readonly string? _sevenZipPath;
     private readonly bool _prefer7zExe;
@@ -63,10 +66,12 @@ public sealed class CompressionService
     /// Compresses a file or folder using 7z (preferred) or built-in compression (fallback).
     /// </summary>
     /// <param name="sourcePath">Path to file or folder to compress.</param>
+    /// <param name="progress">Optional 0-100 progress sink; only reported when using 7z.exe.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>Compression result containing compressed data and metadata.</returns>
     /// <exception cref="CompressionException">Thrown when compression fails.</exception>
-    public async Task<CompressionResult> CompressAsync(string sourcePath, CancellationToken cancellationToken = default)
+    public async Task<CompressionResult> CompressAsync(
+        string sourcePath, IProgress<int>? progress = null, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(sourcePath);
 
@@ -74,7 +79,7 @@ public sealed class CompressionService
             throw new FileNotFoundException($"Source not found: {sourcePath}");
 
         return Using7zExe
-      ? await Compress7zExeAsync(sourcePath, cancellationToken)
+      ? await Compress7zExeAsync(sourcePath, progress, cancellationToken)
             : await CompressSharpCompressAsync(sourcePath, cancellationToken);
     }
 
@@ -126,7 +131,8 @@ public sealed class CompressionService
 
     #region 7z.exe Implementation
 
-    private async Task<CompressionResult> Compress7zExeAsync(string sourcePath, CancellationToken cancellationToken)
+    private async Task<CompressionResult> Compress7zExeAsync(
+        string sourcePath, IProgress<int>? progress, CancellationToken cancellationToken)
     {
         var tempArchive = Path.Combine(Path.GetTempPath(), $"flux_{Guid.NewGuid():N}.7z");
 
@@ -135,13 +141,13 @@ public sealed class CompressionService
             long originalSize = GetSize(sourcePath);
             _logger?.LogInformation("Compressing {Source} ({Size} bytes) with 7z.exe", sourcePath, originalSize);
 
-            // Use maximum compression: -mx=9, LZMA2, solid archive.
-            // For directories, archive the contents (dir\*) so entries are relative to
-            // the directory itself, matching the SharpCompress fallback.
+            // Use maximum compression: -mx=9, LZMA2, solid archive. -bsp1 streams progress
+            // percentages to stdout. For directories, archive the contents (dir\*) so entries
+            // are relative to the directory itself, matching the SharpCompress fallback.
             var source = Directory.Exists(sourcePath) ? Path.Combine(sourcePath, "*") : sourcePath;
-            var arguments = $"a -t7z -mx=9 -m0=lzma2 -ms=on \"{tempArchive}\" \"{source}\"";
+            var arguments = $"a -t7z -mx=9 -m0=lzma2 -ms=on -bsp1 \"{tempArchive}\" \"{source}\"";
 
-            await Run7zAsync(arguments, cancellationToken);
+            await Run7zAsync(arguments, progress, cancellationToken);
 
             if (!File.Exists(tempArchive))
                 throw new CompressionException("7z compression produced no output archive.");
@@ -178,7 +184,7 @@ public sealed class CompressionService
 
             var arguments = $"x \"{tempArchive}\" -o\"{targetDirectory}\" -y";
 
-            await Run7zAsync(arguments, cancellationToken);
+            await Run7zAsync(arguments, progress: null, cancellationToken);
 
             _logger?.LogInformation("7z.exe decompression complete.");
         }
@@ -192,7 +198,7 @@ public sealed class CompressionService
         }
     }
 
-    private async Task Run7zAsync(string arguments, CancellationToken cancellationToken)
+    private async Task Run7zAsync(string arguments, IProgress<int>? progress, CancellationToken cancellationToken)
     {
         var startInfo = new ProcessStartInfo
         {
@@ -207,8 +213,23 @@ public sealed class CompressionService
         using var process = new Process { StartInfo = startInfo };
         var outputBuilder = new StringBuilder();
         var errorBuilder = new StringBuilder();
+        int lastPercent = -1;
 
-        process.OutputDataReceived += (s, e) => { if (e.Data != null) outputBuilder.AppendLine(e.Data); };
+        process.OutputDataReceived += (s, e) =>
+        {
+            if (e.Data == null)
+                return;
+            outputBuilder.AppendLine(e.Data);
+
+            if (progress == null)
+                return;
+            var match = ProgressPercentPattern.Match(e.Data);
+            if (match.Success && int.TryParse(match.Groups[1].Value, out int percent) && percent != lastPercent)
+            {
+                lastPercent = percent;
+                progress.Report(percent);
+            }
+        };
         process.ErrorDataReceived += (s, e) => { if (e.Data != null) errorBuilder.AppendLine(e.Data); };
 
         try

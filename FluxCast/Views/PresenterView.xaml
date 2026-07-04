@@ -14,25 +14,42 @@
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
 
-            <Button Grid.Column="0" Content="◀  BACK" Command="{Binding BackCommand}"
-                    FontSize="26" FontWeight="SemiBold" Margin="16" MinWidth="220"
-                    Background="#FF3E3E42" Foreground="White" BorderThickness="0"
-                    Focusable="False"/>
+            <StackPanel Grid.Column="0" Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="16,0">
+                <Button Content="⏮ FIRST" Command="{Binding FirstCommand}"
+                        FontSize="16" Margin="0,0,8,0" Padding="14,10"
+                        Background="#FF2D2D30" Foreground="#FFD0D0D0" BorderThickness="0" Focusable="False"/>
+                <Button Content="◀  BACK" Command="{Binding BackCommand}"
+                        FontSize="26" FontWeight="SemiBold" Padding="24,10" MinWidth="180"
+                        Background="#FF3E3E42" Foreground="White" BorderThickness="0" Focusable="False"/>
+            </StackPanel>
 
             <StackPanel Grid.Column="1" VerticalAlignment="Center" MinWidth="240">
                 <TextBlock Text="{Binding ProgressText}" FontSize="22" Foreground="White"
                            HorizontalAlignment="Center"/>
-                <TextBlock Text="Do not move or resize this window during transfer"
-                           FontSize="11" Foreground="#FF808080" HorizontalAlignment="Center" Margin="0,4,0,0"/>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,4,0,0">
+                    <TextBox Text="{Binding GotoText, UpdateSourceTrigger=PropertyChanged}" Width="60"
+                             VerticalContentAlignment="Center" FontSize="13" ToolTip="Frame number">
+                        <TextBox.InputBindings>
+                            <KeyBinding Key="Enter" Command="{Binding GotoCommand}"/>
+                        </TextBox.InputBindings>
+                    </TextBox>
+                    <Button Content="Go" Command="{Binding GotoCommand}" FontSize="13" Padding="12,4" Margin="6,0,0,0" Focusable="False"/>
+                </StackPanel>
                 <Button Content="end session" Command="{Binding CloseCommand}"
                         FontSize="11" Foreground="#FF808080" Background="Transparent" BorderThickness="0"
-                        HorizontalAlignment="Center" Margin="0,2,0,0" Focusable="False"/>
+                        HorizontalAlignment="Center" Margin="0,4,0,0" Focusable="False"/>
+                <TextBlock Text="Do not move or resize this window during transfer"
+                           FontSize="10" Foreground="#FF707070" HorizontalAlignment="Center" Margin="0,2,0,0"/>
             </StackPanel>
 
-            <Button Grid.Column="2" Content="NEXT  ▶" Command="{Binding NextCommand}"
-                    FontSize="26" FontWeight="SemiBold" Margin="16" MinWidth="220"
-                    Background="#FF1976D2" Foreground="White" BorderThickness="0"
-                    Focusable="False"/>
+            <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="16,0">
+                <Button Content="NEXT  ▶" Command="{Binding NextCommand}"
+                        FontSize="26" FontWeight="SemiBold" Padding="24,10" MinWidth="180"
+                        Background="#FF1976D2" Foreground="White" BorderThickness="0" Focusable="False"/>
+                <Button Content="LAST ⏭" Command="{Binding LastCommand}"
+                        FontSize="16" Margin="8,0,0,0" Padding="14,10"
+                        Background="#FF2D2D30" Foreground="#FFD0D0D0" BorderThickness="0" Focusable="False"/>
+            </StackPanel>
         </Grid>
 
         <Grid x:Name="FrameArea">

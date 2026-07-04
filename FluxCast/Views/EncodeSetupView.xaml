@@ -36,6 +36,14 @@
             <TextBlock Text="Measuring…" Foreground="Gray" FontSize="13" Margin="2,4,0,0"
                        Visibility="{Binding IsValidating, Converter={StaticResource BoolToVisibility}}"/>
 
+            <Border Background="#FFF3F3F3" CornerRadius="4" Padding="12,8" Margin="0,10,0,0"
+                    Visibility="{Binding SourceDetails, Converter={StaticResource NullToCollapsed}}">
+                <StackPanel>
+                    <TextBlock Text="{Binding SourceDetails}" FontSize="12" Foreground="#FF404040" TextWrapping="Wrap"/>
+                    <TextBlock Text="{Binding EstimatedFrames}" FontSize="12" Foreground="#FF1976D2" Margin="0,4,0,0"/>
+                </StackPanel>
+            </Border>
+
             <TextBlock Text="Error correction" FontSize="13" Foreground="Gray" Margin="0,24,0,4"/>
             <ComboBox ItemsSource="{Binding EccLevels}" SelectedItem="{Binding SelectedEccLevel}"
                       Padding="8,6" FontSize="13"/>
