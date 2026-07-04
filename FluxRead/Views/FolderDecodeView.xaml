@@ -1,7 +1,7 @@
 <UserControl x:Class="FluxRead.Views.FolderDecodeView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-    <Grid Margin="20">
+    <Grid Margin="22">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
@@ -11,30 +11,30 @@
 
         <StackPanel Grid.Row="0">
             <Grid>
-                <TextBlock Text="FluxRead — Folder Decode" FontSize="24" FontWeight="Light"/>
-                <Button Content="🔧 dev" HorizontalAlignment="Right" VerticalAlignment="Top"
-                        FontSize="11" Padding="8,3" Background="Transparent" BorderBrush="#FFCCCCCC"
-                        Foreground="#FF808080" Click="OnOpenDevTools"/>
+                <TextBlock Text="Folder decode" Style="{StaticResource HeadingText}"/>
+                <Button Content="dev tools" HorizontalAlignment="Right" VerticalAlignment="Top"
+                        FontSize="11" Padding="10,4" Click="OnOpenDevTools"/>
             </Grid>
-            <Grid Margin="0,12,0,0">
+            <Grid Margin="0,14,0,0">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
-                <TextBox Grid.Column="0" Text="{Binding FramesFolder, Mode=OneWay}" IsReadOnly="True"
-                         VerticalContentAlignment="Center" Padding="8,6" FontSize="13"/>
+                <TextBox Grid.Column="0" Text="{Binding FramesFolder, Mode=OneWay}" IsReadOnly="True"/>
                 <Button Grid.Column="1" Content="Pick frames folder…" Command="{Binding PickAndDecodeCommand}"
-                        Padding="16,6" Margin="8,0,0,0" IsEnabled="{Binding IsDecoding, Converter={StaticResource InverseBool}}"/>
+                        Style="{StaticResource SecondaryButton}" Margin="8,0,0,0"
+                        IsEnabled="{Binding IsDecoding, Converter={StaticResource InverseBool}}"/>
             </Grid>
         </StackPanel>
 
-        <ProgressBar Grid.Row="1" Height="6" Margin="0,12,0,0" Minimum="0" Maximum="1"
+        <ProgressBar Grid.Row="1" Height="6" Margin="0,14,0,0" Minimum="0" Maximum="1"
                      Value="{Binding ProgressValue, Mode=OneWay}"
                      Visibility="{Binding IsDecoding, Converter={StaticResource BoolToVisibility}}"/>
 
-        <DataGrid Grid.Row="2" Margin="0,12,0,0" ItemsSource="{Binding Rows}"
+        <Border Grid.Row="2" Style="{StaticResource Card}" Margin="0,14,0,0" Padding="6">
+        <DataGrid ItemsSource="{Binding Rows}"
                   AutoGenerateColumns="False" IsReadOnly="True" HeadersVisibility="Column"
-                  GridLinesVisibility="Horizontal" FontSize="12" CanUserAddRows="False">
+                  FontSize="12" CanUserAddRows="False">
             <DataGrid.Columns>
                 <DataGridTextColumn Header="Frame" Binding="{Binding FileName}" Width="160"/>
                 <DataGridTextColumn Header="Id" Binding="{Binding FrameId}" Width="50"/>
@@ -43,23 +43,25 @@
             </DataGrid.Columns>
             <DataGrid.RowStyle>
                 <Style TargetType="DataGridRow">
+                    <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
                     <Style.Triggers>
                         <DataTrigger Binding="{Binding Success}" Value="False">
-                            <Setter Property="Background" Value="#FFF8D7DA"/>
+                            <Setter Property="Background" Value="#33FF5C6C"/>
                         </DataTrigger>
                     </Style.Triggers>
                 </Style>
             </DataGrid.RowStyle>
         </DataGrid>
+        </Border>
 
-        <Grid Grid.Row="3" Margin="0,12,0,0">
+        <Grid Grid.Row="3" Margin="0,14,0,0">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
             <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                <TextBlock Text="{Binding Summary}" FontSize="13" TextWrapping="Wrap"/>
-                <TextBlock Text="{Binding StatusText}" FontSize="12" Foreground="#FF1976D2"
+                <TextBlock Text="{Binding Summary}" Style="{StaticResource SubtleText}"/>
+                <TextBlock Text="{Binding StatusText}" FontSize="12" Foreground="{StaticResource AccentBrush}"
                            TextWrapping="Wrap" Margin="0,4,0,0"
                            Visibility="{Binding StatusText, Converter={StaticResource NullToCollapsed}}"/>
             </StackPanel>

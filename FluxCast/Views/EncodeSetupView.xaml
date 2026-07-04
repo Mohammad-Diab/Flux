@@ -23,10 +23,11 @@
             <TextBlock Text="{Binding SourceSummary}" Margin="2,8,0,0" FontSize="13">
                 <TextBlock.Style>
                     <Style TargetType="TextBlock">
-                        <Setter Property="Foreground" Value="#2E7D32"/>
+                        <Setter Property="Foreground" Value="{StaticResource SuccessBrush}"/>
+                        <Setter Property="TextWrapping" Value="Wrap"/>
                         <Style.Triggers>
                             <DataTrigger Binding="{Binding SourceInfo.IsValid}" Value="False">
-                                <Setter Property="Foreground" Value="#C62828"/>
+                                <Setter Property="Foreground" Value="{StaticResource DangerBrush}"/>
                             </DataTrigger>
                         </Style.Triggers>
                     </Style>
