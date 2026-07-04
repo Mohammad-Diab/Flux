@@ -120,13 +120,14 @@ Constants: 160×90 tiles, 8 px/tile, 16 px quiet zone → canonical PNG **1312×
 
 All in `FluxRead/Interop/`, each exercisable from a hidden dev panel:
 
-- [ ] 8.1 `DpiUtil` — DIP↔physical px, per-monitor (`MonitorFromPoint` + `GetDpiForMonitor`)
-- [ ] 8.2 `ScreenRegionCapture` — `Graphics.CopyFromScreen` → raw BGRA → SKBitmap (no PNG in the loop; diagnostic dump behind a toggle)
+- [x] 8.1 `DpiUtil` — DIP↔physical px, per-monitor (`MonitorFromPoint` + `GetDpiForMonitor`)
+- [x] 8.2 `ScreenRegionCapture` — `Graphics.CopyFromScreen` → raw BGRA → SKBitmap (no PNG in the loop; diagnostic dump behind a toggle)
   - **Test:** dev-panel capture of a chosen region shows correct thumbnail on a 125% scaled monitor
-- [ ] 8.3 `MouseClicker` — `SendInput` absolute + `VIRTUALDESK` normalized coords, ~30 ms down/up gap, save/restore cursor
+- [x] 8.3 `MouseClicker` — `SendInput` absolute + `VIRTUALDESK` normalized coords, ~30 ms down/up gap, save/restore cursor
   - **Test:** dev-panel click at a chosen point hits Paint/Notepad button on both monitors
-- [ ] 8.4 `HotkeyListener` — `RegisterHotKey(F8)` + `WM_HOTKEY` hook
-- [ ] 8.5 `WindowPlacement.EnsureOutsideRegion` — move own window off the capture region; re-check on `LocationChanged`; optional `WDA_EXCLUDEFROMCAPTURE`
+- [x] 8.4 `HotkeyListener` — `RegisterHotKey(F8)` + `WM_HOTKEY` hook
+- [x] 8.5 `WindowPlacement.EnsureOutsideRegion` — move own window off the capture region; optional `WDA_EXCLUDEFROMCAPTURE` (`SetExcludeFromCapture`). `LocationChanged` re-check wired in Phase 9.
+  - **Verified:** all five exercised via `InteropDevWindow` (opened from a 🔧 dev button). Confirmed live: DpiUtil read 1.5×/144 DPI under cursor; ScreenRegionCapture produced a pixel-accurate 500×300 thumbnail on the 150%-scaled monitor. No `unsafe` (uses `Marshal.Copy`); System.Drawing.Common 10.0.9. 224/224 core tests green.
 
 ---
 

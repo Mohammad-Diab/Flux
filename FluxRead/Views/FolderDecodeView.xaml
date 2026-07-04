@@ -10,7 +10,12 @@
         </Grid.RowDefinitions>
 
         <StackPanel Grid.Row="0">
-            <TextBlock Text="FluxRead — Folder Decode" FontSize="24" FontWeight="Light"/>
+            <Grid>
+                <TextBlock Text="FluxRead — Folder Decode" FontSize="24" FontWeight="Light"/>
+                <Button Content="🔧 dev" HorizontalAlignment="Right" VerticalAlignment="Top"
+                        FontSize="11" Padding="8,3" Background="Transparent" BorderBrush="#FFCCCCCC"
+                        Foreground="#FF808080" Click="OnOpenDevTools"/>
+            </Grid>
             <Grid Margin="0,12,0,0">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>

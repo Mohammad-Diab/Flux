@@ -1,3 +1,4 @@
+using System.Windows;
 using System.Windows.Controls;
 
 namespace FluxRead.Views;
@@ -14,4 +15,7 @@ public partial class FolderDecodeView : UserControl
     {
         InitializeComponent();
     }
+
+    private void OnOpenDevTools(object sender, RoutedEventArgs e) =>
+        new InteropDevWindow { Owner = Window.GetWindow(this) }.Show();
 }
