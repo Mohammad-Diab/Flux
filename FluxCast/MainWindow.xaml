@@ -3,6 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="clr-namespace:FluxCast.ViewModels"
         xmlns:views="clr-namespace:FluxCast.Views"
+        xmlns:controls="clr-namespace:FluxCast.Controls"
         Title="FluxCast"
         Width="1040" Height="740"
         MinWidth="880" MinHeight="640"
@@ -19,8 +20,12 @@
             <views:PresenterView/>
         </DataTemplate>
     </Window.Resources>
-    <DockPanel>
-        <views:TitleBar DockPanel.Dock="Top" Title="FluxCast" Subtitle="Optical sender"/>
-        <ContentControl Content="{Binding Current}"/>
-    </DockPanel>
+    <Grid>
+        <views:AmbientBackground/>
+        <DockPanel>
+            <views:TitleBar DockPanel.Dock="Top" Title="FluxCast" Subtitle="Optical sender"/>
+            <controls:TransitionHost Content="{Binding Current}"
+                                     HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch"/>
+        </DockPanel>
+    </Grid>
 </Window>
