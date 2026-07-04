@@ -34,6 +34,13 @@ public partial class MiniCaptureWindow : Window
         };
     }
 
+    /// <inheritdoc/>
+    protected override void OnSourceInitialized(EventArgs e)
+    {
+        base.OnSourceInitialized(e);
+        Controls.Win11Corners.Apply(this);
+    }
+
     private void OnPauseToggle(object sender, RoutedEventArgs e) => _onPauseToggle();
 
     private void OnCancel(object sender, RoutedEventArgs e) => _onCancel();

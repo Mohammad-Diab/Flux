@@ -20,6 +20,37 @@ It is two Windows (WPF) apps over a shared, UI-agnostic core:
 Targets **.NET 10** (Windows). Windows-only by design — the flagship feature (screen capture +
 synthesized clicks) is Windows-specific.
 
+Both apps share a modern dark interface: custom borderless window chrome with Windows 11 rounded
+corners, a blue→violet→magenta spectrum accent, animated window transitions (open / maximize /
+minimize / close), and distinct per-app icons (▲ send / ▼ receive).
+
+---
+
+## Screenshots
+
+<table>
+  <tr>
+    <td width="50%" valign="top">
+      <img src="docs/screenshots/fluxcast-setup.png" alt="FluxCast — encode setup"/><br/>
+      <sub><b>FluxCast · setup</b> — pick a file or folder, choose an ECC level, start encoding.</sub>
+    </td>
+    <td width="50%" valign="top">
+      <img src="docs/screenshots/fluxread-live.png" alt="FluxRead — live optical capture"/><br/>
+      <sub><b>FluxRead · live capture</b> — select the region, calibrate Next, then transfer.</sub>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
+      <img src="docs/screenshots/fluxcast-presenter.png" alt="FluxCast — frame presenter"/><br/>
+      <sub><b>FluxCast · presenter</b> — one pixel-exact frame at a time with manual navigation.</sub>
+    </td>
+    <td width="50%" valign="top">
+      <img src="docs/screenshots/fluxread-folder.png" alt="FluxRead — folder decode"/><br/>
+      <sub><b>FluxRead · folder decode</b> — decode a folder of frames with a per-frame results grid.</sub>
+    </td>
+  </tr>
+</table>
+
 ---
 
 ## Frame format (FFv2)

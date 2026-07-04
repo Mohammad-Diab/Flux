@@ -4,11 +4,26 @@
         xmlns:views="clr-namespace:FluxRead.Views"
         Title="FluxRead — Capturing"
         Width="400" Height="320" ResizeMode="NoResize"
-        Topmost="True" ShowInTaskbar="True"
+        Topmost="True" ShowInTaskbar="False"
         Style="{StaticResource FluxWindow}"
         WindowStartupLocation="Manual">
     <DockPanel>
-        <views:TitleBar DockPanel.Dock="Top" Title="FluxRead" Subtitle="Capturing"/>
+        <!-- Caption-less popover header: brand mark + title, draggable (WindowChrome caption),
+             no minimize/maximize/close — the transfer is controlled by Pause/Cancel below. -->
+        <Border DockPanel.Dock="Top" Height="46" Background="Transparent">
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="16,0,0,0">
+                <Grid Width="20" Height="20">
+                    <Border CornerRadius="6" Background="{StaticResource AccentGradient}"/>
+                    <Viewbox Width="11" Height="11" HorizontalAlignment="Center" VerticalAlignment="Center">
+                        <Path Data="M7,13 L13,7 L9.5,7 L9.5,1 L4.5,1 L4.5,7 L1,7 Z" Fill="White"/>
+                    </Viewbox>
+                </Grid>
+                <TextBlock Text="FluxRead" Margin="10,0,0,0" VerticalAlignment="Center"
+                           FontSize="13" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}"/>
+                <TextBlock Text="Capturing" Margin="10,0,0,0" VerticalAlignment="Center"
+                           FontSize="12" Foreground="{StaticResource TextSecondaryBrush}"/>
+            </StackPanel>
+        </Border>
         <Grid Margin="18,4,18,18">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>

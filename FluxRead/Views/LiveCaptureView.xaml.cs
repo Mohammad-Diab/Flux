@@ -49,6 +49,13 @@ public partial class LiveCaptureView : UserControl
         _previewTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(2) };
         _previewTimer.Tick += (_, _) => RefreshPreviews();
         Unloaded += (_, _) => _previewTimer.Stop();
+
+        // Keep the activity log scrolled to the newest line.
+        _vm.Log.CollectionChanged += (_, _) =>
+        {
+            if (LogList.Items.Count > 0)
+                LogList.ScrollIntoView(LogList.Items[^1]);
+        };
     }
 
     private void OnSelectRegion(object sender, RoutedEventArgs e)
@@ -142,7 +149,14 @@ public partial class LiveCaptureView : UserControl
 
         var capture = new RegionScreenCapture(_region);
         var clicker = new PointNextClicker(point);
-        _loop = new CaptureLoopService(capture, clicker, ColorMap.Default);
+        // Poll more frequently (so a quick advance is caught fast) while keeping roughly the same
+        // ~1.8s budget before a re-click — re-clicking too early would over-advance and skip a frame.
+        var options = new CaptureLoopOptions(
+            PollIntervalMs: 100,
+            MaxPollsPerClick: 18,
+            StabilityMaxAttempts: 16,
+            StabilityIntervalMs: 60);
+        _loop = new CaptureLoopService(capture, clicker, ColorMap.Default, options);
         var progress = new Progress<LoopStatus>(_vm.Apply);
 
         var mini = new MiniCaptureWindow(_vm, TogglePause, () => _cts.Cancel()) { Owner = owner };

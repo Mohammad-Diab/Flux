@@ -63,11 +63,11 @@ public partial class LiveCaptureViewModel : ObservableObject
     /// <summary>Gets the capped scrolling log.</summary>
     public ObservableCollection<string> Log { get; } = [];
 
-    /// <summary>Appends a line to the log, capping its length.</summary>
+    /// <summary>Appends a time-stamped line to the log, capping its length.</summary>
     /// <param name="message">Log line.</param>
     public void AddLog(string message)
     {
-        Log.Add(message);
+        Log.Add($"{DateTime.Now:HH:mm:ss}  {message}");
         while (Log.Count > 200)
             Log.RemoveAt(0);
     }
@@ -76,17 +76,31 @@ public partial class LiveCaptureViewModel : ObservableObject
     /// <param name="status">Loop status.</param>
     public void Apply(LoopStatus status)
     {
-        StateText = status.State.ToString();
+        StateText = FriendlyState(status.State);
         ProgressText = status.TotalFrames > 0
             ? $"{status.ReceivedFrames}/{status.TotalFrames - 1} frames · last id {status.LastFrameId} · re-clicks {status.Reclicks}"
             : status.Message;
 
         if (!string.IsNullOrEmpty(status.Message))
-            AddLog($"[{status.State}] {status.Message}");
+            AddLog($"{FriendlyState(status.State)} — {status.Message}");
 
         if (status.LastFramePng is { } png)
             LastThumbnail = Decode(png);
     }
+
+    /// <summary>Maps a loop state to a plain-English label for the UI.</summary>
+    private static string FriendlyState(CaptureLoopState state) => state switch
+    {
+        CaptureLoopState.WaitingForFrame0 => "Looking for the first frame…",
+        CaptureLoopState.ClickingNext => "Clicking Next…",
+        CaptureLoopState.WaitingForAdvance => "Waiting for the next frame…",
+        CaptureLoopState.Stalled => "Stalled — needs attention",
+        CaptureLoopState.Reassembling => "Reassembling & verifying…",
+        CaptureLoopState.Complete => "Complete",
+        CaptureLoopState.Failed => "Failed",
+        CaptureLoopState.Cancelled => "Cancelled",
+        _ => state.ToString(),
+    };
 
     private static BitmapSource Decode(byte[] png)
     {
