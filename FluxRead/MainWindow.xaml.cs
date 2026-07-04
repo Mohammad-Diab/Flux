@@ -22,7 +22,7 @@ public partial class MainWindow : Window
         _folderView = folderView;
         _liveView = liveView;
         InitializeComponent();
-        ModeHost.Content = _folderView;
+        ModeHost.Content = _liveView;
     }
 
     private void OnModeChanged(object sender, RoutedEventArgs e)

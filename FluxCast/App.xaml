@@ -3,7 +3,12 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:converters="clr-namespace:FluxCast.Converters">
     <Application.Resources>
-        <BooleanToVisibilityConverter x:Key="BoolToVisibility"/>
-        <converters:NullToCollapsedConverter x:Key="NullToCollapsed"/>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="Theme.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+            <BooleanToVisibilityConverter x:Key="BoolToVisibility"/>
+            <converters:NullToCollapsedConverter x:Key="NullToCollapsed"/>
+        </ResourceDictionary>
     </Application.Resources>
 </Application>

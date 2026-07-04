@@ -4,8 +4,9 @@
         xmlns:vm="clr-namespace:FluxCast.ViewModels"
         xmlns:views="clr-namespace:FluxCast.Views"
         Title="FluxCast"
-        Width="960" Height="640"
-        MinWidth="700" MinHeight="480"
+        Width="1000" Height="700"
+        MinWidth="860" MinHeight="620"
+        Background="{StaticResource BgBrush}"
         WindowStartupLocation="CenterScreen">
     <Window.Resources>
         <DataTemplate DataType="{x:Type vm:EncodeSetupViewModel}">

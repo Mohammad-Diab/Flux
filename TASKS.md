@@ -159,6 +159,16 @@ All in `FluxRead/Interop/`, each exercisable from a hidden dev panel:
 
 - **Rugged payload mode** — reuse the frame-0 cube-corner scheme (8 colors, 3 bits/tile, per-channel threshold, min RGB distance 255) as an alternative *payload* encoding tier for truly awful channels, instead of the 256-color/1-byte-per-tile mode. Trades ~62% capacity for near-black/white robustness. Would be a per-transfer mode flag echoed in frame 0's metadata so the decoder picks the right payload scheme. Frame 0 itself already uses this scheme as of the 8-color metadata frame work.
 
+## UX polish round 1 (user-requested, done)
+
+- [x] Shared `Theme.xaml` (palette, rounded button styles, typography, cards) in both apps — consistent, cleaner look
+- [x] FluxRead: mode switch is now **tabs** (not radio buttons), **Live optical capture is the default**
+- [x] FluxCast presenter: **resizable**, frame scales uniformly (nearest-neighbor, aspect-locked; decoder is resolution-independent via fiducials+homography), **fixes the button clipping on cross-DPI move**; window min size keeps tiles ≥ ~5px
+- [x] FluxCast presenter: go-to-frame box reflects the current frame during Back/Next/First/Last navigation
+- [x] FluxRead: live **region preview** (~2s refresh) + **Next-button crop preview** after calibration, hidden on start *(built; visible during the C.1 run)*
+- [x] FluxRead: on Start, a compact always-on-top **mini window** (state, progress, thumbnail, Pause/Resume, Cancel) replaces the big window so single-screen users see both; `CaptureLoopService` gained pause/resume *(built; visible during the C.1 run)*
+- Verified live: tabs + live-default, themed presenter with un-clipped buttons and uniform scaling, go-to reflects current frame. 230/230 tests green.
+
 ## Accepted v1 limitations
 
 - FluxRead has no cross-restart resume (a killed transfer restarts from frame 0)

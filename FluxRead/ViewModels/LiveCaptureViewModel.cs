@@ -41,6 +41,19 @@ public partial class LiveCaptureViewModel : ObservableObject
     [ObservableProperty]
     private BitmapSource? _lastThumbnail;
 
+    [ObservableProperty]
+    private BitmapSource? _regionPreview;
+
+    [ObservableProperty]
+    private BitmapSource? _calibrationPreview;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(PauseLabel))]
+    private bool _isPaused;
+
+    /// <summary>Gets the label for the pause/resume toggle.</summary>
+    public string PauseLabel => IsPaused ? "Resume" : "Pause";
+
     /// <summary>Gets a value indicating whether the transfer can be started.</summary>
     public bool CanStart => HasRegion && HasCalibration && !IsRunning;
 

@@ -6,63 +6,71 @@
         <KeyBinding Key="Right" Command="{Binding NextCommand}"/>
         <KeyBinding Key="Left" Command="{Binding BackCommand}"/>
     </UserControl.InputBindings>
-    <DockPanel Background="#FF2D2D30">
-        <Grid DockPanel.Dock="Bottom" Height="110" Background="#FF1E1E1E">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="Auto"/>
-                <ColumnDefinition Width="*"/>
-            </Grid.ColumnDefinitions>
+    <DockPanel Background="#FF262A30">
+        <Border DockPanel.Dock="Bottom" Height="104" Background="#FF16181D">
+            <Grid Margin="14,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
 
-            <StackPanel Grid.Column="0" Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="16,0">
-                <Button Content="⏮ FIRST" Command="{Binding FirstCommand}"
-                        FontSize="16" Margin="0,0,8,0" Padding="14,10"
-                        Background="#FF2D2D30" Foreground="#FFD0D0D0" BorderThickness="0" Focusable="False"/>
-                <Button Content="◀  BACK" Command="{Binding BackCommand}"
-                        FontSize="26" FontWeight="SemiBold" Padding="24,10" MinWidth="180"
-                        Background="#FF3E3E42" Foreground="White" BorderThickness="0" Focusable="False"/>
-            </StackPanel>
-
-            <StackPanel Grid.Column="1" VerticalAlignment="Center" MinWidth="240">
-                <TextBlock Text="{Binding ProgressText}" FontSize="22" Foreground="White"
-                           HorizontalAlignment="Center"/>
-                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,4,0,0">
-                    <TextBox Text="{Binding GotoText, UpdateSourceTrigger=PropertyChanged}" Width="60"
-                             VerticalContentAlignment="Center" FontSize="13" ToolTip="Frame number">
-                        <TextBox.InputBindings>
-                            <KeyBinding Key="Enter" Command="{Binding GotoCommand}"/>
-                        </TextBox.InputBindings>
-                    </TextBox>
-                    <Button Content="Go" Command="{Binding GotoCommand}" FontSize="13" Padding="12,4" Margin="6,0,0,0" Focusable="False"/>
+                <StackPanel Grid.Column="0" Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Center">
+                    <Button Content="⏮  First" Command="{Binding FirstCommand}" Focusable="False"
+                            FontSize="14" Padding="14,10" Background="#FF33383F" Foreground="#FFE6E8EB" BorderThickness="0"
+                            Style="{StaticResource BaseButton}"/>
+                    <Button Content="◀  Back" Command="{Binding BackCommand}" Focusable="False" Margin="8,0,0,0"
+                            FontSize="22" FontWeight="SemiBold" Padding="26,10" MinWidth="170"
+                            Background="#FF3A4048" Foreground="White" BorderThickness="0"
+                            Style="{StaticResource BaseButton}"/>
                 </StackPanel>
-                <Button Content="end session" Command="{Binding CloseCommand}"
-                        FontSize="11" Foreground="#FF808080" Background="Transparent" BorderThickness="0"
-                        HorizontalAlignment="Center" Margin="0,4,0,0" Focusable="False"/>
-                <TextBlock Text="Do not move or resize this window during transfer"
-                           FontSize="10" Foreground="#FF707070" HorizontalAlignment="Center" Margin="0,2,0,0"/>
-            </StackPanel>
 
-            <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="16,0">
-                <Button Content="NEXT  ▶" Command="{Binding NextCommand}"
-                        FontSize="26" FontWeight="SemiBold" Padding="24,10" MinWidth="180"
-                        Background="#FF1976D2" Foreground="White" BorderThickness="0" Focusable="False"/>
-                <Button Content="LAST ⏭" Command="{Binding LastCommand}"
-                        FontSize="16" Margin="8,0,0,0" Padding="14,10"
-                        Background="#FF2D2D30" Foreground="#FFD0D0D0" BorderThickness="0" Focusable="False"/>
-            </StackPanel>
-        </Grid>
+                <StackPanel Grid.Column="1" VerticalAlignment="Center" MinWidth="230">
+                    <TextBlock Text="{Binding ProgressText}" FontSize="20" Foreground="White" FontWeight="SemiBold"
+                               HorizontalAlignment="Center"/>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,6,0,0">
+                        <TextBox Text="{Binding GotoText, UpdateSourceTrigger=PropertyChanged}" Width="58"
+                                 ToolTip="Go to frame number">
+                            <TextBox.InputBindings>
+                                <KeyBinding Key="Enter" Command="{Binding GotoCommand}"/>
+                            </TextBox.InputBindings>
+                        </TextBox>
+                        <Button Content="Go" Command="{Binding GotoCommand}" Focusable="False" Margin="6,0,0,0"
+                                FontSize="13" Padding="12,5" Background="#FF33383F" Foreground="#FFE6E8EB"
+                                BorderThickness="0" Style="{StaticResource BaseButton}"/>
+                    </StackPanel>
+                    <TextBlock Text="Keep this window still during transfer" FontSize="10.5" Foreground="#FF8A9199"
+                               HorizontalAlignment="Center" Margin="0,5,0,0"/>
+                </StackPanel>
 
-        <Grid x:Name="FrameArea">
-            <Image x:Name="FrameImage" Source="{Binding CurrentFrame}"
-                   HorizontalAlignment="Center" VerticalAlignment="Center"
-                   RenderOptions.BitmapScalingMode="NearestNeighbor"
-                   SnapsToDevicePixels="True" UseLayoutRounding="True"
-                   Stretch="Fill"/>
-            <Border x:Name="SizeWarning" Background="#CCC62828" VerticalAlignment="Top"
-                    Padding="12,6" Visibility="Collapsed">
-                <TextBlock Text="Window too small — the frame is not displayed at 1:1 pixels and cannot be decoded reliably. Enlarge the remote session."
-                           Foreground="White" FontSize="13" TextWrapping="Wrap"/>
+                <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                    <Button Content="Next  ▶" Command="{Binding NextCommand}" Focusable="False"
+                            FontSize="22" FontWeight="SemiBold" Padding="26,10" MinWidth="170"
+                            Background="{StaticResource AccentBrush}" Foreground="White" BorderThickness="0"
+                            Style="{StaticResource BaseButton}"/>
+                    <Button Content="Last  ⏭" Command="{Binding LastCommand}" Focusable="False" Margin="8,0,0,0"
+                            FontSize="14" Padding="14,10" Background="#FF33383F" Foreground="#FFE6E8EB" BorderThickness="0"
+                            Style="{StaticResource BaseButton}"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <Grid>
+            <Grid x:Name="FrameArea" Margin="10">
+                <Image x:Name="FrameImage" Source="{Binding CurrentFrame}"
+                       RenderOptions.BitmapScalingMode="NearestNeighbor"
+                       SnapsToDevicePixels="True" UseLayoutRounding="True"
+                       Stretch="Uniform"/>
+            </Grid>
+            <Border x:Name="SizeWarning" Background="#CCB91C1C" VerticalAlignment="Top" HorizontalAlignment="Center"
+                    CornerRadius="0,0,6,6" Padding="14,7" Visibility="Collapsed">
+                <TextBlock Text="Window is small — enlarge it so the tiles stay large enough to decode reliably."
+                           Foreground="White" FontSize="12.5"/>
             </Border>
+            <Button Content="End session" Command="{Binding CloseCommand}" Focusable="False"
+                    HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,8,8,0"
+                    FontSize="11" Padding="10,4" Background="#66000000" Foreground="#FFB8BEC6"
+                    BorderThickness="0" Style="{StaticResource BaseButton}"/>
         </Grid>
     </DockPanel>
 </UserControl>

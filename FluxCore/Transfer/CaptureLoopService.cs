@@ -20,6 +20,33 @@ public sealed class CaptureLoopService
     private readonly FrameDecoder _decoder;
     private readonly CaptureLoopOptions _options;
     private readonly ILogger<CaptureLoopService>? _logger;
+    private readonly object _pauseLock = new();
+    private TaskCompletionSource<bool>? _pauseGate;
+
+    /// <summary>Gets a value indicating whether the loop is currently paused.</summary>
+    public bool IsPaused
+    {
+        get { lock (_pauseLock) { return _pauseGate is not null; } }
+    }
+
+    /// <summary>Pauses the loop; it stops capturing and clicking until resumed. Idempotent.</summary>
+    public void Pause()
+    {
+        lock (_pauseLock)
+        {
+            _pauseGate ??= new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        }
+    }
+
+    /// <summary>Resumes a paused loop. Idempotent.</summary>
+    public void Resume()
+    {
+        lock (_pauseLock)
+        {
+            _pauseGate?.TrySetResult(true);
+            _pauseGate = null;
+        }
+    }
 
     /// <summary>
     /// Initializes a new instance of the <see cref="CaptureLoopService"/> class.
@@ -77,6 +104,7 @@ public sealed class CaptureLoopService
             while (!assembler.IsComplete)
             {
                 cancellationToken.ThrowIfCancellationRequested();
+                await WaitIfPausedAsync(cancellationToken);
 
                 _clicker.ClickNext();
                 Report(progress, CaptureLoopState.WaitingForAdvance, assembler, metadata, lastFrameId, reclicks, "Waiting for the next frame…");
@@ -170,6 +198,7 @@ public sealed class CaptureLoopService
         for (int poll = 0; poll < _options.MaxPollsPerClick; poll++)
         {
             cancellationToken.ThrowIfCancellationRequested();
+            await WaitIfPausedAsync(cancellationToken);
             await Task.Delay(_options.PollIntervalMs, cancellationToken);
 
             using var capture = await CaptureStableAsync(cancellationToken);
@@ -204,6 +233,18 @@ public sealed class CaptureLoopService
         header.FrameId < metadata.TotalFrames &&
         header.TotalFrames == metadata.TotalFrames &&
         !assembler.HasFrame(header.FrameId);
+
+    private async Task WaitIfPausedAsync(CancellationToken cancellationToken)
+    {
+        Task<bool>? gate;
+        lock (_pauseLock)
+        {
+            gate = _pauseGate?.Task;
+        }
+
+        if (gate is not null)
+            await gate.WaitAsync(cancellationToken);
+    }
 
     private async Task<SKBitmap> CaptureStableAsync(CancellationToken cancellationToken)
     {

@@ -52,6 +52,7 @@ public partial class PresenterViewModel : ObservableObject
         _frames = new CachedFrameProvider(session.FramesDirectory, session.TotalFrames);
 
         CurrentFrame = _frames.GetFrame(0);
+        GotoText = "1";
     }
 
     [RelayCommand(CanExecute = nameof(CanNext))]
@@ -75,11 +76,18 @@ public partial class PresenterViewModel : ObservableObject
     {
         if (int.TryParse(GotoText, out int frame) && frame >= 1 && frame <= TotalFrames)
             CurrentIndex = frame - 1;
-        GotoText = "";
+        else
+            SyncGotoText();
     }
 
     [RelayCommand]
     private void Close() => _onClose();
 
-    partial void OnCurrentIndexChanged(int value) => CurrentFrame = _frames.GetFrame(value);
+    partial void OnCurrentIndexChanged(int value)
+    {
+        CurrentFrame = _frames.GetFrame(value);
+        SyncGotoText();
+    }
+
+    private void SyncGotoText() => GotoText = (CurrentIndex + 1).ToString();
 }
