@@ -1,12 +1,16 @@
 <Window x:Class="FluxRead.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="clr-namespace:FluxRead.ViewModels"
+        xmlns:views="clr-namespace:FluxRead.Views"
         Title="FluxRead"
-        Width="900" Height="600"
+        Width="960" Height="640"
+        MinWidth="700" MinHeight="480"
         WindowStartupLocation="CenterScreen">
-    <Grid>
-        <TextBlock Text="FluxRead — receiver shell (Phases 7–9 build the UI here)"
-                   HorizontalAlignment="Center" VerticalAlignment="Center"
-                   FontSize="16" Foreground="Gray"/>
-    </Grid>
+    <Window.Resources>
+        <DataTemplate DataType="{x:Type vm:FolderDecodeViewModel}">
+            <views:FolderDecodeView/>
+        </DataTemplate>
+    </Window.Resources>
+    <ContentControl Content="{Binding Current}"/>
 </Window>

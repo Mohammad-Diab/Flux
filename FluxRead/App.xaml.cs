@@ -1,5 +1,8 @@
 using System.IO;
 using System.Windows;
+using FluxCore.Compression;
+using FluxRead.Services;
+using FluxRead.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Serilog;
@@ -42,6 +45,17 @@ public partial class App : Application
     private static void ConfigureServices(ServiceCollection services)
     {
         services.AddLogging(builder => builder.AddSerilog(dispose: true));
-        services.AddSingleton<MainWindow>();
+        services.AddSingleton(provider => new CompressionService(
+            logger: provider.GetRequiredService<ILogger<CompressionService>>()));
+        services.AddSingleton(provider => new DecodePipelineService(
+            provider.GetRequiredService<CompressionService>(),
+            provider.GetRequiredService<ILogger<DecodePipelineService>>()));
+        services.AddSingleton<DialogService>();
+        services.AddSingleton<FolderDecodeViewModel>();
+        services.AddSingleton<ShellViewModel>();
+        services.AddSingleton(provider => new MainWindow
+        {
+            DataContext = provider.GetRequiredService<ShellViewModel>(),
+        });
     }
 }

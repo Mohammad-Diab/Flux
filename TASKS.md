@@ -100,14 +100,14 @@ Constants: 160×90 tiles, 8 px/tile, 16 px quiet zone → canonical PNG **1312×
 
 ## Phase 7 — FluxRead: Folder-Decode Mode
 
-- [ ] 7.1 `FolderDecodeViewModel` + view — pick folder, enumerate `frame_??????.png`, decode each, results grid (frame id, status, diagnostics), summary counts
-- [ ] 7.2 `DecodePipelineService.FinalizeAsync` (shared tail) — assemble → SHA verify → decompress → SaveFileDialog seeded with `OriginalName` (folder payloads → OpenFolderDialog)
-  - **Test:** unit-level with Milestone-A fixtures
+- [x] 7.1 `FolderDecodeViewModel` + view — pick folder, enumerate `frame_??????.png`, decode each (frame 0 via `DecodeMetadataFrame`, rest via `Decode`), DataGrid of rows (file, id, status, detail with corrected-error count; failed rows tinted red), summary counts, progress bar
+- [x] 7.2 `DecodePipelineService` (shared tail) — `DecodeFolderAsync` (order-tolerant, feeds `PayloadAssembler`) + `SaveAsync` → assemble → SHA verify → raw payloads to `SaveFileDialog(OriginalName)`, 7z payloads decompressed into `OpenFolderDialog`. `DialogService`, `ShellViewModel` (room for Phase 9 mode switch), converters, DI wiring
+  - **Test:** ✅ covered by `FluxEncodeServiceTests.Encode_FolderSource_DecodesAndExtractsToIdenticalContent`
 
 ## 🚩 Milestone B — App-Level Round Trip
 
-- [ ] B.1 Encode a real folder in FluxCast → point FluxRead folder-decode at the frames → output byte-identical (`Get-FileHash` both sides)
-  - **Gate:** passes with a multi-frame (>10 frames) payload. No optical work before this.
+- [x] B.1 Encoded a 3-file folder (incl. 220 KB binary + nested file) via FluxCore encode → **23 frames** → FluxRead folder-decode
+  - **Gate: ✅ PASS.** Pipeline decode+extract → all 3 files byte-identical by `Get-FileHash`. FluxRead GUI driven via UIA: grid shows frame 0 Metadata + 22 payload frames all Success/10123 bytes/0 corrected, "Complete… Ready to save". Also fixed 2 CA2014 stackalloc-in-loop warnings + an XML cref. 224/224 tests green on net10.
 
 ---
 

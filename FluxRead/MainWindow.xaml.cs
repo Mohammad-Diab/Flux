@@ -3,7 +3,7 @@ using System.Windows;
 namespace FluxRead;
 
 /// <summary>
-/// Shell window. Phase 7 adds folder-decode mode; Phase 9 adds the live optical mode.
+/// Shell window. Hosts the folder-decode screen; the live optical mode is added in a later phase.
 /// </summary>
 public partial class MainWindow : Window
 {

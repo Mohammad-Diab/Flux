@@ -15,7 +15,7 @@ public enum TileColorScheme
 /// <summary>
 /// Complete abstract description of one frame: the per-tile value for data and header tiles plus
 /// the beacon parity and color scheme. Structural tile colors (finders, timing, pad) are fixed by
-/// <see cref="FrameFormat"/> and carried implicitly. Input to <see cref="FrameRenderer"/>.
+/// <see cref="FrameFormat"/> and carried implicitly. Consumed by the frame renderer.
 /// </summary>
 public sealed class FrameTileMap
 {

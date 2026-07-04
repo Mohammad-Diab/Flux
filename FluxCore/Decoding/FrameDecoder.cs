@@ -154,10 +154,10 @@ public sealed class FrameDecoder
         var content = new byte[FrameFormat.MetadataContentBytes];
         int parity = FrameFormat.CodewordLength - FrameFormat.MetadataCodewordDataBytes;
         int correctedErrors = 0;
+        Span<byte> block = stackalloc byte[FrameFormat.CodewordLength];
 
         for (int c = 0; c < FrameFormat.MetadataCodewordCount; c++)
         {
-            Span<byte> block = stackalloc byte[FrameFormat.CodewordLength];
             for (int s = 0; s < FrameFormat.CodewordLength; s++)
             {
                 block[s] = stream[s * FrameFormat.MetadataCodewordCount + c];

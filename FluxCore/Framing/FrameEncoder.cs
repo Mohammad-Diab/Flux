@@ -63,9 +63,9 @@ public static class FrameEncoder
         content.CopyTo(padded);
 
         var stream = new byte[FrameFormat.MetadataEncodedBytes];
+        Span<byte> block = stackalloc byte[FrameFormat.CodewordLength];
         for (int c = 0; c < FrameFormat.MetadataCodewordCount; c++)
         {
-            Span<byte> block = stackalloc byte[FrameFormat.CodewordLength];
             ReedSolomonBlockCodec.EncodeBlock(
                 padded.AsSpan(c * FrameFormat.MetadataCodewordDataBytes, FrameFormat.MetadataCodewordDataBytes),
                 MetadataParity,
