@@ -4,9 +4,9 @@
         xmlns:vm="clr-namespace:FluxCast.ViewModels"
         xmlns:views="clr-namespace:FluxCast.Views"
         Title="FluxCast"
-        Width="1000" Height="700"
-        MinWidth="860" MinHeight="620"
-        Background="{StaticResource BgBrush}"
+        Width="1040" Height="740"
+        MinWidth="880" MinHeight="640"
+        Style="{StaticResource FluxWindow}"
         WindowStartupLocation="CenterScreen">
     <Window.Resources>
         <DataTemplate DataType="{x:Type vm:EncodeSetupViewModel}">
@@ -19,5 +19,8 @@
             <views:PresenterView/>
         </DataTemplate>
     </Window.Resources>
-    <ContentControl Content="{Binding Current}"/>
+    <DockPanel>
+        <views:TitleBar DockPanel.Dock="Top" Title="FluxCast" Subtitle="Optical sender"/>
+        <ContentControl Content="{Binding Current}"/>
+    </DockPanel>
 </Window>
