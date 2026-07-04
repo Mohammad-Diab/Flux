@@ -121,6 +121,65 @@ public class PayloadAssemblerTests
     }
 
     [Fact]
+    public async Task DiskBacked_OutOfOrder_VerifiesAndExtractsRaw()
+    {
+        var (metadata, payload, frames) = CreateTransfer(25_000);
+        using var assembler = new PayloadAssembler(metadata, diskThresholdBytes: 0);
+
+        Assert.True(assembler.IsDiskBacked);
+
+        foreach (var (header, chunk) in frames.AsEnumerable().Reverse())
+        {
+            Assert.True(assembler.AddFrame(header, chunk));
+        }
+
+        Assert.True(assembler.IsComplete);
+        assembler.Verify(); // streaming SHA over the temp file — must not throw
+
+        var target = Path.Combine(Path.GetTempPath(), $"flux_asm_{Guid.NewGuid():N}");
+        try
+        {
+            var extracted = await assembler.ExtractAsync(target, new CompressionService());
+            Assert.Equal(Path.Combine(target, "asm-test.bin"), extracted);
+            Assert.Equal(payload, await File.ReadAllBytesAsync(extracted));
+        }
+        finally
+        {
+            try { Directory.Delete(target, recursive: true); } catch { }
+        }
+    }
+
+    [Fact]
+    public void DiskBacked_TamperedFrame_VerifyThrowsInvalidData()
+    {
+        var (metadata, _, frames) = CreateTransfer(15_000);
+        using var assembler = new PayloadAssembler(metadata, diskThresholdBytes: 0);
+
+        foreach (var (header, chunk) in frames)
+        {
+            var copy = chunk.ToArray();
+            if (header.FrameId == 1)
+                copy[0] ^= 0xFF;
+            assembler.AddFrame(header, copy);
+        }
+
+        Assert.Throws<InvalidDataException>(() => assembler.Verify());
+    }
+
+    [Fact]
+    public void DiskBacked_AssembleAndVerify_Throws()
+    {
+        var (metadata, _, frames) = CreateTransfer(5_000);
+        using var assembler = new PayloadAssembler(metadata, diskThresholdBytes: 0);
+        foreach (var (header, chunk) in frames)
+        {
+            assembler.AddFrame(header, chunk);
+        }
+
+        Assert.Throws<InvalidOperationException>(() => assembler.AssembleAndVerify());
+    }
+
+    [Fact]
     public async Task ExtractAsync_RawPayload_WritesOriginalFileName()
     {
         var (metadata, payload, frames) = CreateTransfer(5_000);

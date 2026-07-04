@@ -80,8 +80,11 @@ public partial class FolderDecodeViewModel : ObservableObject
 
         try
         {
-            StatusText = "Saving…";
-            await _pipeline.SaveAsync(_result.Assembler!, metadata, target);
+            IsDecoding = true;
+            ProgressValue = 0;
+            StatusText = metadata.PayloadType == PayloadType.Raw ? "Saving…" : "Decompressing…";
+            var progress = new Progress<int>(p => ProgressValue = p / 100.0);
+            await _pipeline.SaveAsync(_result.Assembler!, metadata, target, progress);
             StatusText = $"Saved to {target}";
         }
         catch (Exception ex)
@@ -89,10 +92,19 @@ public partial class FolderDecodeViewModel : ObservableObject
             _logger.LogError(ex, "Save failed");
             StatusText = $"Save failed: {ex.Message}";
         }
+        finally
+        {
+            IsDecoding = false;
+            ProgressValue = 0;
+        }
     }
 
     private async Task DecodeAsync(string folder)
     {
+        // Release any temp payload file from a previous disk-backed decode.
+        _result?.Assembler?.Dispose();
+        _result = null;
+
         _cts = new CancellationTokenSource();
         IsDecoding = true;
         CanSave = false;

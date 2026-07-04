@@ -80,21 +80,45 @@ public sealed class DecodePipelineService
     /// <param name="outputPath">Target file (raw) or folder (7z).</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     public async Task SaveAsync(
-        PayloadAssembler assembler, MetadataPayload metadata, string outputPath, CancellationToken cancellationToken = default)
+        PayloadAssembler assembler,
+        MetadataPayload metadata,
+        string outputPath,
+        IProgress<int>? progress = null,
+        CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(assembler);
         ArgumentNullException.ThrowIfNull(metadata);
 
-        var payload = assembler.AssembleAndVerify();
+        bool raw = metadata.PayloadType == PayloadType.Raw;
 
-        if (metadata.PayloadType == PayloadType.Raw)
+        if (assembler.IsDiskBacked)
         {
-            await File.WriteAllBytesAsync(outputPath, payload, cancellationToken);
+            // Large transfer: verify by streaming, then save straight from the temp payload file.
+            assembler.Verify();
+            if (raw)
+            {
+                await using var input = new FileStream(assembler.PayloadFilePath, FileMode.Open, FileAccess.Read, FileShare.Read);
+                await using var output = new FileStream(outputPath, FileMode.Create, FileAccess.Write, FileShare.None);
+                await input.CopyToAsync(output, cancellationToken);
+            }
+            else
+            {
+                Directory.CreateDirectory(outputPath);
+                await _compression.DecompressFileAsync(assembler.PayloadFilePath, outputPath, progress, cancellationToken);
+            }
         }
         else
         {
-            Directory.CreateDirectory(outputPath);
-            await _compression.DecompressAsync(payload, outputPath, cancellationToken);
+            var payload = assembler.AssembleAndVerify();
+            if (raw)
+            {
+                await File.WriteAllBytesAsync(outputPath, payload, cancellationToken);
+            }
+            else
+            {
+                Directory.CreateDirectory(outputPath);
+                await _compression.DecompressAsync(payload, outputPath, progress, cancellationToken);
+            }
         }
 
         _logger?.LogInformation("Saved transfer '{Name}' to {Path}", metadata.OriginalName, outputPath);

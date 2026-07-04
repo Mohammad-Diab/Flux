@@ -136,7 +136,7 @@ public sealed class CaptureLoopService
             }
 
             Report(progress, CaptureLoopState.Reassembling, assembler, metadata, lastFrameId, 0, "Reassembling and verifying…");
-            assembler.AssembleAndVerify();
+            assembler.Verify();
             Report(progress, CaptureLoopState.Complete, assembler, metadata, lastFrameId, 0, "Transfer complete and verified.");
 
             return new TransferReport(CaptureLoopState.Complete, metadata, assembler, assembler.ReceivedFrames, total, totalReclicks, stalls, stopwatch.Elapsed, null);

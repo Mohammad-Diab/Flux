@@ -51,6 +51,12 @@ public partial class LiveCaptureViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(PauseLabel))]
     private bool _isPaused;
 
+    [ObservableProperty]
+    private bool _isDecompressing;
+
+    [ObservableProperty]
+    private double _decompressProgress;
+
     /// <summary>Gets the label for the pause/resume toggle.</summary>
     public string PauseLabel => IsPaused ? "Resume" : "Pause";
 

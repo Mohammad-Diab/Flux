@@ -84,23 +84,56 @@ public sealed class CompressionService
     }
 
     /// <summary>
-    /// Decompresses a 7z archive to a target directory.
+    /// Decompresses in-memory 7z data to a target directory.
     /// </summary>
     /// <param name="compressedData">Compressed 7z data.</param>
     /// <param name="targetDirectory">Target directory for extraction.</param>
+    /// <param name="progress">Optional 0-100 progress sink; only reported when using 7z.exe.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <exception cref="CompressionException">Thrown when decompression fails.</exception>
-    public async Task DecompressAsync(byte[] compressedData, string targetDirectory, CancellationToken cancellationToken = default)
+    public async Task DecompressAsync(
+        byte[] compressedData, string targetDirectory, IProgress<int>? progress = null, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(compressedData);
         ArgumentNullException.ThrowIfNull(targetDirectory);
 
-        // Try 7z.exe first if available, fallback to SharpCompress
+        // Stage to a temp archive so decompression always streams from disk (one code path).
+        var tempArchive = Path.Combine(Path.GetTempPath(), $"flux_{Guid.NewGuid():N}.7z");
+        try
+        {
+            await File.WriteAllBytesAsync(tempArchive, compressedData, cancellationToken);
+            await DecompressFileAsync(tempArchive, targetDirectory, progress, cancellationToken);
+        }
+        finally
+        {
+            if (File.Exists(tempArchive))
+            {
+                try { File.Delete(tempArchive); }
+                catch { /* Ignore cleanup errors */ }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Decompresses a 7z archive file to a target directory, streaming from disk (no full-payload
+    /// buffer in memory). Used by the disk-backed assembler for large transfers.
+    /// </summary>
+    /// <param name="archivePath">Path to the 7z archive.</param>
+    /// <param name="targetDirectory">Target directory for extraction.</param>
+    /// <param name="progress">Optional 0-100 progress sink; only reported when using 7z.exe.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <exception cref="CompressionException">Thrown when decompression fails.</exception>
+    public async Task DecompressFileAsync(
+        string archivePath, string targetDirectory, IProgress<int>? progress = null, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(archivePath);
+        ArgumentNullException.ThrowIfNull(targetDirectory);
+
         if (Using7zExe)
         {
             try
             {
-                await Decompress7zExeAsync(compressedData, targetDirectory, cancellationToken);
+                await Decompress7zExeFileAsync(archivePath, targetDirectory, progress, cancellationToken);
                 return;
             }
             catch (CompressionException ex)
@@ -109,7 +142,7 @@ public sealed class CompressionService
             }
         }
 
-        await DecompressSharpCompressAsync(compressedData, targetDirectory, cancellationToken);
+        await DecompressSharpCompressFileAsync(archivePath, targetDirectory, cancellationToken);
     }
 
     /// <summary>
@@ -170,32 +203,19 @@ public sealed class CompressionService
         }
     }
 
-    private async Task Decompress7zExeAsync(byte[] compressedData, string targetDirectory, CancellationToken cancellationToken)
+    private async Task Decompress7zExeFileAsync(
+        string archivePath, string targetDirectory, IProgress<int>? progress, CancellationToken cancellationToken)
     {
-        var tempArchive = Path.Combine(Path.GetTempPath(), $"flux_{Guid.NewGuid():N}.7z");
+        _logger?.LogInformation("Decompressing {Archive} to {Target} with 7z.exe", archivePath, targetDirectory);
 
-        try
-        {
-            await File.WriteAllBytesAsync(tempArchive, compressedData, cancellationToken);
+        Directory.CreateDirectory(targetDirectory);
 
-            _logger?.LogInformation("Decompressing {Size} bytes to {Target} with 7z.exe", compressedData.Length, targetDirectory);
+        // -bsp1 streams extraction progress percentages to stdout (parsed in Run7zAsync).
+        var arguments = $"x \"{archivePath}\" -o\"{targetDirectory}\" -y -bsp1";
 
-            Directory.CreateDirectory(targetDirectory);
+        await Run7zAsync(arguments, progress, cancellationToken);
 
-            var arguments = $"x \"{tempArchive}\" -o\"{targetDirectory}\" -y";
-
-            await Run7zAsync(arguments, progress: null, cancellationToken);
-
-            _logger?.LogInformation("7z.exe decompression complete.");
-        }
-        finally
-        {
-            if (File.Exists(tempArchive))
-            {
-                try { File.Delete(tempArchive); }
-                catch { /* Ignore cleanup errors */ }
-            }
-        }
+        _logger?.LogInformation("7z.exe decompression complete.");
     }
 
     private async Task Run7zAsync(string arguments, IProgress<int>? progress, CancellationToken cancellationToken)
@@ -306,19 +326,20 @@ public sealed class CompressionService
         }
     }
 
-    private async Task DecompressSharpCompressAsync(byte[] compressedData, string targetDirectory, CancellationToken cancellationToken)
+    private async Task DecompressSharpCompressFileAsync(string archivePath, string targetDirectory, CancellationToken cancellationToken)
     {
-        _logger?.LogInformation("Decompressing {Size} bytes to {Target} with built-in decompression", compressedData.Length, targetDirectory);
+        _logger?.LogInformation("Decompressing {Archive} to {Target} with built-in decompression", archivePath, targetDirectory);
 
         try
         {
             Directory.CreateDirectory(targetDirectory);
 
-            using var stream = new MemoryStream(compressedData);
+            await using var stream = new FileStream(archivePath, FileMode.Open, FileAccess.Read, FileShare.Read);
             using var reader = ReaderFactory.Open(stream);
 
             while (reader.MoveToNextEntry())
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 if (!reader.Entry.IsDirectory)
                 {
                     var entryPath = Path.Combine(targetDirectory, reader.Entry.Key);

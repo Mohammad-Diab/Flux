@@ -241,22 +241,47 @@ public partial class LiveCaptureView : UserControl
         _vm.AddLog(report.Summary());
 
         if (report.State != CaptureLoopState.Complete || report.Assembler is null || report.Metadata is null)
-            return;
-
-        var metadata = report.Metadata;
-        string? target = metadata.PayloadType == FluxCore.Framing.PayloadType.Raw
-            ? _dialogs.PickSaveFile(metadata.OriginalName)
-            : _dialogs.PickOutputFolder();
-
-        if (target is null)
         {
-            _vm.AddLog("Save cancelled.");
+            report.Assembler?.Dispose();
             return;
         }
 
-        await _pipeline.SaveAsync(report.Assembler, metadata, target);
-        _vm.AddLog($"Saved to {target}");
-        _vm.StateText = "Saved";
+        try
+        {
+            var metadata = report.Metadata;
+            bool isArchive = metadata.PayloadType != FluxCore.Framing.PayloadType.Raw;
+            string? target = isArchive
+                ? _dialogs.PickOutputFolder()
+                : _dialogs.PickSaveFile(metadata.OriginalName);
+
+            if (target is null)
+            {
+                _vm.AddLog("Save cancelled.");
+                return;
+            }
+
+            IProgress<int>? progress = null;
+            if (isArchive)
+            {
+                _vm.StateText = "Decompressing…";
+                _vm.IsDecompressing = true;
+                progress = new Progress<int>(p =>
+                {
+                    _vm.DecompressProgress = p / 100.0;
+                    _vm.StateText = $"Decompressing… {p}%";
+                });
+            }
+
+            await _pipeline.SaveAsync(report.Assembler, metadata, target, progress);
+            _vm.IsDecompressing = false;
+            _vm.AddLog($"Saved to {target}");
+            _vm.StateText = "Saved";
+        }
+        finally
+        {
+            _vm.IsDecompressing = false;
+            report.Assembler.Dispose();
+        }
     }
 
     private static BitmapSource ToBitmapSource(SkiaSharp.SKBitmap bitmap)
