@@ -168,11 +168,10 @@ public partial class LiveCaptureView : UserControl
 
     private async Task HandleReportAsync(TransferReport report)
     {
+        _vm.AddLog(report.Summary());
+
         if (report.State != CaptureLoopState.Complete || report.Assembler is null || report.Metadata is null)
-        {
-            _vm.AddLog($"Transfer ended: {report.State}. {report.Error}");
             return;
-        }
 
         _vm.AddLog("Transfer verified. Choose where to save.");
         var metadata = report.Metadata;

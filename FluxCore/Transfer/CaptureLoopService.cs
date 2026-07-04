@@ -64,6 +64,7 @@ public sealed class CaptureLoopService
         int reclicks = 0;
         int totalReclicks = 0;
         int stalls = 0;
+        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
 
         try
         {
@@ -101,7 +102,7 @@ public sealed class CaptureLoopService
                     ? StallResolution.Abort
                     : await onStall(cancellationToken);
                 if (resolution == StallResolution.Abort)
-                    return new TransferReport(CaptureLoopState.Failed, metadata, null, assembler.ReceivedFrames, total, totalReclicks, stalls, "Aborted at a stall.");
+                    return new TransferReport(CaptureLoopState.Failed, metadata, null, assembler.ReceivedFrames, total, totalReclicks, stalls, stopwatch.Elapsed, "Aborted at a stall.");
 
                 reclicks = 0;
             }
@@ -110,18 +111,18 @@ public sealed class CaptureLoopService
             assembler.AssembleAndVerify();
             Report(progress, CaptureLoopState.Complete, assembler, metadata, lastFrameId, 0, "Transfer complete and verified.");
 
-            return new TransferReport(CaptureLoopState.Complete, metadata, assembler, assembler.ReceivedFrames, total, totalReclicks, stalls, null);
+            return new TransferReport(CaptureLoopState.Complete, metadata, assembler, assembler.ReceivedFrames, total, totalReclicks, stalls, stopwatch.Elapsed, null);
         }
         catch (OperationCanceledException)
         {
-            return Cancelled(metadata, assembler, totalReclicks, stalls);
+            return Cancelled(metadata, assembler, totalReclicks, stalls, stopwatch.Elapsed);
         }
         catch (Exception ex)
         {
             _logger?.LogError(ex, "Capture loop failed");
             int total = metadata is null ? 0 : (int)metadata.TotalFrames;
             Report(progress, CaptureLoopState.Failed, assembler, metadata, lastFrameId, 0, ex.Message);
-            return new TransferReport(CaptureLoopState.Failed, metadata, null, assembler?.ReceivedFrames ?? 0, total, totalReclicks, stalls, ex.Message);
+            return new TransferReport(CaptureLoopState.Failed, metadata, null, assembler?.ReceivedFrames ?? 0, total, totalReclicks, stalls, stopwatch.Elapsed, ex.Message);
         }
     }
 
@@ -287,7 +288,7 @@ public sealed class CaptureLoopService
             png));
     }
 
-    private static TransferReport Cancelled(MetadataPayload? metadata, PayloadAssembler? assembler, int reclicks, int stalls) =>
+    private static TransferReport Cancelled(MetadataPayload? metadata, PayloadAssembler? assembler, int reclicks, int stalls, TimeSpan elapsed) =>
         new(CaptureLoopState.Cancelled, metadata, null, assembler?.ReceivedFrames ?? 0,
-            metadata is null ? 0 : (int)metadata.TotalFrames, reclicks, stalls, null);
+            metadata is null ? 0 : (int)metadata.TotalFrames, reclicks, stalls, elapsed, null);
 }

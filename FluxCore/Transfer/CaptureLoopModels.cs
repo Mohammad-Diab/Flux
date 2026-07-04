@@ -84,6 +84,7 @@ public sealed record LoopStatus(
 /// <param name="TotalFrames">Total frames including frame 0.</param>
 /// <param name="Reclicks">Total re-clicks across the transfer.</param>
 /// <param name="Stalls">Number of stalls encountered.</param>
+/// <param name="Elapsed">Wall-clock duration of the loop.</param>
 /// <param name="Error">Failure detail, or null on success.</param>
 public sealed record TransferReport(
     CaptureLoopState State,
@@ -93,4 +94,21 @@ public sealed record TransferReport(
     int TotalFrames,
     int Reclicks,
     int Stalls,
-    string? Error);
+    TimeSpan Elapsed,
+    string? Error)
+{
+    /// <summary>Gets the average throughput in bytes per second (0 if not applicable).</summary>
+    public double BytesPerSecond =>
+        Metadata is null || Elapsed.TotalSeconds <= 0 ? 0 : Metadata.PayloadLength / Elapsed.TotalSeconds;
+
+    /// <summary>Gets a one-line human summary of the transfer.</summary>
+    public string Summary()
+    {
+        if (State != CaptureLoopState.Complete)
+            return $"{State}: {FramesReceived}/{Math.Max(0, TotalFrames - 1)} frames in {Elapsed:mm\\:ss}" +
+                   (Error is null ? "" : $" — {Error}");
+
+        double kbps = BytesPerSecond / 1024;
+        return $"Complete: {FramesReceived} frames in {Elapsed:mm\\:ss}, {Reclicks} re-clicks, {Stalls} stalls, {kbps:F1} KB/s.";
+    }
+}

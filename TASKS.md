@@ -149,9 +149,9 @@ All in `FluxRead/Interop/`, each exercisable from a hidden dev panel:
 
 ## Phase 10 — Polish
 
-- [ ] 10.1 `TransferReport` summary (frames, retries, stalls, elapsed, throughput)
-- [ ] 10.2 Rewrite README.md for v2 (FFv2 format spec, usage guide)
-- [ ] 10.3 Dead-code sweep, final `dotnet test`, tag `v1.0`
+- [x] 10.1 `TransferReport` gained `Elapsed` + `BytesPerSecond` + `Summary()`; live UI logs the summary on completion
+- [x] 10.2 README.md rewritten for v2 (FFv2 format spec, 8-color frame 0, ECC table, both apps' usage, build/test)
+- [x] 10.3 Dead-code sweep (removed redundant System.Drawing.Common package — provided by the WindowsDesktop framework; NU1510 cleared). Solution builds with **0 warnings, 0 errors; 230/230 tests green**. **`v1.0` tag deferred until the optical acceptance test (C.2) passes on a real RDP session.**
 
 ---
 
