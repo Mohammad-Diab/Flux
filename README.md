@@ -157,3 +157,11 @@ coordinates are physical pixels.
 - FluxRead has no cross-restart resume (a killed transfer restarts from frame 0).
 - Windows-only.
 - Fixed grid, palette, and render scale — no adaptive sizing.
+
+## Responsible use
+
+Flux is a research and engineering project in error-corrected visual data channels. Use it only to
+move **your own data**, on systems and networks you own or are explicitly authorized to use. Don't
+use it to move data in violation of an organization's security or acceptable-use policy, or the
+law. The channel is deliberately **manual and low-bandwidth** — it exists to explore optical data
+transfer and computer-vision decoding, not to defeat controls.
