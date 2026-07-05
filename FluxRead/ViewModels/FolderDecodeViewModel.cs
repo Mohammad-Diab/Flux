@@ -86,6 +86,7 @@ public partial class FolderDecodeViewModel : ObservableObject
             var progress = new Progress<int>(p => ProgressValue = p / 100.0);
             await _pipeline.SaveAsync(_result.Assembler!, metadata, target, progress);
             StatusText = $"Saved to {target}";
+            _dialogs.OpenInExplorer(target);
         }
         catch (Exception ex)
         {

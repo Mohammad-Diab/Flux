@@ -155,8 +155,10 @@ await File.WriteAllTextAsync(Path.Combine(tempDir, "file1.txt"), file1Content);
             var extractedFiles = Directory.GetFiles(tempExtractDir, "*", SearchOption.AllDirectories);
   Assert.Equal(2, extractedFiles.Length);
 
-     var extracted1 = await File.ReadAllTextAsync(Path.Combine(tempExtractDir, "file1.txt"));
-   var extracted2 = await File.ReadAllTextAsync(Path.Combine(tempExtractDir, "file2.txt"));
+     // The top-level folder name is preserved in the archive, so files land under it.
+     var folderName = Path.GetFileName(tempDir);
+     var extracted1 = await File.ReadAllTextAsync(Path.Combine(tempExtractDir, folderName, "file1.txt"));
+   var extracted2 = await File.ReadAllTextAsync(Path.Combine(tempExtractDir, folderName, "file2.txt"));
 
       Assert.Equal(file1Content, extracted1);
       Assert.Equal(file2Content, extracted2);

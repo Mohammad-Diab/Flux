@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
@@ -27,6 +28,8 @@ public partial class LiveCaptureView : UserControl
     private readonly DialogService _dialogs;
     private readonly ScreenRegionCapture _previewCapture = new();
     private readonly DispatcherTimer _previewTimer;
+    private readonly DispatcherTimer _elapsedTimer;
+    private readonly Stopwatch _transferWatch = new();
 
     private Int32Rect _region;
     private (int X, int Y)? _nextPoint;
@@ -48,7 +51,10 @@ public partial class LiveCaptureView : UserControl
 
         _previewTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(2) };
         _previewTimer.Tick += (_, _) => RefreshPreviews();
-        Unloaded += (_, _) => _previewTimer.Stop();
+
+        _elapsedTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
+        _elapsedTimer.Tick += (_, _) => UpdateTiming();
+        Unloaded += (_, _) => { _previewTimer.Stop(); _elapsedTimer.Stop(); };
 
         // Keep the activity log scrolled to the newest line.
         _vm.Log.CollectionChanged += (_, _) =>
@@ -144,8 +150,13 @@ public partial class LiveCaptureView : UserControl
         _cts = new CancellationTokenSource();
         _vm.IsRunning = true;
         _vm.IsPaused = false;
+        _vm.TransferProgress = 0;
+        _vm.ElapsedText = "";
+        _vm.EtaText = "";
         _vm.Log.Clear();
         _vm.AddLog("Starting optical transfer…");
+        _transferWatch.Restart();
+        _elapsedTimer.Start();
 
         var capture = new RegionScreenCapture(_region);
         var clicker = new PointNextClicker(point);
@@ -175,6 +186,8 @@ public partial class LiveCaptureView : UserControl
         }
         finally
         {
+            _elapsedTimer.Stop();
+            _transferWatch.Stop();
             _vm.IsRunning = false;
             _loop = null;
             mini.Close();
@@ -182,6 +195,27 @@ public partial class LiveCaptureView : UserControl
             owner.Activate();
         }
     }
+
+    // Ticks once a second during a transfer: elapsed wall-clock and a frames-based ETA.
+    private void UpdateTiming()
+    {
+        var elapsed = _transferWatch.Elapsed;
+        _vm.ElapsedText = "Elapsed " + FormatSpan(elapsed);
+
+        int received = _vm.ReceivedCount, expected = _vm.ExpectedCount;
+        if (received > 0 && expected > 0 && received < expected)
+        {
+            double perFrame = elapsed.TotalSeconds / received;
+            _vm.EtaText = "~" + FormatSpan(TimeSpan.FromSeconds(perFrame * (expected - received))) + " left";
+        }
+        else
+        {
+            _vm.EtaText = "";
+        }
+    }
+
+    private static string FormatSpan(TimeSpan t) =>
+        t.TotalHours >= 1 ? $"{(int)t.TotalHours}:{t.Minutes:D2}:{t.Seconds:D2}" : $"{t.Minutes:D2}:{t.Seconds:D2}";
 
     private void TogglePause()
     {
@@ -276,6 +310,7 @@ public partial class LiveCaptureView : UserControl
             _vm.IsDecompressing = false;
             _vm.AddLog($"Saved to {target}");
             _vm.StateText = "Saved";
+            _dialogs.OpenInExplorer(target);
         }
         finally
         {

@@ -175,10 +175,9 @@ public sealed class CompressionService
             _logger?.LogInformation("Compressing {Source} ({Size} bytes) with 7z.exe", sourcePath, originalSize);
 
             // Use maximum compression: -mx=9, LZMA2, solid archive. -bsp1 streams progress
-            // percentages to stdout. For directories, archive the contents (dir\*) so entries
-            // are relative to the directory itself, matching the SharpCompress fallback.
-            var source = Directory.Exists(sourcePath) ? Path.Combine(sourcePath, "*") : sourcePath;
-            var arguments = $"a -t7z -mx=9 -m0=lzma2 -ms=on -bsp1 \"{tempArchive}\" \"{source}\"";
+            // percentages to stdout. Archive the folder (or file) itself so its top-level name is
+            // preserved — extraction recreates "<folder>/…" rather than dumping loose contents.
+            var arguments = $"a -t7z -mx=9 -m0=lzma2 -ms=on -bsp1 \"{tempArchive}\" \"{sourcePath}\"";
 
             await Run7zAsync(arguments, progress, cancellationToken);
 
@@ -299,8 +298,10 @@ public sealed class CompressionService
                 }
                 else if (Directory.Exists(sourcePath))
                 {
-                    // Directory - add all files recursively
-                    AddDirectoryToArchive(writer, sourcePath, sourcePath);
+                    // Add the folder recursively, keeping its top-level name in the entry paths
+                    // ("<folder>/<file>") by using the parent as the base — matches the 7z path.
+                    var parent = Directory.GetParent(Path.TrimEndingDirectorySeparator(sourcePath))?.FullName;
+                    AddDirectoryToArchive(writer, sourcePath, parent ?? sourcePath);
                 }
             }
 

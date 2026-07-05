@@ -430,14 +430,30 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="ProgressBar">
-                    <Grid>
-                        <Border x:Name="Track" CornerRadius="4" Background="{TemplateBinding Background}"/>
+                    <Grid ClipToBounds="True">
+                        <Border CornerRadius="4" Background="{TemplateBinding Background}"/>
+                        <!-- Determinate fill: WPF sizes PART_Indicator's width from Value. -->
                         <Border x:Name="PART_Indicator" CornerRadius="4" HorizontalAlignment="Left"
                                 Background="{TemplateBinding Foreground}"/>
+                        <!-- Indeterminate: a full-width "breathing" fill (width-independent, so it works
+                             at any bar size) shown only while IsIndeterminate. -->
+                        <Border x:Name="Pulse" CornerRadius="4" Opacity="0" Background="{StaticResource AccentBrush}"/>
                     </Grid>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsIndeterminate" Value="True">
-                            <Setter TargetName="PART_Indicator" Property="Background" Value="{StaticResource AccentBrush}"/>
+                            <Setter TargetName="PART_Indicator" Property="Opacity" Value="0"/>
+                            <Trigger.EnterActions>
+                                <BeginStoryboard Name="PulseSb">
+                                    <Storyboard RepeatBehavior="Forever" AutoReverse="True">
+                                        <DoubleAnimation Storyboard.TargetName="Pulse" Storyboard.TargetProperty="Opacity"
+                                                         From="0.25" To="0.9" Duration="0:0:0.9"
+                                                         EasingFunction="{x:Null}"/>
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </Trigger.EnterActions>
+                            <Trigger.ExitActions>
+                                <StopStoryboard BeginStoryboardName="PulseSb"/>
+                            </Trigger.ExitActions>
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>

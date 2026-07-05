@@ -107,7 +107,9 @@ public sealed class CaptureLoopService
                 await WaitIfPausedAsync(cancellationToken);
 
                 _clicker.ClickNext();
-                Report(progress, CaptureLoopState.WaitingForAdvance, assembler, metadata, lastFrameId, reclicks, "Waiting for the next frame…");
+                // Empty message: this fires once per click and would otherwise flood the log; the
+                // live state label already shows "Waiting for the next frame…".
+                Report(progress, CaptureLoopState.WaitingForAdvance, assembler, metadata, lastFrameId, reclicks, "");
 
                 bool advanced = await PollForAdvanceAsync(assembler, metadata, lastFrameId, reclicks, progress, cancellationToken);
                 if (advanced)
@@ -179,9 +181,11 @@ public sealed class CaptureLoopService
             }
 
             failures++;
+            // Only surface a message once we've failed enough to warn; the routine "still looking"
+            // ticks stay silent so the log isn't flooded before the transfer even starts.
             var message = failures >= _options.Frame0FailuresBeforeWarning
-                ? "Can't see a Flux frame 0 in the region — is the Client showing the first frame?"
-                : "Looking for frame 0…";
+                ? "Can't see a Flux frame in the region — is the sender showing the first frame?"
+                : "";
             Report(progress, CaptureLoopState.WaitingForFrame0, null, null, 0, 0, message);
             await Task.Delay(_options.PollIntervalMs, cancellationToken);
         }

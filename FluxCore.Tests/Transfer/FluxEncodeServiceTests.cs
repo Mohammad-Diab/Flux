@@ -159,8 +159,10 @@ public class FluxEncodeServiceTests : IDisposable
         var extractDir = Path.Combine(_root, "extracted");
         await assembler.ExtractAsync(extractDir, new CompressionService());
 
-        Assert.Equal("hello flux transfer", await File.ReadAllTextAsync(Path.Combine(extractDir, "readme.txt")));
-        Assert.Equal(new byte[5000], await File.ReadAllBytesAsync(Path.Combine(extractDir, "nested", "data.bin")));
+        // The source folder ("docs") is preserved as the top-level entry in the archive.
+        var root = Path.Combine(extractDir, Path.GetFileName(folder));
+        Assert.Equal("hello flux transfer", await File.ReadAllTextAsync(Path.Combine(root, "readme.txt")));
+        Assert.Equal(new byte[5000], await File.ReadAllBytesAsync(Path.Combine(root, "nested", "data.bin")));
     }
 
     private sealed class InlineProgress(Action<EncodeProgress> handler) : IProgress<EncodeProgress>

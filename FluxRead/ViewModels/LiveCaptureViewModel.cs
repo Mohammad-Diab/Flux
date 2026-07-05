@@ -57,6 +57,21 @@ public partial class LiveCaptureViewModel : ObservableObject
     [ObservableProperty]
     private double _decompressProgress;
 
+    [ObservableProperty]
+    private double _transferProgress;
+
+    [ObservableProperty]
+    private string _elapsedText = "";
+
+    [ObservableProperty]
+    private string _etaText = "";
+
+    /// <summary>Payload frames received so far (for the elapsed/ETA estimate).</summary>
+    public int ReceivedCount { get; private set; }
+
+    /// <summary>Total payload frames expected (for the elapsed/ETA estimate).</summary>
+    public int ExpectedCount { get; private set; }
+
     /// <summary>Gets the label for the pause/resume toggle.</summary>
     public string PauseLabel => IsPaused ? "Resume" : "Pause";
 
@@ -83,12 +98,23 @@ public partial class LiveCaptureViewModel : ObservableObject
     public void Apply(LoopStatus status)
     {
         StateText = FriendlyState(status.State);
-        ProgressText = status.TotalFrames > 0
-            ? $"{status.ReceivedFrames}/{status.TotalFrames - 1} frames · last id {status.LastFrameId} · re-clicks {status.Reclicks}"
-            : status.Message;
 
+        if (status.TotalFrames > 0)
+        {
+            ExpectedCount = status.TotalFrames - 1;
+            ReceivedCount = status.ReceivedFrames;
+            ProgressText = $"{ReceivedCount}/{ExpectedCount} frames · last id {status.LastFrameId} · re-clicks {status.Reclicks}";
+            TransferProgress = ExpectedCount > 0 ? (double)ReceivedCount / ExpectedCount : 0;
+        }
+        else
+        {
+            ProgressText = status.Message;
+        }
+
+        // The message is already event-specific ("Received frame 12 (12/299).", stalls, etc.) —
+        // log it verbatim; routine ticks send an empty message and are skipped.
         if (!string.IsNullOrEmpty(status.Message))
-            AddLog($"{FriendlyState(status.State)} — {status.Message}");
+            AddLog(status.Message);
 
         if (status.LastFramePng is { } png)
             LastThumbnail = Decode(png);
