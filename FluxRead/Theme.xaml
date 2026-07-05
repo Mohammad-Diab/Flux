@@ -432,11 +432,10 @@
                 <ControlTemplate TargetType="ProgressBar">
                     <Grid ClipToBounds="True">
                         <Border CornerRadius="4" Background="{TemplateBinding Background}"/>
-                        <!-- Determinate fill: WPF sizes PART_Indicator's width from Value. -->
+                        <!-- PART_Track required: WPF sizes PART_Indicator against it, else no fill. -->
+                        <Border x:Name="PART_Track"/>
                         <Border x:Name="PART_Indicator" CornerRadius="4" HorizontalAlignment="Left"
                                 Background="{TemplateBinding Foreground}"/>
-                        <!-- Indeterminate: a full-width "breathing" fill (width-independent, so it works
-                             at any bar size) shown only while IsIndeterminate. -->
                         <Border x:Name="Pulse" CornerRadius="4" Opacity="0" Background="{StaticResource AccentBrush}"/>
                     </Grid>
                     <ControlTemplate.Triggers>
