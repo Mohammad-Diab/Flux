@@ -13,7 +13,7 @@
 		<Version>0.9.0-beta</Version>
 		<Product>Flux</Product>
 		<Authors>Mohammad Diab</Authors>
-		<Description>FluxCast — optical sender for the Flux one-way data bridge.</Description>
+		<Description>FluxCast — sender for Flux, an optical data channel (renders files as error-corrected on-screen frames).</Description>
 	</PropertyGroup>
 
 	<ItemGroup>

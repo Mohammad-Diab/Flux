@@ -1,24 +1,31 @@
-# Flux — one-way optical data bridge
+# Flux — an optical data channel
 
-Flux moves a file or folder across a **pixel-only channel**: a locked-down remote session
-(RDP, Guacamole, web VDI) where the clipboard and file transfer are blocked but the screen is
-visible. One app displays the data as a sequence of colored-tile frames; the other watches the
-screen, decodes each frame, advances the sender, and reconstructs the original bytes — verified
-end to end by SHA-256.
+Flux transfers a file or folder over a **display-only link**: it renders the data as a stream of
+error-corrected, colored-tile frames on one screen, and a second program reads them back with
+computer vision — with no network, clipboard, USB, or shared filesystem between the two sides.
+Every transfer is verified end to end by SHA-256.
+
+It's a systems + computer-vision project: a QR-style frame format with corner fiducials and
+homography-based registration, Reed–Solomon error correction over GF(256), a capture-tolerant
+decoder that survives scaling / offset / screen recompression, and a manual-advance capture loop.
+
+**Where it's useful:** one-way ("data-diode"-style) transfer between isolated environments,
+moving your *own* files off a screen-only or air-gapped setup, and research into visual/optical
+data channels. Please use it only for your own data, on systems you're authorized to use.
 
 It is two Windows (WPF) apps over a shared, UI-agnostic core:
 
-- **FluxCast** (sender) — runs *inside* the remote session. Pick a file/folder → 7z-compress →
+- **FluxCast** (sender) — runs on the source machine. Pick a file/folder → 7z-compress →
   encode to frames → display them one at a time with large **Back / Next** buttons.
-- **FluxRead** (receiver) — runs on the *local* machine. Either decode a folder of frame PNGs,
-  or watch the on-screen FluxCast window: capture → decode → click Next → confirm the frame id
-  advanced → repeat → reassemble → verify → save.
-- **FluxCore** — shared library: frame format, Reed-Solomon ECC, palette/rendering, capture-
+- **FluxRead** (receiver) — runs on the destination machine. Either decode a folder of exported
+  frame PNGs, or watch the FluxCast window on screen: capture → decode → advance → confirm the
+  frame id incremented → repeat → reassemble → verify → save.
+- **FluxCore** — shared library: frame format, Reed–Solomon ECC, palette/rendering, capture-
   tolerant decoder, compression, hashing, and the optical capture-loop state machine. No UI or
-  Win32 dependencies; the Windows-specific capture/click code lives in FluxRead.
+  Win32 dependencies; the Windows-specific capture code lives in FluxRead.
 
-Targets **.NET 10** (Windows). Windows-only by design — the flagship feature (screen capture +
-synthesized clicks) is Windows-specific.
+Targets **.NET 10** (Windows). Windows-only by design — screen capture and the automated
+frame-advance (via the OS input APIs) are Windows-specific.
 
 Both apps share a modern dark interface: custom borderless window chrome with Windows 11 rounded
 corners, a blue→violet→magenta spectrum accent, animated window transitions (open / maximize /
@@ -100,7 +107,7 @@ scale; beyond that it fails cleanly (CRC), never silently corrupts.
 
 ## Using it
 
-### Send (FluxCast, inside the remote session)
+### Send (FluxCast, on the source machine)
 1. Pick a file or folder; review the size/type/estimated-frame summary.
 2. Choose an ECC level (Medium by default) and whether to compress.
 3. **Start encoding** — a resumable session is written to
@@ -108,7 +115,7 @@ scale; beyond that it fails cleanly (CRC), never silently corrupts.
 4. Present the frames full-window and advance with **Next** (First / Last / go-to-frame also
    available). Do not move or resize the window during a transfer.
 
-### Receive (FluxRead, on the local machine)
+### Receive (FluxRead, on the destination machine)
 
 **Folder decode** (also the codec quality gate): point it at a folder of `frame_NNNNNN.png`
 files → it decodes every frame, shows a per-frame results grid, reassembles, verifies SHA-256,
