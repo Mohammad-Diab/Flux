@@ -4,11 +4,7 @@ using Microsoft.Win32;
 
 namespace Flux.Ui.Services;
 
-/// <summary>
-/// Applies light/dark appearance by swapping the shared Color tokens. Theme brushes bind their
-/// color to these tokens via DynamicResource, so replacing a token retints every brush — and every
-/// StaticResource consumer — live, with no restart and no per-view changes.
-/// </summary>
+/// <summary>Applies light/dark by swapping the shared Color tokens; DynamicResource-bound brushes retint live.</summary>
 public sealed class ThemeService
 {
     /// <summary>Whether the last applied appearance resolved to light.</summary>

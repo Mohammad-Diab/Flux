@@ -8,10 +8,11 @@
         MinWidth="620" MinHeight="480"
         Style="{StaticResource FluxWindow}"
         WindowStartupLocation="CenterScreen">
-    <DockPanel>
+    <DockPanel x:Name="RootContent">
         <views:TitleBar DockPanel.Dock="Top" Title="FluxRead" Subtitle="Interop dev tools"/>
-        <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="24,0,24,24">
-            <StackPanel>
+        <!-- Inset here (not the ScrollViewer) so card shadows aren't clipped. -->
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+            <StackPanel Margin="24,0,24,24">
                 <TextBlock Text="Interop dev tools" Style="{StaticResource HeadingText}" Margin="0,4,0,4"/>
                 <TextBlock Text="Exercise each Win32 interop helper by hand." Style="{StaticResource SubtleText}"
                            Margin="0,0,0,18"/>

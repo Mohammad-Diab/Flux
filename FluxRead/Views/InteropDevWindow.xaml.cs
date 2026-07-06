@@ -24,6 +24,7 @@ public partial class InteropDevWindow : Window
     public InteropDevWindow()
     {
         InitializeComponent();
+        Flux.Ui.Controls.WindowChromeAnimator.Attach(this, RootContent);
         Closed += (_, _) => _hotkey?.Dispose();
     }
 

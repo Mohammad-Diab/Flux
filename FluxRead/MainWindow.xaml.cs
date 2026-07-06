@@ -50,8 +50,7 @@ public partial class MainWindow : Window
             : FolderModeButton.IsChecked == true ? 1
             : 2;
 
-        // Slide in the direction of travel: a later tab enters from the right, an earlier tab from
-        // the left — so going back is the exact reverse of going forward.
+        // Slide by direction of travel: forward from the right, back from the left.
         ModeHost.SlideFrom = tab >= _currentTab ? 36 : -36;
         _currentTab = tab;
         ModeHost.Content = tab switch { 0 => _liveView, 1 => _folderView, _ => (object)_settingsView };

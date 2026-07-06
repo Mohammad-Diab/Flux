@@ -3,8 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <Grid>
         <ScrollViewer VerticalScrollBarVisibility="Auto">
-            <!-- Inset lives here (not on the Grid) so the ScrollViewer clips at the window edge,
-                 leaving room for the cards' drop shadow instead of cropping it. -->
+            <!-- Inset here (not the Grid) so the ScrollViewer clips at the window edge, sparing card shadows. -->
             <StackPanel MaxWidth="624" HorizontalAlignment="Left" Margin="24">
                 <TextBlock Text="Settings" Style="{StaticResource HeadingText}"/>
                 <TextBlock Text="Appearance and performance." Style="{StaticResource SubtleText}" Margin="0,4,0,0"/>

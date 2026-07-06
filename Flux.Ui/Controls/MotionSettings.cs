@@ -4,11 +4,7 @@ using System.Windows;
 
 namespace Flux.Ui.Controls;
 
-/// <summary>
-/// Central gate for UI motion. Animations run only when the user hasn't turned them off AND
-/// Windows' "animate controls and elements" preference is on. Registered as an application
-/// resource (key "MotionSettings") so XAML triggers and code-behind share one instance.
-/// </summary>
+/// <summary>Motion gate: animations run only if the user allows them AND Windows' animation preference is on. Shared via the "MotionSettings" app resource.</summary>
 public sealed class MotionSettings : INotifyPropertyChanged
 {
     private static readonly Lazy<MotionSettings> Fallback = new(() => new MotionSettings());

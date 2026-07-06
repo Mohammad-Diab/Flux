@@ -4,10 +4,7 @@
                     xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
                     xmlns:controls="clr-namespace:Flux.Ui.Controls">
 
-    <!-- ============ Color tokens (dark defaults; ThemeService swaps these for light) ============
-         Theme-varying brushes bind their Color via DynamicResource to these tokens. This keeps the
-         brushes unfrozen (a Freezable with a dynamic reference can't be frozen) and lets a token
-         swap retint every StaticResource consumer live, with no per-view changes. -->
+    <!-- Color tokens (dark defaults); ThemeService swaps them for light. Brushes bind via DynamicResource so they retint live and BAML can't freeze them. -->
     <Color x:Key="TextPrimaryColor">#EEF1F7</Color>
     <Color x:Key="TextSecondaryColor">#9BA6B8</Color>
     <Color x:Key="BorderColor">#2A3140</Color>
@@ -83,8 +80,7 @@
     <sys:Double x:Key="CtaHeight">46</sys:Double>
 
     <!-- ============ Typography ============ -->
-    <!-- No Foreground here on purpose: text inherits it from the window (TextPrimary), so controls
-         that set Foreground="White" (buttons, selected tabs) reach their own content text. -->
+    <!-- No Foreground: text inherits the window's, so Foreground="White" on buttons/tabs wins. -->
     <Style TargetType="TextBlock">
         <Setter Property="FontFamily" Value="Segoe UI Variable Display, Segoe UI"/>
         <Setter Property="TextWrapping" Value="Wrap"/>
@@ -198,8 +194,7 @@
                             </MultiTrigger.ExitActions>
                         </MultiTrigger>
                         <Trigger Property="IsEnabled" Value="False">
-                            <!-- Flat muted fill + legible muted text reads as "disabled" more
-                                 naturally than a washed-out gradient at low opacity. -->
+                            <!-- Flat muted fill reads as disabled better than a faded gradient. -->
                             <Setter TargetName="Bd" Property="Background" Value="{StaticResource SurfaceAltBrush}"/>
                             <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource BorderBrush}"/>
                             <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
