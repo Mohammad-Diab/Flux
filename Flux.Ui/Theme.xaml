@@ -400,6 +400,7 @@
         <Setter Property="FontSize" Value="13"/>
         <Setter Property="Cursor" Value="Hand"/>
         <Setter Property="VerticalContentAlignment" Value="Center"/>
+        <Setter Property="controls:Motion.Enabled" Value="{Binding AnimationsEnabled, Source={StaticResource MotionSettings}}"/>
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="CheckBox">
@@ -407,20 +408,68 @@
                         <Border x:Name="Track" Width="40" Height="22" CornerRadius="11" VerticalAlignment="Center"
                                 Background="{StaticResource SurfaceAltBrush}"
                                 BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
-                            <Border x:Name="Knob" Width="16" Height="16" CornerRadius="8"
-                                    HorizontalAlignment="Left" Margin="3,0,0,0"
-                                    Background="{StaticResource TextSecondaryBrush}"/>
+                            <Grid>
+                                <Border x:Name="OnFill" CornerRadius="11" Margin="-1" Opacity="0"
+                                        Background="{StaticResource AccentBrush}"/>
+                                <Border x:Name="Knob" Width="16" Height="16" CornerRadius="8"
+                                        HorizontalAlignment="Left" Margin="3,0,0,0"
+                                        Background="{StaticResource TextSecondaryBrush}">
+                                    <Border.RenderTransform>
+                                        <TranslateTransform/>
+                                    </Border.RenderTransform>
+                                </Border>
+                            </Grid>
                         </Border>
                         <ContentPresenter Margin="10,0,0,0" VerticalAlignment="Center"/>
                     </StackPanel>
                     <ControlTemplate.Triggers>
+                        <!-- Knob turns white when on (instant; a color, not motion). -->
                         <Trigger Property="IsChecked" Value="True">
-                            <Setter TargetName="Track" Property="Background" Value="{StaticResource AccentBrush}"/>
-                            <Setter TargetName="Track" Property="BorderBrush" Value="{StaticResource AccentBrush}"/>
-                            <Setter TargetName="Knob" Property="HorizontalAlignment" Value="Right"/>
-                            <Setter TargetName="Knob" Property="Margin" Value="0,0,3,0"/>
                             <Setter TargetName="Knob" Property="Background" Value="White"/>
                         </Trigger>
+                        <!-- On: slide the knob and fade in the accent fill — animated when motion is on. -->
+                        <MultiTrigger>
+                            <MultiTrigger.Conditions>
+                                <Condition Property="IsChecked" Value="True"/>
+                                <Condition Property="controls:Motion.Enabled" Value="True"/>
+                            </MultiTrigger.Conditions>
+                            <MultiTrigger.EnterActions>
+                                <BeginStoryboard>
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetName="Knob"
+                                                         Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.X)"
+                                                         To="16" Duration="0:0:0.16">
+                                            <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction>
+                                        </DoubleAnimation>
+                                        <DoubleAnimation Storyboard.TargetName="OnFill" Storyboard.TargetProperty="Opacity"
+                                                         To="1" Duration="0:0:0.16"/>
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </MultiTrigger.EnterActions>
+                            <MultiTrigger.ExitActions>
+                                <BeginStoryboard>
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetName="Knob"
+                                                         Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.X)"
+                                                         To="0" Duration="0:0:0.16">
+                                            <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction>
+                                        </DoubleAnimation>
+                                        <DoubleAnimation Storyboard.TargetName="OnFill" Storyboard.TargetProperty="Opacity"
+                                                         To="0" Duration="0:0:0.16"/>
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </MultiTrigger.ExitActions>
+                        </MultiTrigger>
+                        <!-- On, motion off: jump straight to the end state. -->
+                        <MultiTrigger>
+                            <MultiTrigger.Conditions>
+                                <Condition Property="IsChecked" Value="True"/>
+                                <Condition Property="controls:Motion.Enabled" Value="False"/>
+                            </MultiTrigger.Conditions>
+                            <Setter TargetName="Knob" Property="HorizontalAlignment" Value="Right"/>
+                            <Setter TargetName="Knob" Property="Margin" Value="0,0,3,0"/>
+                            <Setter TargetName="OnFill" Property="Opacity" Value="1"/>
+                        </MultiTrigger>
                         <Trigger Property="IsEnabled" Value="False">
                             <Setter Property="Opacity" Value="0.4"/>
                         </Trigger>
