@@ -59,7 +59,7 @@
                     <CheckBox Content="Compress with 7-Zip (folders are always compressed)"
                               IsChecked="{Binding Compress}" Margin="2,16,0,0" FontSize="13">
                         <CheckBox.Style>
-                            <Style TargetType="CheckBox">
+                            <Style TargetType="CheckBox" BasedOn="{StaticResource {x:Type CheckBox}}">
                                 <Style.Triggers>
                                     <DataTrigger Binding="{Binding CompressLocked}" Value="True">
                                         <Setter Property="IsEnabled" Value="False"/>

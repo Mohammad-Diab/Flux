@@ -205,6 +205,10 @@ public partial class LiveCaptureView : UserControl
         _vm.ElapsedText = "Elapsed " + FormatSpan(elapsed);
 
         int received = _vm.ReceivedCount, expected = _vm.ExpectedCount;
+        _vm.SpeedText = received > 0 && elapsed.TotalSeconds > 0
+            ? $"{received / elapsed.TotalSeconds:0.0} fps"
+            : "";
+
         if (received > 0 && expected > 0 && received < expected)
         {
             double perFrame = elapsed.TotalSeconds / received;
@@ -227,12 +231,14 @@ public partial class LiveCaptureView : UserControl
         if (_loop.IsPaused)
         {
             _loop.Resume();
+            _transferWatch.Start();
             _vm.IsPaused = false;
             _vm.AddLog("Resumed.");
         }
         else
         {
             _loop.Pause();
+            _transferWatch.Stop();
             _vm.IsPaused = true;
             _vm.AddLog("Paused.");
         }
@@ -286,6 +292,9 @@ public partial class LiveCaptureView : UserControl
         {
             var metadata = report.Metadata;
             bool isArchive = metadata.PayloadType != FluxCore.Framing.PayloadType.Raw;
+
+            // Don't count time spent in the save dialog; resume for the decompress that follows.
+            _transferWatch.Stop();
             string? target = isArchive
                 ? _dialogs.PickOutputFolder()
                 : _dialogs.PickSaveFile(metadata.OriginalName);
@@ -295,6 +304,8 @@ public partial class LiveCaptureView : UserControl
                 _vm.AddLog("Save cancelled.");
                 return;
             }
+
+            _transferWatch.Start();
 
             IProgress<int>? progress = null;
             if (isArchive)

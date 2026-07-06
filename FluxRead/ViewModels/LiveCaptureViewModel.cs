@@ -71,6 +71,9 @@ public partial class LiveCaptureViewModel : ObservableObject
     private string _elapsedText = "";
 
     [ObservableProperty]
+    private string _speedText = "";
+
+    [ObservableProperty]
     private string _etaText = "";
 
     /// <summary>Payload frames received so far (for the elapsed/ETA estimate).</summary>
