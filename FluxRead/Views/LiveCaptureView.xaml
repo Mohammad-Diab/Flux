@@ -67,8 +67,15 @@
                             Padding="0,14,0,0" Margin="0,16,0,0">
                         <StackPanel>
                             <TextBlock Text="{Binding StateText}" FontSize="18" FontWeight="SemiBold"/>
-                            <TextBlock Text="{Binding ProgressText}" Style="{StaticResource SubtleText}"
-                                       FontSize="12" Margin="0,2,0,0"/>
+                            <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
+                                <TextBlock Text="{Binding ProgressText}" Style="{StaticResource SubtleText}" FontSize="12"/>
+                                <TextBlock Text="{Binding RetryText}" Style="{StaticResource SubtleText}"
+                                           FontSize="12" Foreground="{StaticResource AccentBrush}" FontWeight="SemiBold" Margin="8,0,0,0"
+                                           Visibility="{Binding RetryText, Converter={StaticResource NullToCollapsed}}"/>
+                                <TextBlock Text="{Binding MissingCountText}" Style="{StaticResource SubtleText}"
+                                           FontSize="12" Foreground="{StaticResource DangerBrush}" FontWeight="SemiBold" Margin="8,0,0,0"
+                                           Visibility="{Binding MissingCountText, Converter={StaticResource NullToCollapsed}}"/>
+                            </StackPanel>
                         </StackPanel>
                     </Border>
 

@@ -1,6 +1,7 @@
 using System.IO;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Flux.Ui;
 using Flux.Ui.Services;
 using FluxCast.Services;
 using FluxCore.Ecc;
@@ -57,8 +58,8 @@ public partial class EncodeSetupViewModel : ObservableObject
     {
         null => "",
         { Error: not null } info => info.Error,
-        { IsFolder: true } info => $"Folder — {info.FileCount:N0} files, {FormatBytes(info.TotalBytes)}",
-        var info => $"File — {FormatBytes(info.TotalBytes)}",
+        { IsFolder: true } info => $"Folder — {info.FileCount:N0} files, {ByteFormat.Bytes(info.TotalBytes)}",
+        var info => $"File — {ByteFormat.Bytes(info.TotalBytes)}",
     };
 
     /// <summary>Gets the source name, type, and modified time for the details panel.</summary>
@@ -133,14 +134,14 @@ public partial class EncodeSetupViewModel : ObservableObject
         else if (info.IsFolder)
         {
             var name = Path.GetFileName(Path.TrimEndingDirectorySeparator(SelectedPath));
-            SourceDetails = $"Folder “{name}” · {info.FileCount:N0} files · {FormatBytes(info.TotalBytes)} · modified {FormatModified(SelectedPath)}";
+            SourceDetails = $"Folder “{name}” · {info.FileCount:N0} files · {ByteFormat.Bytes(info.TotalBytes)} · modified {FormatModified(SelectedPath)}";
             EstimatedFrames = $"≈ up to {FrameEstimate(info.TotalBytes)} frames (usually fewer after compression)";
         }
         else
         {
             var fi = new FileInfo(SelectedPath);
             var kind = string.IsNullOrEmpty(fi.Extension) ? "file" : fi.Extension.TrimStart('.').ToUpperInvariant() + " file";
-            SourceDetails = $"“{fi.Name}” · {kind} · {FormatBytes(info.TotalBytes)} · modified {fi.LastWriteTime:g}";
+            SourceDetails = $"“{fi.Name}” · {kind} · {ByteFormat.Bytes(info.TotalBytes)} · modified {fi.LastWriteTime:g}";
             EstimatedFrames = Compress
                 ? $"≈ up to {FrameEstimate(info.TotalBytes)} frames (usually fewer after compression)"
                 : $"{FrameEstimate(info.TotalBytes)} frames to display";
@@ -161,12 +162,4 @@ public partial class EncodeSetupViewModel : ObservableObject
         try { return Directory.GetLastWriteTime(folderPath).ToString("g"); }
         catch { return "unknown"; }
     }
-
-    private static string FormatBytes(long bytes) => bytes switch
-    {
-        >= 1024L * 1024 * 1024 => $"{bytes / (1024.0 * 1024 * 1024):F2} GB",
-        >= 1024 * 1024 => $"{bytes / (1024.0 * 1024):F1} MB",
-        >= 1024 => $"{bytes / 1024.0:F1} KB",
-        _ => $"{bytes} bytes",
-    };
 }

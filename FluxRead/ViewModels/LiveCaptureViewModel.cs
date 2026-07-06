@@ -37,7 +37,22 @@ public partial class LiveCaptureViewModel : ObservableObject
     private string _stateText = "Idle";
 
     [ObservableProperty]
+    private string _receivedCountText = "";
+
+    [ObservableProperty]
     private string _progressText = "";
+
+    [ObservableProperty]
+    private string _missingCountText = "";
+
+    [ObservableProperty]
+    private string _retryText = "";
+
+    [ObservableProperty]
+    private string _recoveryTitle = "";
+
+    [ObservableProperty]
+    private string _recoveryHint = "";
 
     [ObservableProperty]
     private BitmapSource? _lastThumbnail;
@@ -82,6 +97,9 @@ public partial class LiveCaptureViewModel : ObservableObject
     /// <summary>Total payload frames expected (for the elapsed/ETA estimate).</summary>
     public int ExpectedCount { get; private set; }
 
+    /// <summary>Payload bytes received so far (for the speed readout).</summary>
+    public long ReceivedBytes { get; private set; }
+
     /// <summary>Gets the label for the pause/resume toggle.</summary>
     public string PauseLabel => IsPaused ? "Resume" : "Pause";
 
@@ -93,6 +111,8 @@ public partial class LiveCaptureViewModel : ObservableObject
 
     /// <summary>Gets the capped scrolling log.</summary>
     public ObservableCollection<string> Log { get; } = [];
+
+    private string _lastLoggedMessage = "";
 
     /// <summary>Appends a time-stamped line to the log, capping its length.</summary>
     /// <param name="message">Log line.</param>
@@ -107,30 +127,53 @@ public partial class LiveCaptureViewModel : ObservableObject
     /// <param name="status">Loop status.</param>
     public void Apply(LoopStatus status)
     {
-        StateText = FriendlyState(status.State);
         IsRecovering = status.State == CaptureLoopState.RecoveringGaps;
+        bool stuck = status.StuckFrameId > 0;
+        StateText = stuck ? "Waiting for the sender…" : FriendlyState(status.State);
 
-        if (status.MissingFrameIds is { } missing)
+        if (IsRecovering && stuck)
+        {
+            RecoveryTitle = "No new frames arriving";
+            RecoveryHint = $"Frame {status.StuckFrameId} hasn't arrived after several tries. Make sure the sender " +
+                $"is running and showing frame {status.StuckFrameId} — if it stopped, reopen it and go to that frame. " +
+                "FluxRead resumes automatically once frames appear.";
+            MissingFramesText = "";
+        }
+        else if (IsRecovering && status.MissingFrameIds is { } missing)
+        {
+            RecoveryTitle = "Missing frames";
+            RecoveryHint = "On the sender, use Back or “go to frame” to re-show each frame below — FluxRead grabs them automatically.";
             MissingFramesText = FormatMissing(missing);
+        }
 
         if (status.TotalFrames > 0)
         {
             ExpectedCount = status.TotalFrames - 1;
             ReceivedCount = status.ReceivedFrames;
-            ProgressText = $"{ReceivedCount}/{ExpectedCount} frames · last id {status.LastFrameId} · re-clicks {status.Reclicks}";
+            ReceivedBytes = status.ReceivedBytes;
+            string size = status.TotalBytes > 0 ? $" ({Flux.Ui.ByteFormat.Bytes(status.TotalBytes)})" : "";
+            ReceivedCountText = ReceivedCount.ToString();
+            ProgressText = $"/{ExpectedCount} frames{size}";
+            RetryText = status.Reclicks > 0 ? $"retrying ({status.Reclicks})" : "";
+            MissingCountText = status.MissingFrames > 0 ? $"missing {status.MissingFrames}" : "";
             TransferProgress = ExpectedCount > 0 ? (double)ReceivedCount / ExpectedCount : 0;
         }
         else
         {
+            ReceivedCountText = "";
             ProgressText = status.Message;
+            RetryText = "";
+            MissingCountText = "";
         }
 
         UpdateTaskbar(status.State);
 
-        // The message is already event-specific ("Received frame 12 (12/299).", stalls, etc.) —
-        // log it verbatim; routine ticks send an empty message and are skipped.
-        if (!string.IsNullOrEmpty(status.Message))
+        // Log event messages verbatim; skip empty ticks and consecutive repeats (e.g. a held frame-0 warning).
+        if (!string.IsNullOrEmpty(status.Message) && status.Message != _lastLoggedMessage)
+        {
             AddLog(status.Message);
+            _lastLoggedMessage = status.Message;
+        }
 
         if (status.LastFramePng is { } png)
             LastThumbnail = BitmapConverter.FromPng(png);
@@ -160,8 +203,8 @@ public partial class LiveCaptureViewModel : ObservableObject
     private static string FriendlyState(CaptureLoopState state) => state switch
     {
         CaptureLoopState.WaitingForFrame0 => "Looking for the first frame…",
-        CaptureLoopState.ClickingNext => "Clicking Next…",
-        CaptureLoopState.WaitingForAdvance => "Waiting for the next frame…",
+        CaptureLoopState.ClickingNext => "Transferring…",
+        CaptureLoopState.WaitingForAdvance => "Transferring…",
         CaptureLoopState.Stalled => "Stalled — needs attention",
         CaptureLoopState.RecoveringGaps => "Recovering missing frames…",
         CaptureLoopState.Reassembling => "Reassembling & verifying…",

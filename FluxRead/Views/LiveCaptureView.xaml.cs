@@ -52,6 +52,16 @@ public partial class LiveCaptureView : UserControl
         _elapsedTimer.Tick += (_, _) => UpdateTiming();
         Unloaded += (_, _) => { _previewTimer.Stop(); _elapsedTimer.Stop(); };
 
+        // Recovery is user-paced (they navigate the sender), so freeze elapsed/speed/ETA on entry.
+        _vm.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(LiveCaptureViewModel.IsRecovering) && _vm.IsRecovering)
+            {
+                _elapsedTimer.Stop();
+                _transferWatch.Stop();
+            }
+        };
+
         // Keep the activity log scrolled to the newest line.
         _vm.Log.CollectionChanged += (_, _) =>
         {
@@ -165,6 +175,7 @@ public partial class LiveCaptureView : UserControl
         var options = new CaptureLoopOptions(
             PollIntervalMs: 100,
             MaxPollsPerClick: 18,
+            MaxReclicks: 5,
             StabilityMaxAttempts: 16,
             StabilityIntervalMs: 60);
         _loop = new CaptureLoopService(capture, _clicker, ColorMap.Default, options);
@@ -206,7 +217,7 @@ public partial class LiveCaptureView : UserControl
 
         int received = _vm.ReceivedCount, expected = _vm.ExpectedCount;
         _vm.SpeedText = received > 0 && elapsed.TotalSeconds > 0
-            ? $"{received / elapsed.TotalSeconds:0.0} fps"
+            ? Flux.Ui.ByteFormat.Rate(_vm.ReceivedBytes / elapsed.TotalSeconds)
             : "";
 
         if (received > 0 && expected > 0 && received < expected)

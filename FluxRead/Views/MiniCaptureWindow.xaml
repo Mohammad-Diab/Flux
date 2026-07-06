@@ -30,7 +30,18 @@
 
             <TextBlock Grid.Row="0" Text="{Binding StateText}" FontSize="18" FontWeight="SemiBold"/>
             <StackPanel Grid.Row="1">
-                <TextBlock Text="{Binding ProgressText}" Style="{StaticResource SubtleText}" Margin="0,4,0,0"/>
+                <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                    <TextBlock Text="{Binding ReceivedCountText}" FontSize="24" FontWeight="Bold"
+                               Foreground="{StaticResource TextPrimaryBrush}" VerticalAlignment="Center"/>
+                    <TextBlock Text="{Binding ProgressText}" Style="{StaticResource SubtleText}"
+                               VerticalAlignment="Center" Margin="3,0,0,0"/>
+                    <TextBlock Text="{Binding RetryText}" Style="{StaticResource SubtleText}"
+                               Foreground="{StaticResource AccentBrush}" FontWeight="SemiBold" VerticalAlignment="Center" Margin="8,0,0,0"
+                               Visibility="{Binding RetryText, Converter={StaticResource NullToCollapsed}}"/>
+                    <TextBlock Text="{Binding MissingCountText}" Style="{StaticResource SubtleText}"
+                               Foreground="{StaticResource DangerBrush}" FontWeight="SemiBold" VerticalAlignment="Center" Margin="8,0,0,0"
+                               Visibility="{Binding MissingCountText, Converter={StaticResource NullToCollapsed}}"/>
+                </StackPanel>
                 <ProgressBar Height="6" Margin="0,8,0,0" Minimum="0" Maximum="1" Value="{Binding TransferProgress}"/>
                 <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
                     <TextBlock Text="{Binding ElapsedText}" Style="{StaticResource SubtleText}" FontSize="11"/>
@@ -45,15 +56,16 @@
                 <Border Style="{StaticResource Card}" Padding="6">
                     <Image Source="{Binding LastThumbnail}" Stretch="Uniform"/>
                 </Border>
-                <!-- Shown when frames were skipped: which frames to re-show on the sender. -->
+                <!-- Recovery guidance: a gap list to re-show, or (when stalled) a prompt to check the sender. -->
                 <Border Background="{StaticResource SurfaceAltBrush}" CornerRadius="8" Padding="12"
                         Visibility="{Binding IsRecovering, Converter={StaticResource BoolToVisibility}}">
                     <StackPanel>
-                        <TextBlock Text="Missing frames" FontSize="13" FontWeight="SemiBold"
+                        <TextBlock Text="{Binding RecoveryTitle}" FontSize="13" FontWeight="SemiBold"
                                    Foreground="{StaticResource TextPrimaryBrush}"/>
-                        <TextBlock Text="On the sender, use Back or “go to frame” to re-show each frame below — FluxRead grabs them automatically."
+                        <TextBlock Text="{Binding RecoveryHint}"
                                    Style="{StaticResource SubtleText}" FontSize="11" TextWrapping="Wrap" Margin="0,4,0,0"/>
-                        <ScrollViewer MaxHeight="80" VerticalScrollBarVisibility="Auto" Margin="0,8,0,0">
+                        <ScrollViewer MaxHeight="80" VerticalScrollBarVisibility="Auto" Margin="0,8,0,0"
+                                      Visibility="{Binding MissingFramesText, Converter={StaticResource NullToCollapsed}}">
                             <TextBlock Text="{Binding MissingFramesText}" FontFamily="Consolas" FontSize="12"
                                        Foreground="{StaticResource AccentBrush}" TextWrapping="Wrap"/>
                         </ScrollViewer>
