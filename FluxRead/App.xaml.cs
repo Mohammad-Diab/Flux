@@ -1,5 +1,9 @@
 using System.IO;
 using System.Windows;
+using Flux.Ui.Controls;
+using Flux.Ui.Services;
+using Flux.Ui.ViewModels;
+using Flux.Ui.Views;
 using FluxCore.Compression;
 using FluxRead.Services;
 using FluxRead.ViewModels;
@@ -32,7 +36,14 @@ public partial class App : Application
         ConfigureServices(services);
         _services = services.BuildServiceProvider();
 
-        _services.GetRequiredService<MainWindow>().Show();
+        // Apply saved appearance + motion before any window renders.
+        var settings = _services.GetRequiredService<FluxSettings>();
+        MotionSettings.Current.UserEnableAnimations = settings.EnableAnimations;
+        _services.GetRequiredService<ThemeService>().Apply(settings.ThemeMode);
+
+        var main = _services.GetRequiredService<MainWindow>();
+        _services.GetRequiredService<WindowsThemeWatcher>().Attach(main);
+        main.Show();
     }
 
     /// <inheritdoc/>
@@ -52,6 +63,20 @@ public partial class App : Application
             provider.GetRequiredService<CompressionService>(),
             provider.GetRequiredService<ILogger<DecodePipelineService>>()));
         services.AddSingleton<DialogService>();
+        services.AddSingleton(_ => new SettingsService("FluxRead"));
+        services.AddSingleton(provider => provider.GetRequiredService<SettingsService>().Load());
+        services.AddSingleton<ThemeService>();
+        services.AddSingleton(provider => new WindowsThemeWatcher(
+            provider.GetRequiredService<ThemeService>(),
+            () => provider.GetRequiredService<FluxSettings>().ThemeMode));
+        services.AddSingleton(provider => new SettingsViewModel(
+            provider.GetRequiredService<SettingsService>(),
+            provider.GetRequiredService<ThemeService>(),
+            provider.GetRequiredService<FluxSettings>()));
+        services.AddSingleton(provider => new SettingsView
+        {
+            DataContext = provider.GetRequiredService<SettingsViewModel>(),
+        });
         services.AddSingleton<FolderDecodeViewModel>();
         services.AddSingleton(provider => new FolderDecodeView
         {
@@ -62,6 +87,7 @@ public partial class App : Application
             provider.GetRequiredService<DialogService>()));
         services.AddSingleton(provider => new MainWindow(
             provider.GetRequiredService<FolderDecodeView>(),
-            provider.GetRequiredService<LiveCaptureView>()));
+            provider.GetRequiredService<LiveCaptureView>(),
+            provider.GetRequiredService<SettingsView>()));
     }
 }

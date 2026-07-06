@@ -1,5 +1,7 @@
 using System.IO;
 using System.Windows;
+using Flux.Ui.Controls;
+using Flux.Ui.Services;
 using FluxCast.Services;
 using FluxCast.ViewModels;
 using FluxCore.Compression;
@@ -32,7 +34,14 @@ public partial class App : Application
         ConfigureServices(services);
         _services = services.BuildServiceProvider();
 
-        _services.GetRequiredService<MainWindow>().Show();
+        // Apply saved appearance + motion before any window renders.
+        var settings = _services.GetRequiredService<FluxSettings>();
+        MotionSettings.Current.UserEnableAnimations = settings.EnableAnimations;
+        _services.GetRequiredService<ThemeService>().Apply(settings.ThemeMode);
+
+        var main = _services.GetRequiredService<MainWindow>();
+        _services.GetRequiredService<WindowsThemeWatcher>().Attach(main);
+        main.Show();
     }
 
     /// <inheritdoc/>
@@ -53,6 +62,12 @@ public partial class App : Application
             provider.GetRequiredService<ILogger<FluxEncodeService>>()));
         services.AddSingleton<SourceValidator>();
         services.AddSingleton<DialogService>();
+        services.AddSingleton(_ => new SettingsService("FluxCast"));
+        services.AddSingleton(provider => provider.GetRequiredService<SettingsService>().Load());
+        services.AddSingleton<ThemeService>();
+        services.AddSingleton(provider => new WindowsThemeWatcher(
+            provider.GetRequiredService<ThemeService>(),
+            () => provider.GetRequiredService<FluxSettings>().ThemeMode));
         services.AddSingleton<ShellViewModel>();
         services.AddSingleton(provider => new MainWindow
         {

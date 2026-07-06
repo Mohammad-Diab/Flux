@@ -17,7 +17,7 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
-        Controls.WindowChromeAnimator.Attach(this, RootContent);
+        Flux.Ui.Controls.WindowChromeAnimator.Attach(this, RootContent);
         DataContextChanged += OnDataContextChanged;
     }
 
@@ -25,8 +25,8 @@ public partial class MainWindow : Window
     protected override void OnSourceInitialized(EventArgs e)
     {
         base.OnSourceInitialized(e);
-        Controls.NativeChrome.EnableWindowAnimations(this);
-        Controls.Win11Corners.Apply(this);
+        Flux.Ui.Controls.NativeChrome.EnableWindowAnimations(this);
+        Flux.Ui.Controls.Win11Corners.Apply(this);
     }
 
     private void OnDataContextChanged(object sender, DependencyPropertyChangedEventArgs e)

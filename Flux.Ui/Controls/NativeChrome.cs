@@ -3,7 +3,7 @@ using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Interop;
 
-namespace FluxRead.Controls;
+namespace Flux.Ui.Controls;
 
 /// <summary>
 /// Re-enables native Windows minimize/maximize/restore animations (plus the system menu and
@@ -31,6 +31,9 @@ public static class NativeChrome
     /// <param name="window">The window to enable native animations for.</param>
     public static void EnableWindowAnimations(Window window)
     {
+        if (!MotionSettings.Current.AnimationsEnabled)
+            return;
+
         var hwnd = new WindowInteropHelper(window).Handle;
         if (hwnd == IntPtr.Zero)
             return;

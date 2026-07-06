@@ -31,8 +31,8 @@ public partial class InteropDevWindow : Window
     protected override void OnSourceInitialized(EventArgs e)
     {
         base.OnSourceInitialized(e);
-        Controls.NativeChrome.EnableWindowAnimations(this);
-        Controls.Win11Corners.Apply(this);
+        Flux.Ui.Controls.NativeChrome.EnableWindowAnimations(this);
+        Flux.Ui.Controls.Win11Corners.Apply(this);
     }
 
     private async void OnReadDpi(object sender, RoutedEventArgs e)

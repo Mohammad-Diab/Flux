@@ -3,7 +3,7 @@ using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Interop;
 
-namespace FluxCast.Controls;
+namespace Flux.Ui.Controls;
 
 /// <summary>
 /// Opts a borderless window into the Windows 11 rounded-corner treatment via DWM. On Windows 10

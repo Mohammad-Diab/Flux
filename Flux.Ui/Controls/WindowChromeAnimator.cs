@@ -5,7 +5,7 @@ using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 
-namespace FluxCast.Controls;
+namespace Flux.Ui.Controls;
 
 /// <summary>
 /// All window-motion for the borderless (WindowChrome) windows in one place. Because
@@ -13,7 +13,7 @@ namespace FluxCast.Controls;
 /// our own: maximize/restore settle, an animated minimize (fade + shrink out, then minimize),
 /// restore-from-minimize (its reverse: fade + grow in), and an animated close (fade + shrink out
 /// via the Closing event). Minimize is intercepted for both the caption button and the taskbar
-/// (WM_SYSCOMMAND) so it animates however it's triggered.
+/// (WM_SYSCOMMAND) so it animates however it's triggered. Honors <see cref="MotionSettings"/>.
 /// </summary>
 public static class WindowChromeAnimator
 {
@@ -45,7 +45,7 @@ public static class WindowChromeAnimator
         window.StateChanged += (_, _) => OnStateChanged(window, state);
         window.Closing += (_, e) =>
         {
-            if (state.AllowClose)
+            if (state.AllowClose || !MotionSettings.Current.AnimationsEnabled)
                 return;
             e.Cancel = true;
             AnimateOut(window, state, () => { state.AllowClose = true; window.Close(); });
@@ -71,7 +71,7 @@ public static class WindowChromeAnimator
     /// <summary>Minimizes <paramref name="window"/> with a fade-and-shrink animation.</summary>
     public static void Minimize(Window window)
     {
-        if (!States.TryGetValue(window, out var state))
+        if (!MotionSettings.Current.AnimationsEnabled || !States.TryGetValue(window, out var state))
         {
             window.WindowState = WindowState.Minimized;
             return;
@@ -87,7 +87,7 @@ public static class WindowChromeAnimator
     private static void OnStateChanged(Window window, State state)
     {
         var current = window.WindowState;
-        if (current == WindowState.Minimized)
+        if (current == WindowState.Minimized || !MotionSettings.Current.AnimationsEnabled)
         {
             state.Prev = current;
             return;

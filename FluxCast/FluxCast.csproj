@@ -30,6 +30,7 @@
 
 	<ItemGroup>
 		<ProjectReference Include="..\FluxCore\FluxCore.csproj" />
+		<ProjectReference Include="..\Flux.Ui\Flux.Ui.csproj" />
 	</ItemGroup>
 
 </Project>

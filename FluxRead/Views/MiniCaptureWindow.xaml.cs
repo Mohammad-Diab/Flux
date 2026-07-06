@@ -38,7 +38,7 @@ public partial class MiniCaptureWindow : Window
     protected override void OnSourceInitialized(EventArgs e)
     {
         base.OnSourceInitialized(e);
-        Controls.Win11Corners.Apply(this);
+        Flux.Ui.Controls.Win11Corners.Apply(this);
     }
 
     private void OnPauseToggle(object sender, RoutedEventArgs e) => _onPauseToggle();

@@ -1,7 +1,7 @@
 <UserControl x:Class="FluxRead.Views.LiveCaptureView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:controls="clr-namespace:FluxRead.Controls">
+             xmlns:controls="clr-namespace:Flux.Ui.Controls;assembly=Flux.Ui">
     <Grid Margin="24">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>

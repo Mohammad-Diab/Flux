@@ -2,16 +2,33 @@ using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 
-namespace FluxCast.Controls;
+namespace Flux.Ui.Controls;
 
 /// <summary>
 /// Attached entrance animation: an element with a non-negative RiseDelay fades in and rises
 /// into place when loaded, delayed by that many milliseconds — so sibling elements cascade
-/// in sequence, media-center style. Replays whenever the element re-enters the visual tree.
+/// in sequence, media-center style. Also exposes <see cref="EnabledProperty"/>, which templates
+/// bind to <see cref="MotionSettings"/> to branch between animated and instant states.
 /// </summary>
 public static class Motion
 {
     private static readonly TimeSpan Duration = TimeSpan.FromMilliseconds(420);
+
+    /// <summary>
+    /// Identifies the Motion.Enabled attached property — mirrors <see cref="MotionSettings"/> onto a
+    /// control so template MultiTriggers can branch between animated and instant states.
+    /// </summary>
+    public static readonly DependencyProperty EnabledProperty = DependencyProperty.RegisterAttached(
+        "Enabled", typeof(bool), typeof(Motion), new PropertyMetadata(true));
+
+    /// <summary>Gets whether motion is enabled for the element.</summary>
+    /// <param name="element">Target element.</param>
+    public static bool GetEnabled(DependencyObject element) => (bool)element.GetValue(EnabledProperty);
+
+    /// <summary>Sets whether motion is enabled for the element.</summary>
+    /// <param name="element">Target element.</param>
+    /// <param name="value">True to allow animations.</param>
+    public static void SetEnabled(DependencyObject element, bool value) => element.SetValue(EnabledProperty, value);
 
     /// <summary>Identifies the Motion.RiseDelay attached property.</summary>
     public static readonly DependencyProperty RiseDelayProperty = DependencyProperty.RegisterAttached(
@@ -31,7 +48,11 @@ public static class Motion
         if (d is not FrameworkElement element || (int)e.NewValue < 0)
             return;
 
-        element.Loaded += (_, _) => Play(element, (int)e.NewValue);
+        element.Loaded += (_, _) =>
+        {
+            if (MotionSettings.Current.AnimationsEnabled)
+                Play(element, (int)e.NewValue);
+        };
     }
 
     private static void Play(FrameworkElement element, int delayMs)

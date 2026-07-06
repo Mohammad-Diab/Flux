@@ -1,5 +1,8 @@
 using System.IO;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
+using Flux.Ui.Services;
+using Flux.Ui.ViewModels;
 using FluxCast.Services;
 using FluxCore.Transfer;
 using Microsoft.Extensions.Logging;
@@ -7,7 +10,7 @@ using Microsoft.Extensions.Logging;
 namespace FluxCast.ViewModels;
 
 /// <summary>
-/// Owns navigation between the setup, progress, and presenter screens.
+/// Owns navigation between the setup, progress, presenter, and settings screens.
 /// </summary>
 public partial class ShellViewModel : ObservableObject
 {
@@ -15,6 +18,9 @@ public partial class ShellViewModel : ObservableObject
     private readonly SourceValidator _validator;
     private readonly DialogService _dialogs;
     private readonly ILoggerFactory _loggerFactory;
+    private readonly SettingsService _settings;
+    private readonly ThemeService _theme;
+    private readonly FluxSettings _settingsModel;
 
     [ObservableProperty]
     private object? _current;
@@ -31,12 +37,18 @@ public partial class ShellViewModel : ObservableObject
         FluxEncodeService encodeService,
         SourceValidator validator,
         DialogService dialogs,
-        ILoggerFactory loggerFactory)
+        ILoggerFactory loggerFactory,
+        SettingsService settings,
+        ThemeService theme,
+        FluxSettings settingsModel)
     {
         _encodeService = encodeService;
         _validator = validator;
         _dialogs = dialogs;
         _loggerFactory = loggerFactory;
+        _settings = settings;
+        _theme = theme;
+        _settingsModel = settingsModel;
 
         ShowSetup();
     }
@@ -44,6 +56,16 @@ public partial class ShellViewModel : ObservableObject
     /// <summary>Navigates to the setup screen.</summary>
     public void ShowSetup() =>
         Current = new EncodeSetupViewModel(_validator, _dialogs, StartEncode);
+
+    /// <summary>Opens Settings, returning to the current screen when done.</summary>
+    [RelayCommand]
+    private void ShowSettings()
+    {
+        if (Current is SettingsViewModel)
+            return;
+        var previous = Current;
+        Current = new SettingsViewModel(_settings, _theme, _settingsModel, onDone: () => Current = previous);
+    }
 
     private void StartEncode(string sourcePath, EncodeOptions options) =>
         Current = new EncodeProgressViewModel(

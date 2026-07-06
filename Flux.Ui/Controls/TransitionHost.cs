@@ -3,11 +3,12 @@ using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 
-namespace FluxRead.Controls;
+namespace Flux.Ui.Controls;
 
 /// <summary>
 /// A ContentControl that plays a fluid entrance transition (slide + settle-scale + fade with
 /// strong ease-out) whenever its content changes — the media-center-style page transition.
+/// Skips the animation when <see cref="MotionSettings"/> is off.
 /// </summary>
 public class TransitionHost : ContentControl
 {
@@ -28,6 +29,13 @@ public class TransitionHost : ContentControl
 
         if (newContent is null)
             return;
+
+        if (!MotionSettings.Current.AnimationsEnabled)
+        {
+            RenderTransform = Transform.Identity;
+            Opacity = 1;
+            return;
+        }
 
         var translate = new TranslateTransform(SlideFrom, 0);
         var scale = new ScaleTransform(0.985, 0.985);
