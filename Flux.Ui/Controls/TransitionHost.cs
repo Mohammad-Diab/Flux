@@ -15,14 +15,11 @@ public class TransitionHost : ContentControl
     private static readonly TimeSpan Duration = TimeSpan.FromMilliseconds(380);
 
     /// <summary>
-    /// Horizontal offset (in px) the incoming content slides in from. Positive = enters from the
-    /// right (moving left, the default "forward" direction); negative = enters from the left.
-    /// Set this before changing <see cref="ContentControl.Content"/> to make the slide directional
-    /// (e.g. a right-hand tab enters from the right, a left-hand tab from the left).
+    /// Horizontal px the incoming content slides in from (positive = from the right); set before
+    /// changing <see cref="ContentControl.Content"/> to make the slide directional.
     /// </summary>
     public double SlideFrom { get; set; } = 36;
 
-    /// <inheritdoc/>
     protected override void OnContentChanged(object oldContent, object newContent)
     {
         base.OnContentChanged(oldContent, newContent);

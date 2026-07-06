@@ -12,9 +12,6 @@ namespace FluxCast.Views;
 /// </summary>
 public partial class PresenterView : UserControl
 {
-    /// <summary>
-    /// Initializes a new instance of the <see cref="PresenterView"/> class.
-    /// </summary>
     public PresenterView()
     {
         InitializeComponent();

@@ -48,14 +48,7 @@ public sealed class CaptureLoopService
         }
     }
 
-    /// <summary>
-    /// Initializes a new instance of the <see cref="CaptureLoopService"/> class.
-    /// </summary>
-    /// <param name="capture">Region capture source.</param>
-    /// <param name="clicker">Next-button clicker.</param>
-    /// <param name="colorMap">Palette for decoding.</param>
-    /// <param name="options">Loop tuning; defaults if null.</param>
-    /// <param name="logger">Optional logger.</param>
+    /// <summary>Creates the loop over a capture source, clicker, and decode palette.</summary>
     public CaptureLoopService(
         IScreenCapture capture,
         INextClicker clicker,
@@ -118,7 +111,7 @@ public sealed class CaptureLoopService
                 // live state label already shows "Waiting for the next frame…".
                 Report(progress, CaptureLoopState.WaitingForAdvance, assembler, metadata, lastFrameId, reclicks, "");
 
-                bool advanced = await PollForAdvanceAsync(assembler, metadata, lastFrameId, reclicks, progress, cancellationToken);
+                bool advanced = await PollForAdvanceAsync(assembler, metadata, reclicks, progress, cancellationToken);
                 if (advanced)
                 {
                     lastFrameId = assembler.LastAcceptedId;
@@ -209,37 +202,18 @@ public sealed class CaptureLoopService
     private async Task<bool> PollForAdvanceAsync(
         PayloadAssembler assembler,
         MetadataPayload metadata,
-        uint lastFrameId,
         int reclicks,
         IProgress<LoopStatus>? progress,
         CancellationToken cancellationToken)
     {
         for (int poll = 0; poll < _options.MaxPollsPerClick; poll++)
         {
-            cancellationToken.ThrowIfCancellationRequested();
-            await WaitIfPausedAsync(cancellationToken);
-            await Task.Delay(_options.PollIntervalMs, cancellationToken);
-
-            using var capture = await CaptureStableAsync(cancellationToken);
-
-            var probe = _decoder.TryProbe(capture);
-            if (!probe.Registered || probe.Header is not { } header)
+            if (await TryAcquireAcceptableFrameAsync(assembler, metadata, cancellationToken) is not { } accepted)
                 continue;
 
-            if (!IsAcceptablePayloadFrame(header, metadata, assembler))
-                continue;
-
-            var decoded = _decoder.Decode(capture);
-            if (decoded.Status != DecodeStatus.Success || decoded.Header is not { } fullHeader)
-                continue;
-
-            if (!IsAcceptablePayloadFrame(fullHeader, metadata, assembler))
-                continue;
-
-            assembler.AddFrame(fullHeader, decoded.Payload!);
-            var png = EncodeThumbnail(capture);
-            Report(progress, CaptureLoopState.WaitingForAdvance, assembler, metadata, fullHeader.FrameId, reclicks,
-                $"Received frame {fullHeader.FrameId} ({assembler.ReceivedFrames}/{assembler.ExpectedPayloadFrames}).", png);
+            Report(progress, CaptureLoopState.WaitingForAdvance, assembler, metadata, accepted.Header.FrameId, reclicks,
+                $"Received frame {accepted.Header.FrameId} ({assembler.ReceivedFrames}/{assembler.ExpectedPayloadFrames}).",
+                accepted.Png);
             return true;
         }
 
@@ -259,33 +233,44 @@ public sealed class CaptureLoopService
 
         while (!assembler.IsComplete)
         {
-            cancellationToken.ThrowIfCancellationRequested();
-            await WaitIfPausedAsync(cancellationToken);
-            await Task.Delay(_options.PollIntervalMs, cancellationToken);
-
-            using var capture = await CaptureStableAsync(cancellationToken);
-
-            var probe = _decoder.TryProbe(capture);
-            if (!probe.Registered || probe.Header is not { } header)
-                continue;
-            if (!IsAcceptablePayloadFrame(header, metadata, assembler))
+            if (await TryAcquireAcceptableFrameAsync(assembler, metadata, cancellationToken) is not { } accepted)
                 continue;
 
-            var decoded = _decoder.Decode(capture);
-            if (decoded.Status != DecodeStatus.Success || decoded.Header is not { } fullHeader)
-                continue;
-            if (!IsAcceptablePayloadFrame(fullHeader, metadata, assembler))
-                continue;
-
-            assembler.AddFrame(fullHeader, decoded.Payload!);
             var stillMissing = assembler.MissingFrameIds;
-            var png = EncodeThumbnail(capture);
             var message = stillMissing.Count == 0
-                ? $"Recovered frame {fullHeader.FrameId}. All frames received."
-                : $"Recovered frame {fullHeader.FrameId}. {FormatMissingMessage(stillMissing)}";
-            Report(progress, CaptureLoopState.RecoveringGaps, assembler, metadata, fullHeader.FrameId, 0,
-                message, png, stillMissing);
+                ? $"Recovered frame {accepted.Header.FrameId}. All frames received."
+                : $"Recovered frame {accepted.Header.FrameId}. {FormatMissingMessage(stillMissing)}";
+            Report(progress, CaptureLoopState.RecoveringGaps, assembler, metadata, accepted.Header.FrameId, 0,
+                message, accepted.Png, stillMissing);
         }
+    }
+
+    /// <summary>One poll tick: capture a stable image, probe, fully decode, and accept a new payload frame.</summary>
+    private async Task<(FrameHeader Header, byte[]? Png)?> TryAcquireAcceptableFrameAsync(
+        PayloadAssembler assembler,
+        MetadataPayload metadata,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        await WaitIfPausedAsync(cancellationToken);
+        await Task.Delay(_options.PollIntervalMs, cancellationToken);
+
+        using var capture = await CaptureStableAsync(cancellationToken);
+
+        var probe = _decoder.TryProbe(capture);
+        if (!probe.Registered || probe.Header is not { } header)
+            return null;
+        if (!IsAcceptablePayloadFrame(header, metadata, assembler))
+            return null;
+
+        var decoded = _decoder.Decode(capture);
+        if (decoded.Status != DecodeStatus.Success || decoded.Header is not { } fullHeader)
+            return null;
+        if (!IsAcceptablePayloadFrame(fullHeader, metadata, assembler))
+            return null;
+
+        assembler.AddFrame(fullHeader, decoded.Payload!);
+        return (fullHeader, EncodeThumbnail(capture));
     }
 
     private static string FormatMissingMessage(IReadOnlyList<uint> missing)

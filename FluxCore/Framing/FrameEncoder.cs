@@ -12,8 +12,6 @@ namespace FluxCore.Framing;
 /// </summary>
 public static class FrameEncoder
 {
-    private const int MetadataParity = FrameFormat.CodewordLength - FrameFormat.MetadataCodewordDataBytes;
-
     /// <summary>
     /// Builds the tile map for a payload frame (frame id >= 1).
     /// </summary>
@@ -68,7 +66,7 @@ public static class FrameEncoder
         {
             ReedSolomonBlockCodec.EncodeBlock(
                 padded.AsSpan(c * FrameFormat.MetadataCodewordDataBytes, FrameFormat.MetadataCodewordDataBytes),
-                MetadataParity,
+                FrameFormat.MetadataParitySymbols,
                 block);
 
             for (int s = 0; s < FrameFormat.CodewordLength; s++)

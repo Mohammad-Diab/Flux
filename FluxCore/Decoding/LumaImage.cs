@@ -19,12 +19,7 @@ public sealed class LumaImage
     /// <summary>Gets the black/white threshold: midway between the darkest and brightest pixel.</summary>
     public byte Threshold { get; }
 
-    /// <summary>
-    /// Initializes a new instance of the <see cref="LumaImage"/> class.
-    /// </summary>
-    /// <param name="pixels">Row-major luma values.</param>
-    /// <param name="width">Image width in pixels.</param>
-    /// <param name="height">Image height in pixels.</param>
+    /// <summary>Wraps row-major luma values of the given dimensions.</summary>
     public LumaImage(byte[] pixels, int width, int height)
     {
         ArgumentNullException.ThrowIfNull(pixels);
@@ -46,15 +41,13 @@ public sealed class LumaImage
         Threshold = (byte)((min + max) / 2);
     }
 
-    /// <summary>Gets the luma value at the given pixel coordinates.</summary>
-    /// <param name="x">Pixel column.</param>
-    /// <param name="y">Pixel row.</param>
-    public byte this[int x, int y] => _pixels[y * Width + x];
-
     /// <summary>Determines whether the pixel at the given coordinates is dark (below the threshold).</summary>
     /// <param name="x">Pixel column.</param>
     /// <param name="y">Pixel row.</param>
     public bool IsDark(int x, int y) => _pixels[y * Width + x] < Threshold;
+
+    /// <summary>Computes the Rec. 601 luma of an RGB color.</summary>
+    public static double Rec601Luma(double r, double g, double b) => 0.299 * r + 0.587 * g + 0.114 * b;
 
     /// <summary>Extracts the luma channel (Rec. 601 weights) from a bitmap.</summary>
     /// <param name="bitmap">Source bitmap.</param>
@@ -67,7 +60,7 @@ public sealed class LumaImage
         for (int i = 0; i < colors.Length; i++)
         {
             var c = colors[i];
-            luma[i] = (byte)(0.299 * c.Red + 0.587 * c.Green + 0.114 * c.Blue);
+            luma[i] = (byte)Rec601Luma(c.Red, c.Green, c.Blue);
         }
 
         return new LumaImage(luma, bitmap.Width, bitmap.Height);

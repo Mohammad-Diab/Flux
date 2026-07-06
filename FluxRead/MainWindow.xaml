@@ -3,17 +3,12 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:views="clr-namespace:Flux.Ui.Views;assembly=Flux.Ui"
         xmlns:controls="clr-namespace:Flux.Ui.Controls;assembly=Flux.Ui"
-        xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
         Title="FluxRead"
         Icon="/Assets/AppIcon.ico"
         Width="1040" Height="720"
         MinWidth="760" MinHeight="540"
         Style="{StaticResource FluxWindow}"
         WindowStartupLocation="CenterScreen">
-    <Window.TaskbarItemInfo>
-        <shell:TaskbarItemInfo ProgressState="{Binding State, Source={StaticResource TaskbarProgress}}"
-                               ProgressValue="{Binding Value, Source={StaticResource TaskbarProgress}}"/>
-    </Window.TaskbarItemInfo>
     <Grid>
         <views:AmbientBackground/>
         <DockPanel x:Name="RootContent">

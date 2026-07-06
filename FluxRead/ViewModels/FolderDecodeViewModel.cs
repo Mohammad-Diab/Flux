@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Flux.Ui.Controls;
+using Flux.Ui.Services;
 using FluxCore.Framing;
 using FluxRead.Services;
 using Microsoft.Extensions.Logging;
@@ -43,9 +44,6 @@ public partial class FolderDecodeViewModel : ObservableObject
     /// <summary>Gets the per-frame decode result rows.</summary>
     public ObservableCollection<FrameRow> Rows { get; } = [];
 
-    /// <summary>
-    /// Initializes a new instance of the <see cref="FolderDecodeViewModel"/> class.
-    /// </summary>
     public FolderDecodeViewModel(
         DecodePipelineService pipeline, DialogService dialogs, ILogger<FolderDecodeViewModel> logger)
     {
@@ -57,7 +55,7 @@ public partial class FolderDecodeViewModel : ObservableObject
     [RelayCommand]
     private async Task PickAndDecodeAsync()
     {
-        var folder = _dialogs.PickFramesFolder();
+        var folder = _dialogs.PickFolder("Choose the folder of frame images");
         if (folder is null)
             return;
 
@@ -73,8 +71,8 @@ public partial class FolderDecodeViewModel : ObservableObject
 
         var metadata = _result.Metadata;
         string? target = metadata.PayloadType == PayloadType.Raw
-            ? _dialogs.PickSaveFile(metadata.OriginalName)
-            : _dialogs.PickOutputFolder();
+            ? _dialogs.PickSaveFile("Save decoded file", metadata.OriginalName)
+            : _dialogs.PickFolder("Choose a folder to extract into");
 
         if (target is null)
             return;

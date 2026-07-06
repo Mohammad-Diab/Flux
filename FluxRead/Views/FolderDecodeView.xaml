@@ -42,7 +42,7 @@
                     <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
                     <Style.Triggers>
                         <DataTrigger Binding="{Binding Success}" Value="False">
-                            <Setter Property="Background" Value="#33FF5C6C"/>
+                            <Setter Property="Background" Value="{StaticResource DangerSelectionBrush}"/>
                         </DataTrigger>
                     </Style.Triggers>
                 </Style>

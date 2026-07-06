@@ -14,9 +14,6 @@ public partial class AmbientBackground : UserControl
 {
     private Storyboard? _drift;
 
-    /// <summary>
-    /// Initializes a new instance of the <see cref="AmbientBackground"/> class.
-    /// </summary>
     public AmbientBackground()
     {
         InitializeComponent();

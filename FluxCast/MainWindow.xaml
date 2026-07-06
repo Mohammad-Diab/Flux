@@ -6,17 +6,12 @@
         xmlns:controls="clr-namespace:Flux.Ui.Controls;assembly=Flux.Ui"
         xmlns:ui="clr-namespace:Flux.Ui.Views;assembly=Flux.Ui"
         xmlns:uivm="clr-namespace:Flux.Ui.ViewModels;assembly=Flux.Ui"
-        xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
         Title="FluxCast"
         Icon="/Assets/AppIcon.ico"
         Width="1040" Height="740"
         MinWidth="880" MinHeight="640"
         Style="{StaticResource FluxWindow}"
         WindowStartupLocation="CenterScreen">
-    <Window.TaskbarItemInfo>
-        <shell:TaskbarItemInfo ProgressState="{Binding State, Source={StaticResource TaskbarProgress}}"
-                               ProgressValue="{Binding Value, Source={StaticResource TaskbarProgress}}"/>
-    </Window.TaskbarItemInfo>
     <Window.Resources>
         <DataTemplate DataType="{x:Type vm:EncodeSetupViewModel}">
             <views:EncodeSetupView/>

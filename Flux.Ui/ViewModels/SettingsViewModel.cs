@@ -17,13 +17,7 @@ public partial class SettingsViewModel : ObservableObject
     private readonly FluxSettings _model;
     private readonly Action? _onOpenDevTools;
 
-    /// <summary>
-    /// Initializes a new instance of the <see cref="SettingsViewModel"/> class.
-    /// </summary>
-    /// <param name="settings">Persistence service.</param>
-    /// <param name="theme">Theme applier.</param>
-    /// <param name="model">Shared, already-loaded settings instance.</param>
-    /// <param name="onOpenDevTools">Optional dev-tools opener; its section shows only when provided.</param>
+    // Dev-tools section shows only when the host provides an opener.
     public SettingsViewModel(SettingsService settings, ThemeService theme, FluxSettings model, Action? onOpenDevTools = null)
     {
         _settings = settings;

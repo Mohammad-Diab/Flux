@@ -21,10 +21,7 @@ public sealed class FrameDecoder
 
     private readonly PaletteClassifier _classifier;
 
-    /// <summary>
-    /// Initializes a new instance of the <see cref="FrameDecoder"/> class.
-    /// </summary>
-    /// <param name="colorMap">Palette used for data and header tiles.</param>
+    /// <summary>Creates a decoder for the given data/header tile palette.</summary>
     public FrameDecoder(ColorMap colorMap)
     {
         ArgumentNullException.ThrowIfNull(colorMap);
@@ -152,7 +149,6 @@ public sealed class FrameDecoder
         }
 
         var content = new byte[FrameFormat.MetadataContentBytes];
-        int parity = FrameFormat.CodewordLength - FrameFormat.MetadataCodewordDataBytes;
         int correctedErrors = 0;
         Span<byte> block = stackalloc byte[FrameFormat.CodewordLength];
 
@@ -164,7 +160,7 @@ public sealed class FrameDecoder
             }
 
             if (!ReedSolomonBlockCodec.TryDecodeBlock(
-                    block, parity,
+                    block, FrameFormat.MetadataParitySymbols,
                     content.AsSpan(c * FrameFormat.MetadataCodewordDataBytes, FrameFormat.MetadataCodewordDataBytes),
                     out int corrected))
             {
@@ -322,7 +318,13 @@ public sealed class FrameDecoder
         return (values, lowConfidence, totalDistance / FrameFormat.DataTileCount, maxDistance);
     }
 
-    private bool TryRecoverHeader(TileSample[] samples, out FrameHeader header, out int copiesAgreeing)
+    private bool TryRecoverHeader(TileSample[] samples, out FrameHeader header, out int copiesAgreeing) =>
+        TryRecoverHeader((x, y) => samples[y * FrameFormat.GridWidthTiles + x], out header, out copiesAgreeing);
+
+    private bool TryRecoverHeader(TileSampler sampler, out FrameHeader header, out int copiesAgreeing) =>
+        TryRecoverHeader(sampler.Sample, out header, out copiesAgreeing);
+
+    private bool TryRecoverHeader(Func<int, int, TileSample> sampleAt, out FrameHeader header, out int copiesAgreeing)
     {
         var candidates = new List<FrameHeader>();
 
@@ -333,29 +335,7 @@ public sealed class FrameDecoder
             for (int i = 0; i < symbols.Length; i++)
             {
                 var (x, y) = positions[i];
-                var sample = samples[y * FrameFormat.GridWidthTiles + x];
-                symbols[i] = _classifier.Classify(sample.R, sample.G, sample.B).PaletteIndex;
-            }
-
-            if (ReedSolomonBlockCodec.TryDecodeHeader(symbols, out var candidate))
-                candidates.Add(candidate);
-        }
-
-        return VoteOnHeader(candidates, out header, out copiesAgreeing);
-    }
-
-    private bool TryRecoverHeader(TileSampler sampler, out FrameHeader header, out int copiesAgreeing)
-    {
-        var candidates = new List<FrameHeader>();
-
-        for (int copy = 0; copy < FrameFormat.HeaderCopyCount; copy++)
-        {
-            var symbols = new byte[FrameFormat.HeaderCopyLength];
-            var positions = FrameFormat.GetHeaderCopyTiles(copy);
-            for (int i = 0; i < symbols.Length; i++)
-            {
-                var (x, y) = positions[i];
-                var sample = sampler.Sample(x, y);
+                var sample = sampleAt(x, y);
                 symbols[i] = _classifier.Classify(sample.R, sample.G, sample.B).PaletteIndex;
             }
 

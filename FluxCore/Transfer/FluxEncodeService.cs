@@ -3,6 +3,7 @@ using FluxCore.Compression;
 using FluxCore.Ecc;
 using FluxCore.Framing;
 using FluxCore.Hashing;
+using FluxCore.IO;
 using FluxCore.Imaging;
 using Microsoft.Extensions.Logging;
 
@@ -24,11 +25,7 @@ public sealed class FluxEncodeService
     private readonly CompressionService _compression;
     private readonly ILogger<FluxEncodeService>? _logger;
 
-    /// <summary>
-    /// Initializes a new instance of the <see cref="FluxEncodeService"/> class.
-    /// </summary>
-    /// <param name="compression">Compression service for 7z payloads.</param>
-    /// <param name="logger">Optional logger.</param>
+    /// <summary>Creates the service over a compression service for 7z payloads.</summary>
     public FluxEncodeService(CompressionService compression, ILogger<FluxEncodeService>? logger = null)
     {
         ArgumentNullException.ThrowIfNull(compression);
@@ -81,12 +78,12 @@ public sealed class FluxEncodeService
             totalFrames: totalFrames,
             payloadLength: payload.Length,
             originalName: SourceName(sourcePath),
-            originalLength: SourceLength(sourcePath),
+            originalLength: PathSize.GetTotalBytes(sourcePath),
             contentSignature: signature,
             colorMap: ColorMap.Default);
 
         int rendered = await RenderMissingFramesAsync(
-            metadata, payload, options.EccLevel, framesDirectory, progress, cancellationToken);
+            metadata, payload, framesDirectory, progress, cancellationToken);
 
         progress?.Report(new EncodeProgress(EncodePhase.Completed, (int)totalFrames, (int)totalFrames));
         _logger?.LogInformation(
@@ -109,11 +106,11 @@ public sealed class FluxEncodeService
     {
         var manifest = TryReadManifest(manifestPath);
         if (manifest is not null &&
-            manifest.SignatureHex == Convert.ToHexString(signature) &&
+            manifest.SignatureHex == Sha256Helper.ToHexString(signature) &&
             File.Exists(payloadPath))
         {
             var candidate = await File.ReadAllBytesAsync(payloadPath, cancellationToken);
-            if (Sha256Helper.Verify(candidate, Convert.FromHexString(manifest.PayloadSha256Hex)))
+            if (Sha256Helper.Verify(candidate, Sha256Helper.FromHexString(manifest.PayloadSha256Hex)))
             {
                 _logger?.LogInformation("Reusing existing payload ({Length} bytes).", candidate.Length);
                 return (candidate, manifest.PayloadType, true);
@@ -151,9 +148,9 @@ public sealed class FluxEncodeService
         await File.WriteAllBytesAsync(payloadPath, payload, cancellationToken);
         var freshManifest = new SessionManifest(
             FrameFormat.Version,
-            Convert.ToHexString(signature),
+            Sha256Helper.ToHexString(signature),
             payloadType,
-            Convert.ToHexString(Sha256Helper.ComputeHash(payload)),
+            Sha256Helper.ToHexString(Sha256Helper.ComputeHash(payload)),
             payload.Length);
         await File.WriteAllTextAsync(manifestPath, JsonSerializer.Serialize(freshManifest), cancellationToken);
 
@@ -163,12 +160,11 @@ public sealed class FluxEncodeService
     private static async Task<int> RenderMissingFramesAsync(
         MetadataPayload metadata,
         byte[] payload,
-        EccLevel eccLevel,
         string framesDirectory,
         IProgress<EncodeProgress>? progress,
         CancellationToken cancellationToken)
     {
-        int bytesPerFrame = eccLevel.PayloadBytesPerFrame();
+        int bytesPerFrame = metadata.EccLevel.PayloadBytesPerFrame();
         uint totalFrames = metadata.TotalFrames;
         int rendered = 0;
         int completed = 0;
@@ -181,7 +177,7 @@ public sealed class FluxEncodeService
                 var framePath = Path.Combine(framesDirectory, FrameFileName((uint)id));
                 if (!File.Exists(framePath))
                 {
-                    var png = RenderFrame(metadata, payload, eccLevel, bytesPerFrame, (uint)id, totalFrames);
+                    var png = RenderFrame(metadata, payload, bytesPerFrame, (uint)id, totalFrames);
                     var tempPath = framePath + ".tmp";
                     await File.WriteAllBytesAsync(tempPath, png, token);
                     File.Move(tempPath, framePath, overwrite: true);
@@ -196,7 +192,7 @@ public sealed class FluxEncodeService
     }
 
     private static byte[] RenderFrame(
-        MetadataPayload metadata, byte[] payload, EccLevel eccLevel, int bytesPerFrame, uint frameId, uint totalFrames)
+        MetadataPayload metadata, byte[] payload, int bytesPerFrame, uint frameId, uint totalFrames)
     {
         FrameTileMap map;
         if (frameId == 0)
@@ -207,7 +203,7 @@ public sealed class FluxEncodeService
         {
             int offset = (int)(frameId - 1) * bytesPerFrame;
             int length = Math.Clamp(payload.Length - offset, 0, bytesPerFrame);
-            map = FrameEncoder.BuildFrame(frameId, totalFrames, payload.AsSpan(offset, length), eccLevel);
+            map = FrameEncoder.BuildFrame(frameId, totalFrames, payload.AsSpan(offset, length), metadata.EccLevel);
         }
 
         return FrameRenderer.RenderPng(map, ColorMap.Default);
@@ -230,15 +226,6 @@ public sealed class FluxEncodeService
 
     private static string SourceName(string sourcePath) =>
         Path.GetFileName(Path.TrimEndingDirectorySeparator(Path.GetFullPath(sourcePath)));
-
-    private static long SourceLength(string sourcePath)
-    {
-        if (File.Exists(sourcePath))
-            return new FileInfo(sourcePath).Length;
-
-        return Directory.EnumerateFiles(sourcePath, "*", SearchOption.AllDirectories)
-            .Sum(file => new FileInfo(file).Length);
-    }
 
     private sealed record SessionManifest(
         byte FormatVersion,

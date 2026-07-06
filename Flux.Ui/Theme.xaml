@@ -2,7 +2,8 @@
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                     xmlns:sys="clr-namespace:System;assembly=System.Runtime"
                     xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
-                    xmlns:controls="clr-namespace:Flux.Ui.Controls">
+                    xmlns:controls="clr-namespace:Flux.Ui.Controls"
+                    xmlns:converters="clr-namespace:Flux.Ui.Converters">
 
     <!-- Color tokens (dark defaults); ThemeService swaps them for light. Brushes bind via DynamicResource so they retint live and BAML can't freeze them. -->
     <Color x:Key="TextPrimaryColor">#EEF1F7</Color>
@@ -51,23 +52,26 @@
     <SolidColorBrush x:Key="DangerBrush" Color="{StaticResource DangerColor}"/>
     <SolidColorBrush x:Key="SuccessBrush" Color="{StaticResource SuccessColor}"/>
     <SolidColorBrush x:Key="SelectionBrush" Color="#337C5CFF"/>
+    <SolidColorBrush x:Key="DangerSelectionBrush" Color="#33FF5C6C"/>
 
     <!-- The signature Flux gradient: blue -> violet -> magenta (the "optical spectrum"). -->
-    <LinearGradientBrush x:Key="AccentGradient" StartPoint="0,0" EndPoint="1,1">
+    <GradientStopCollection x:Key="SpectrumStops">
         <GradientStop Color="#3B82F6" Offset="0"/>
         <GradientStop Color="#7C5CFF" Offset="0.5"/>
         <GradientStop Color="#C13BFF" Offset="1"/>
-    </LinearGradientBrush>
-    <LinearGradientBrush x:Key="AccentGradientHorizontal" StartPoint="0,0" EndPoint="1,0">
-        <GradientStop Color="#3B82F6" Offset="0"/>
-        <GradientStop Color="#7C5CFF" Offset="0.5"/>
-        <GradientStop Color="#C13BFF" Offset="1"/>
-    </LinearGradientBrush>
+    </GradientStopCollection>
+    <LinearGradientBrush x:Key="AccentGradient" StartPoint="0,0" EndPoint="1,1"
+                         GradientStops="{StaticResource SpectrumStops}"/>
+    <LinearGradientBrush x:Key="AccentGradientHorizontal" StartPoint="0,0" EndPoint="1,0"
+                         GradientStops="{StaticResource SpectrumStops}"/>
 
     <DropShadowEffect x:Key="SoftShadow" BlurRadius="24" ShadowDepth="6" Direction="270" Opacity="0.45" Color="#000000"/>
-    <DropShadowEffect x:Key="GlowShadow" BlurRadius="22" ShadowDepth="0" Opacity="0" Color="#7C5CFF"/>
 
-    <sys:Double x:Key="RadiusLg">14</sys:Double>
+    <CubicEase x:Key="EaseOut" EasingMode="EaseOut"/>
+
+    <BooleanToVisibilityConverter x:Key="BoolToVisibility"/>
+    <converters:NullToCollapsedConverter x:Key="NullToCollapsed"/>
+    <converters:InverseBoolConverter x:Key="InverseBool"/>
 
     <!-- Ambient-orb layer opacity; ThemeService dims it on light backgrounds. -->
     <sys:Double x:Key="AmbientOpacity">1</sys:Double>
@@ -233,17 +237,6 @@
         <Setter Property="BorderThickness" Value="0"/>
     </Style>
 
-    <!-- Compact, borderless tertiary action (dev tools, inline links). -->
-    <Style x:Key="SubtleButton" TargetType="Button" BasedOn="{StaticResource BaseButton}">
-        <Setter Property="MinHeight" Value="0"/>
-        <Setter Property="Padding" Value="12,6"/>
-        <Setter Property="FontSize" Value="12"/>
-        <Setter Property="FontWeight" Value="Normal"/>
-        <Setter Property="Background" Value="Transparent"/>
-        <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
-        <Setter Property="BorderThickness" Value="0"/>
-    </Style>
-
     <!-- Ghost danger action: red text at rest, solid red fill with white text on hover. -->
     <Style x:Key="DangerGhostButton" TargetType="Button" BasedOn="{StaticResource BaseButton}">
         <Setter Property="MinHeight" Value="0"/>
@@ -312,7 +305,7 @@
 
     <Style TargetType="Button" BasedOn="{StaticResource SecondaryButton}"/>
 
-    <!-- Icon caption button (title bar) -->
+    <!-- Icon caption buttons (title bar); Tag="Close" switches the hover treatment to system red. -->
     <Style x:Key="CaptionButton" TargetType="Button">
         <Setter Property="Width" Value="46"/>
         <Setter Property="Height" Value="32"/>
@@ -333,36 +326,23 @@
                             <Setter TargetName="Bd" Property="Background" Value="{StaticResource HoverOverlayStrongBrush}"/>
                             <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
                         </Trigger>
+                        <MultiTrigger>
+                            <MultiTrigger.Conditions>
+                                <Condition Property="IsMouseOver" Value="True"/>
+                                <Condition Property="Tag" Value="Close"/>
+                            </MultiTrigger.Conditions>
+                            <Setter TargetName="Bd" Property="Background" Value="#E81123"/>
+                            <Setter Property="Foreground" Value="White"/>
+                        </MultiTrigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
             </Setter.Value>
         </Setter>
     </Style>
 
-    <Style x:Key="CloseCaptionButton" TargetType="Button">
-        <Setter Property="Width" Value="46"/>
-        <Setter Property="Height" Value="32"/>
-        <Setter Property="Background" Value="Transparent"/>
+    <Style x:Key="CloseCaptionButton" TargetType="Button" BasedOn="{StaticResource CaptionButton}">
         <Setter Property="Foreground" Value="{StaticResource CaptionGlyphBrush}"/>
-        <Setter Property="FontFamily" Value="Segoe MDL2 Assets"/>
-        <Setter Property="FontSize" Value="11"/>
-        <Setter Property="Cursor" Value="Hand"/>
-        <Setter Property="Template">
-            <Setter.Value>
-                <ControlTemplate TargetType="Button">
-                    <Border x:Name="Bd" Background="{TemplateBinding Background}" CornerRadius="6">
-                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"
-                                          TextElement.FontFamily="Segoe MDL2 Assets"/>
-                    </Border>
-                    <ControlTemplate.Triggers>
-                        <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="Bd" Property="Background" Value="#E81123"/>
-                            <Setter Property="Foreground" Value="White"/>
-                        </Trigger>
-                    </ControlTemplate.Triggers>
-                </ControlTemplate>
-            </Setter.Value>
-        </Setter>
+        <Setter Property="Tag" Value="Close"/>
     </Style>
 
     <!-- ============ Inputs ============ -->
@@ -438,9 +418,7 @@
                                     <Storyboard>
                                         <DoubleAnimation Storyboard.TargetName="Knob"
                                                          Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.X)"
-                                                         To="16" Duration="0:0:0.16">
-                                            <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction>
-                                        </DoubleAnimation>
+                                                         To="16" Duration="0:0:0.16" EasingFunction="{StaticResource EaseOut}"/>
                                         <DoubleAnimation Storyboard.TargetName="OnFill" Storyboard.TargetProperty="Opacity"
                                                          To="1" Duration="0:0:0.16"/>
                                     </Storyboard>
@@ -451,9 +429,7 @@
                                     <Storyboard>
                                         <DoubleAnimation Storyboard.TargetName="Knob"
                                                          Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.X)"
-                                                         To="0" Duration="0:0:0.16">
-                                            <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction>
-                                        </DoubleAnimation>
+                                                         To="0" Duration="0:0:0.16" EasingFunction="{StaticResource EaseOut}"/>
                                         <DoubleAnimation Storyboard.TargetName="OnFill" Storyboard.TargetProperty="Opacity"
                                                          To="0" Duration="0:0:0.16"/>
                                     </Storyboard>

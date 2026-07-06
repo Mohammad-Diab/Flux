@@ -1,20 +1,16 @@
 using System.IO;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Flux.Ui.Services;
 using FluxCast.Services;
 using FluxCore.Ecc;
 using FluxCore.Transfer;
 
 namespace FluxCast.ViewModels;
 
-/// <summary>
-/// An ECC level choice presented in the setup screen.
-/// </summary>
-/// <param name="Level">The ECC level.</param>
-/// <param name="Label">Display label.</param>
+/// <summary>An ECC level choice presented in the setup screen.</summary>
 public sealed record EccChoice(EccLevel Level, string Label)
 {
-    /// <inheritdoc/>
     public override string ToString() => Label;
 }
 
@@ -71,12 +67,6 @@ public partial class EncodeSetupViewModel : ObservableObject
     /// <summary>Gets the estimated frame count / Next-click count for the details panel.</summary>
     public string EstimatedFrames { get; private set; } = "";
 
-    /// <summary>
-    /// Initializes a new instance of the <see cref="EncodeSetupViewModel"/> class.
-    /// </summary>
-    /// <param name="validator">Source validator.</param>
-    /// <param name="dialogs">Dialog service.</param>
-    /// <param name="onStart">Callback invoked with the chosen source and options.</param>
     public EncodeSetupViewModel(SourceValidator validator, DialogService dialogs, Action<string, EncodeOptions> onStart)
     {
         _validator = validator;
@@ -88,7 +78,7 @@ public partial class EncodeSetupViewModel : ObservableObject
     [RelayCommand]
     private async Task PickFileAsync()
     {
-        var path = _dialogs.PickFile();
+        var path = _dialogs.PickFile("Choose a file to transfer");
         if (path is not null)
             await SelectAsync(path, isFolder: false);
     }
@@ -96,7 +86,7 @@ public partial class EncodeSetupViewModel : ObservableObject
     [RelayCommand]
     private async Task PickFolderAsync()
     {
-        var path = _dialogs.PickFolder();
+        var path = _dialogs.PickFolder("Choose a folder to transfer");
         if (path is not null)
             await SelectAsync(path, isFolder: true);
     }

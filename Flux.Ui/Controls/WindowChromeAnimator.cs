@@ -8,12 +8,9 @@ using System.Windows.Media.Animation;
 namespace Flux.Ui.Controls;
 
 /// <summary>
-/// All window-motion for the borderless (WindowChrome) windows in one place. Because
-/// <c>WindowStyle="None"</c> suppresses the native minimize/maximize/close animations, we supply
-/// our own: maximize/restore settle, an animated minimize (fade + shrink out, then minimize),
-/// restore-from-minimize (its reverse: fade + grow in), and an animated close (fade + shrink out
-/// via the Closing event). Minimize is intercepted for both the caption button and the taskbar
-/// (WM_SYSCOMMAND) so it animates however it's triggered. Honors <see cref="MotionSettings"/>.
+/// Window-motion for the borderless windows: <c>WindowStyle="None"</c> suppresses the native
+/// minimize/maximize/close animations, so this supplies them. Minimize is intercepted at
+/// WM_SYSCOMMAND so it animates from the taskbar too. Honors <see cref="MotionSettings"/>.
 /// </summary>
 public static class WindowChromeAnimator
 {

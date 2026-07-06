@@ -1,4 +1,3 @@
-using System;
 using System.Windows;
 using Flux.Ui.Controls;
 using Flux.Ui.Views;
@@ -17,28 +16,14 @@ public partial class MainWindow : Window
     private readonly SettingsView _settingsView;
     private int _currentTab;
 
-    /// <summary>
-    /// Initializes a new instance of the <see cref="MainWindow"/> class.
-    /// </summary>
-    /// <param name="folderView">Folder-decode screen.</param>
-    /// <param name="liveView">Live optical-capture screen.</param>
-    /// <param name="settingsView">Settings screen.</param>
     public MainWindow(FolderDecodeView folderView, LiveCaptureView liveView, SettingsView settingsView)
     {
         _folderView = folderView;
         _liveView = liveView;
         _settingsView = settingsView;
         InitializeComponent();
-        WindowChromeAnimator.Attach(this, RootContent);
+        FluxWindowChrome.Attach(this, RootContent);
         ModeHost.Content = _liveView;
-    }
-
-    /// <inheritdoc/>
-    protected override void OnSourceInitialized(EventArgs e)
-    {
-        base.OnSourceInitialized(e);
-        NativeChrome.EnableWindowAnimations(this);
-        Win11Corners.Apply(this);
     }
 
     private void OnModeChanged(object sender, RoutedEventArgs e)

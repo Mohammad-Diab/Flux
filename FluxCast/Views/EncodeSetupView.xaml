@@ -1,7 +1,6 @@
 <UserControl x:Class="FluxCast.Views.EncodeSetupView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:controls="clr-namespace:Flux.Ui.Controls;assembly=Flux.Ui">
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <Grid MaxWidth="620" Margin="32" VerticalAlignment="Center">
         <StackPanel>
             <TextBlock Text="FluxCast" Style="{StaticResource BrandTitle}"/>

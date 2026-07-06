@@ -31,10 +31,7 @@ public sealed class PaletteClassifier
     private readonly double[] _g = new double[256];
     private readonly double[] _b = new double[256];
 
-    /// <summary>
-    /// Initializes a new instance of the <see cref="PaletteClassifier"/> class.
-    /// </summary>
-    /// <param name="colorMap">Palette to classify against.</param>
+    /// <summary>Creates a classifier for the given palette.</summary>
     public PaletteClassifier(ColorMap colorMap)
     {
         ArgumentNullException.ThrowIfNull(colorMap);

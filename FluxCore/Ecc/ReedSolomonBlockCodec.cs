@@ -15,7 +15,7 @@ public static class ReedSolomonBlockCodec
     public const int EncodedFrameLength = FrameFormat.CodewordCount * FrameFormat.CodewordLength;
 
     /// <summary>Data symbols in the header codeword (the serialized <see cref="FrameHeader"/>).</summary>
-    public const int HeaderDataLength = FrameHeader.Size;
+    private const int HeaderDataLength = FrameHeader.Size;
 
     /// <summary>Total symbols in the encoded header codeword: RS(48,16).</summary>
     public const int EncodedHeaderLength = FrameFormat.HeaderCopyLength;

@@ -19,10 +19,6 @@ public sealed class HotkeyListener : IDisposable
     /// <summary>Raised on the UI thread when the hotkey is pressed while armed.</summary>
     public event EventHandler? Pressed;
 
-    /// <summary>
-    /// Initializes a new instance of the <see cref="HotkeyListener"/> class bound to a window.
-    /// </summary>
-    /// <param name="window">The window that owns the hotkey registration.</param>
     public HotkeyListener(Window window)
     {
         ArgumentNullException.ThrowIfNull(window);

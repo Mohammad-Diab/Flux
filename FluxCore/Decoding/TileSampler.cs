@@ -12,7 +12,7 @@ namespace FluxCore.Decoding;
 public readonly record struct TileSample(double R, double G, double B)
 {
     /// <summary>Gets the Rec. 601 luma of the sample.</summary>
-    public double Luma => 0.299 * R + 0.587 * G + 0.114 * B;
+    public double Luma => LumaImage.Rec601Luma(R, G, B);
 }
 
 /// <summary>
@@ -31,14 +31,7 @@ public sealed class TileSampler
     private readonly Homography _tileToImage;
     private readonly double _offset;
 
-    /// <summary>Gets the projected tile pitch in captured-image pixels.</summary>
-    public double Pitch { get; }
-
-    /// <summary>
-    /// Initializes a new instance of the <see cref="TileSampler"/> class.
-    /// </summary>
-    /// <param name="bitmap">Captured image.</param>
-    /// <param name="tileToImage">Homography from tile space to image pixels.</param>
+    /// <summary>Creates a sampler for a capture and its tile-space-to-image homography.</summary>
     public TileSampler(SKBitmap bitmap, Homography tileToImage)
     {
         ArgumentNullException.ThrowIfNull(bitmap);
@@ -49,10 +42,11 @@ public sealed class TileSampler
         _height = bitmap.Height;
         _tileToImage = tileToImage;
 
+        // Projected tile pitch in captured-image pixels, measured at the grid center.
         var a = tileToImage.Map(80.5, 45.5);
         var b = tileToImage.Map(81.5, 45.5);
-        Pitch = Math.Sqrt((b.X - a.X) * (b.X - a.X) + (b.Y - a.Y) * (b.Y - a.Y));
-        _offset = OffsetFraction * Pitch;
+        double pitch = Math.Sqrt((b.X - a.X) * (b.X - a.X) + (b.Y - a.Y) * (b.Y - a.Y));
+        _offset = OffsetFraction * pitch;
     }
 
     /// <summary>Samples the tile at the given grid coordinates.</summary>

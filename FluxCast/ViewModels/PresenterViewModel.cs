@@ -19,9 +19,6 @@ public partial class PresenterViewModel : ObservableObject
     /// <summary>Gets the total frame count, including frame 0.</summary>
     public uint TotalFrames { get; }
 
-    /// <summary>Gets a value indicating whether this session was fully resumed from cache.</summary>
-    public bool WasResumed { get; }
-
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(NextCommand))]
     [NotifyCanExecuteChangedFor(nameof(BackCommand))]
@@ -39,16 +36,10 @@ public partial class PresenterViewModel : ObservableObject
     /// <summary>Gets the progress label.</summary>
     public string ProgressText => $"Frame {CurrentIndex + 1} of {TotalFrames}";
 
-    /// <summary>
-    /// Initializes a new instance of the <see cref="PresenterViewModel"/> class.
-    /// </summary>
-    /// <param name="session">Completed encode session.</param>
-    /// <param name="onClose">Invoked when the user ends the session.</param>
     public PresenterViewModel(EncodeSessionResult session, Action onClose)
     {
         _onClose = onClose;
         TotalFrames = session.TotalFrames;
-        WasResumed = session.PayloadReused && session.FramesRendered == 0;
         _frames = new CachedFrameProvider(session.FramesDirectory, session.TotalFrames);
 
         CurrentFrame = _frames.GetFrame(0);

@@ -1,11 +1,10 @@
 using System.Diagnostics;
-using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Interop;
-using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using Flux.Ui.Controls;
+using Flux.Ui.Services;
 using FluxCore.Imaging;
 using FluxCore.Transfer;
 using FluxRead.Interop;
@@ -34,14 +33,10 @@ public partial class LiveCaptureView : UserControl
 
     private Int32Rect _region;
     private (int X, int Y)? _nextPoint;
+    private PointNextClicker? _clicker;
     private CaptureLoopService? _loop;
     private CancellationTokenSource? _cts;
 
-    /// <summary>
-    /// Initializes a new instance of the <see cref="LiveCaptureView"/> class.
-    /// </summary>
-    /// <param name="pipeline">Shared decode/save pipeline.</param>
-    /// <param name="dialogs">Dialog service.</param>
     public LiveCaptureView(DecodePipelineService pipeline, DialogService dialogs)
     {
         _pipeline = pipeline;
@@ -119,14 +114,18 @@ public partial class LiveCaptureView : UserControl
         try
         {
             if (_vm.HasRegion)
-                _vm.RegionPreview = ToBitmapSource(_previewCapture.Capture(_region));
+            {
+                using var region = _previewCapture.Capture(_region);
+                _vm.RegionPreview = BitmapConverter.ToBitmapSource(region);
+            }
 
             if (_nextPoint is { } p)
             {
                 var crop = new Int32Rect(
                     p.X - CalibrationCropWidth / 2, p.Y - CalibrationCropHeight / 2,
                     CalibrationCropWidth, CalibrationCropHeight);
-                _vm.CalibrationPreview = ToBitmapSource(_previewCapture.Capture(crop));
+                using var preview = _previewCapture.Capture(crop);
+                _vm.CalibrationPreview = BitmapConverter.ToBitmapSource(preview);
             }
         }
         catch
@@ -160,7 +159,7 @@ public partial class LiveCaptureView : UserControl
         _elapsedTimer.Start();
 
         var capture = new RegionScreenCapture(_region);
-        var clicker = new PointNextClicker(point);
+        _clicker = new PointNextClicker(point);
         // Poll more frequently (so a quick advance is caught fast) while keeping roughly the same
         // ~1.8s budget before a re-click — re-clicking too early would over-advance and skip a frame.
         var options = new CaptureLoopOptions(
@@ -168,7 +167,7 @@ public partial class LiveCaptureView : UserControl
             MaxPollsPerClick: 18,
             StabilityMaxAttempts: 16,
             StabilityIntervalMs: 60);
-        _loop = new CaptureLoopService(capture, clicker, ColorMap.Default, options);
+        _loop = new CaptureLoopService(capture, _clicker, ColorMap.Default, options);
         var progress = new Progress<LoopStatus>(_vm.Apply);
 
         var mini = new MiniCaptureWindow(_vm, TogglePause, () => _cts.Cancel()) { Owner = owner };
@@ -192,6 +191,7 @@ public partial class LiveCaptureView : UserControl
             _transferWatch.Stop();
             _vm.IsRunning = false;
             _loop = null;
+            _clicker = null;
             mini.Close();
             owner.Show();
             owner.Activate();
@@ -273,7 +273,13 @@ public partial class LiveCaptureView : UserControl
 
         MessageBox.Show("Hover over the Client's NEXT button, press F8, then click OK.", "Recalibrate");
         if (tcs.Task.IsCompleted)
+        {
             _nextPoint = tcs.Task.Result;
+            var (x, y) = tcs.Task.Result;
+            if (_clicker is not null)
+                _clicker.Point = (x, y);
+            _vm.CalibrationText = $"Next button at ({x},{y})";
+        }
 
         return StallResolution.Recalibrate;
     }
@@ -296,8 +302,8 @@ public partial class LiveCaptureView : UserControl
             // Don't count time spent in the save dialog; resume for the decompress that follows.
             _transferWatch.Stop();
             string? target = isArchive
-                ? _dialogs.PickOutputFolder()
-                : _dialogs.PickSaveFile(metadata.OriginalName);
+                ? _dialogs.PickFolder("Choose a folder to extract into")
+                : _dialogs.PickSaveFile("Save decoded file", metadata.OriginalName);
 
             if (target is null)
             {
@@ -333,20 +339,4 @@ public partial class LiveCaptureView : UserControl
         }
     }
 
-    private static BitmapSource ToBitmapSource(SkiaSharp.SKBitmap bitmap)
-    {
-        using (bitmap)
-        using (var image = SkiaSharp.SKImage.FromBitmap(bitmap))
-        using (var data = image.Encode(SkiaSharp.SKEncodedImageFormat.Png, 80))
-        {
-            var stream = new MemoryStream(data.ToArray());
-            var source = new BitmapImage();
-            source.BeginInit();
-            source.CacheOption = BitmapCacheOption.OnLoad;
-            source.StreamSource = stream;
-            source.EndInit();
-            source.Freeze();
-            return source;
-        }
-    }
 }

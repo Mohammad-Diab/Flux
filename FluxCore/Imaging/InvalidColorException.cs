@@ -5,17 +5,6 @@ namespace FluxCore.Imaging;
 /// </summary>
 public class InvalidColorException : Exception
 {
-    /// <summary>
-    /// Initializes a new instance of the <see cref="InvalidColorException"/> class with a specified error message.
-    /// </summary>
-    /// <param name="message">The message that describes the error.</param>
+    /// <summary>Creates the exception with an error message.</summary>
     public InvalidColorException(string message) : base(message) { }
-
-    /// <summary>
-    /// Initializes a new instance of the <see cref="InvalidColorException"/> class with a specified error message and inner exception.
-    /// </summary>
-    /// <param name="message">The message that describes the error.</param>
-    /// <param name="innerException">The exception that is the cause of the current exception.</param>
-    public InvalidColorException(string message, Exception innerException)
-        : base(message, innerException) { }
 }

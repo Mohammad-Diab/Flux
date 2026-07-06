@@ -1,5 +1,3 @@
-using System.Buffers.Binary;
-
 namespace FluxCore.Imaging;
 
 /// <summary>
@@ -21,12 +19,7 @@ public sealed class ColorMap
     /// </summary>
     public static ColorMap Default { get; } = CreateDefault();
 
-    /// <summary>
-    /// Initializes a new instance of the <see cref="ColorMap"/> class.
-    /// </summary>
-    /// <param name="palette">Array of exactly 256 unique colors, none of which can be white.</param>
-    /// <exception cref="ArgumentNullException">Thrown when palette is null.</exception>
-    /// <exception cref="ArgumentException">Thrown when palette is invalid.</exception>
+    /// <summary>Requires exactly 256 unique colors, none of which can be white.</summary>
     public ColorMap(Rgb24[] palette)
     {
         ArgumentNullException.ThrowIfNull(palette);
@@ -34,7 +27,6 @@ public sealed class ColorMap
         if (palette.Length != 256)
             throw new ArgumentException($"Palette must contain exactly 256 colors, got {palette.Length}.", nameof(palette));
 
-        // Validate no white and no duplicates
         var uniqueColors = new HashSet<Rgb24>();
         for (int i = 0; i < palette.Length; i++)
         {
@@ -54,19 +46,10 @@ public sealed class ColorMap
         }
     }
 
-    /// <summary>
-    /// Converts a byte value to its corresponding color.
-    /// </summary>
-    /// <param name="value">Byte value (0-255).</param>
-    /// <returns>The corresponding RGB color.</returns>
+    /// <summary>Converts a byte value to its palette color.</summary>
     public Rgb24 GetColor(byte value) => _byteToColor[value];
 
-    /// <summary>
-    /// Converts a color to its corresponding byte value.
-    /// </summary>
-    /// <param name="color">RGB color.</param>
-    /// <returns>The corresponding byte value (0-255).</returns>
-    /// <exception cref="InvalidColorException">Thrown when color is not in the palette.</exception>
+    /// <summary>Converts a palette color back to its byte value.</summary>
     public byte GetByte(Rgb24 color)
     {
         if (color.IsWhite)
@@ -78,12 +61,7 @@ public sealed class ColorMap
         return value;
     }
 
-    /// <summary>
-    /// Tries to convert a color to its corresponding byte value.
-    /// </summary>
-    /// <param name="color">RGB color.</param>
-    /// <param name="value">The corresponding byte value if found.</param>
-    /// <returns>True if color is in palette; false otherwise.</returns>
+    /// <summary>Tries to convert a color to its byte value.</summary>
     public bool TryGetByte(Rgb24 color, out byte value)
     {
         if (color.IsWhite)
@@ -95,20 +73,13 @@ public sealed class ColorMap
         return _colorToByte.TryGetValue(color, out value);
     }
 
-    /// <summary>
-    /// Checks if a color is in the palette (excluding white).
-    /// </summary>
+    /// <summary>Checks if a color is in the palette (white is never in it).</summary>
     public bool Contains(Rgb24 color) => !color.IsWhite && _colorToByte.ContainsKey(color);
 
-    /// <summary>
-    /// Gets the full palette as a read-only span.
-    /// </summary>
+    /// <summary>Gets the full palette.</summary>
     public ReadOnlySpan<Rgb24> Palette => _byteToColor;
 
-    /// <summary>
-    /// Serializes the color map to a byte array (256 colors � 3 bytes RGB = 768 bytes).
-    /// </summary>
-    /// <returns>Byte array containing the serialized palette.</returns>
+    /// <summary>Serializes to 256 colors × 3 RGB bytes = 768 bytes.</summary>
     public byte[] Serialize()
     {
         var buffer = new byte[SerializedSize];
@@ -124,19 +95,14 @@ public sealed class ColorMap
         return buffer;
     }
 
-    /// <summary>
-    /// Deserializes a color map from a byte array.
-    /// </summary>
-    /// <param name="data">Byte array containing serialized palette (must be exactly 768 bytes).</param>
-    /// <returns>Deserialized ColorMap instance.</returns>
-    /// <exception cref="ArgumentException">Thrown when data is invalid.</exception>
+    /// <summary>Deserializes a color map from its 768-byte form.</summary>
     public static ColorMap Deserialize(byte[] data)
     {
         if (data == null)
             throw new ArgumentNullException(nameof(data));
 
         if (data.Length != SerializedSize)
-            throw new ArgumentException($"Serialized color map must be 768 bytes (256 colors � 3), got {data.Length}.", nameof(data));
+            throw new ArgumentException($"Serialized color map must be 768 bytes (256 colors × 3), got {data.Length}.", nameof(data));
 
         var palette = new Rgb24[256];
         int offset = 0;
@@ -152,10 +118,6 @@ public sealed class ColorMap
         return new ColorMap(palette);
     }
 
-    /// <summary>
-    /// Creates the default deterministic 256-color palette.
-    /// Uses a spread across RGB space, avoiding white (255,255,255).
-    /// </summary>
     // The default palette is an evenly spaced 8x8x4 RGB lattice (8 red x 8 green x 4 blue
     // levels = 256). Minimum pairwise distance is ~36 RGB units, so classification stays
     // unambiguous under lossy capture noise. The lattice point that would be white (index 255)

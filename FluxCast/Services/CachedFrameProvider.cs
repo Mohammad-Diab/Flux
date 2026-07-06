@@ -17,22 +17,13 @@ public sealed class CachedFrameProvider
     private readonly Dictionary<int, BitmapSource> _cache = new();
     private readonly object _gate = new();
 
-    /// <summary>
-    /// Initializes a new instance of the <see cref="CachedFrameProvider"/> class.
-    /// </summary>
-    /// <param name="framesDirectory">Directory containing frame_NNNNNN.png files.</param>
-    /// <param name="totalFrames">Total frame count.</param>
     public CachedFrameProvider(string framesDirectory, uint totalFrames)
     {
         _framesDirectory = framesDirectory;
         _totalFrames = totalFrames;
     }
 
-    /// <summary>
-    /// Gets the frame at the given index, loading it synchronously if needed, and kicks off
-    /// neighbor prefetch.
-    /// </summary>
-    /// <param name="index">Frame index (0-based).</param>
+    /// <summary>Gets the frame at the given index and kicks off neighbor prefetch.</summary>
     public BitmapSource GetFrame(int index)
     {
         var frame = GetOrLoad(index);

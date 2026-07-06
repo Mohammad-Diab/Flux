@@ -57,18 +57,7 @@ public sealed class MetadataPayload
     /// <summary>Gets the color map used for data tiles.</summary>
     public ColorMap ColorMap { get; }
 
-    /// <summary>
-    /// Initializes a new instance of the <see cref="MetadataPayload"/> class.
-    /// </summary>
-    /// <param name="sha256">SHA-256 of the transferred payload (32 bytes).</param>
-    /// <param name="payloadType">Payload type.</param>
-    /// <param name="eccLevel">ECC level of the payload frames.</param>
-    /// <param name="totalFrames">Total frames including frame 0.</param>
-    /// <param name="payloadLength">Transferred payload length in bytes.</param>
-    /// <param name="originalName">Original file or folder name.</param>
-    /// <param name="originalLength">Original uncompressed length in bytes.</param>
-    /// <param name="contentSignature">32-byte content signature of the source.</param>
-    /// <param name="colorMap">Color map used for data tiles.</param>
+    /// <summary>Creates and validates the transfer metadata.</summary>
     public MetadataPayload(
         byte[] sha256,
         PayloadType payloadType,

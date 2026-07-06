@@ -7,7 +7,7 @@ public sealed class CompressionResult
 {
     /// <summary>
     /// Gets the compressed data.
- /// </summary>
+    /// </summary>
     public byte[] Data { get; init; }
 
     /// <summary>
@@ -25,14 +25,10 @@ public sealed class CompressionResult
     /// </summary>
     public double CompressionRatio => OriginalSize > 0 ? (double)CompressedSize / OriginalSize : 0;
 
-    /// <summary>
-    /// Initializes a new instance of the <see cref="CompressionResult"/> class.
-    /// </summary>
-    /// <param name="data">Compressed data.</param>
-    /// <param name="originalSize">Original uncompressed size.</param>
+    /// <summary>Creates a result from compressed data and the original size.</summary>
     public CompressionResult(byte[] data, long originalSize)
     {
-    Data = data ?? throw new ArgumentNullException(nameof(data));
-   OriginalSize = originalSize;
+        Data = data ?? throw new ArgumentNullException(nameof(data));
+        OriginalSize = originalSize;
     }
 }

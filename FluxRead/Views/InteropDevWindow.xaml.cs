@@ -1,9 +1,7 @@
-using System.IO;
 using System.Windows;
 using System.Windows.Interop;
-using System.Windows.Media.Imaging;
 using FluxRead.Interop;
-using SkiaSharp;
+using FluxRead.Services;
 
 namespace FluxRead.Views;
 
@@ -18,22 +16,11 @@ public partial class InteropDevWindow : Window
     private HotkeyListener? _hotkey;
     private bool _excluded;
 
-    /// <summary>
-    /// Initializes a new instance of the <see cref="InteropDevWindow"/> class.
-    /// </summary>
     public InteropDevWindow()
     {
         InitializeComponent();
-        Flux.Ui.Controls.WindowChromeAnimator.Attach(this, RootContent);
+        Flux.Ui.Controls.FluxWindowChrome.Attach(this, RootContent);
         Closed += (_, _) => _hotkey?.Dispose();
-    }
-
-    /// <inheritdoc/>
-    protected override void OnSourceInitialized(EventArgs e)
-    {
-        base.OnSourceInitialized(e);
-        Flux.Ui.Controls.NativeChrome.EnableWindowAnimations(this);
-        Flux.Ui.Controls.Win11Corners.Apply(this);
     }
 
     private async void OnReadDpi(object sender, RoutedEventArgs e)
@@ -51,7 +38,7 @@ public partial class InteropDevWindow : Window
         {
             var region = new Int32Rect(ParseInt(CapX), ParseInt(CapY), ParseInt(CapW), ParseInt(CapH));
             using var bitmap = _capture.Capture(region);
-            CapImage.Source = ToBitmapSource(bitmap);
+            CapImage.Source = BitmapConverter.ToBitmapSource(bitmap, quality: 100);
             CapResult.Text = $"Captured {bitmap.Width}×{bitmap.Height}px from ({region.X},{region.Y}).";
         }
         catch (Exception ex)
@@ -121,18 +108,4 @@ public partial class InteropDevWindow : Window
 
     private static int ParseInt(System.Windows.Controls.TextBox box) =>
         int.TryParse(box.Text, out int value) ? value : 0;
-
-    private static BitmapSource ToBitmapSource(SKBitmap bitmap)
-    {
-        using var image = SKImage.FromBitmap(bitmap);
-        using var data = image.Encode(SKEncodedImageFormat.Png, 100);
-        var stream = new MemoryStream(data.ToArray());
-        var source = new BitmapImage();
-        source.BeginInit();
-        source.CacheOption = BitmapCacheOption.OnLoad;
-        source.StreamSource = stream;
-        source.EndInit();
-        source.Freeze();
-        return source;
-    }
 }

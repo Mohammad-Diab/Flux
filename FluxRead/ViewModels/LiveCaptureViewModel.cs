@@ -1,9 +1,9 @@
 using System.Collections.ObjectModel;
-using System.IO;
 using System.Windows.Media.Imaging;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Flux.Ui.Controls;
 using FluxCore.Transfer;
+using FluxRead.Services;
 
 namespace FluxRead.ViewModels;
 
@@ -133,7 +133,7 @@ public partial class LiveCaptureViewModel : ObservableObject
             AddLog(status.Message);
 
         if (status.LastFramePng is { } png)
-            LastThumbnail = Decode(png);
+            LastThumbnail = BitmapConverter.FromPng(png);
     }
 
     private void UpdateTaskbar(CaptureLoopState state)
@@ -179,17 +179,5 @@ public partial class LiveCaptureViewModel : ObservableObject
         const int max = 24;
         string head = string.Join(", ", missing.Take(max));
         return missing.Count > max ? $"{head} … (+{missing.Count - max} more)" : head;
-    }
-
-    private static BitmapSource Decode(byte[] png)
-    {
-        using var stream = new MemoryStream(png);
-        var image = new BitmapImage();
-        image.BeginInit();
-        image.CacheOption = BitmapCacheOption.OnLoad;
-        image.StreamSource = stream;
-        image.EndInit();
-        image.Freeze();
-        return image;
     }
 }

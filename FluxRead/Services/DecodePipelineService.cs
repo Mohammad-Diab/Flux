@@ -45,11 +45,6 @@ public sealed class DecodePipelineService
     private readonly CompressionService _compression;
     private readonly ILogger<DecodePipelineService>? _logger;
 
-    /// <summary>
-    /// Initializes a new instance of the <see cref="DecodePipelineService"/> class.
-    /// </summary>
-    /// <param name="compression">Compression service for 7z payloads.</param>
-    /// <param name="logger">Optional logger.</param>
     public DecodePipelineService(CompressionService compression, ILogger<DecodePipelineService>? logger = null)
     {
         ArgumentNullException.ThrowIfNull(compression);
@@ -57,12 +52,7 @@ public sealed class DecodePipelineService
         _logger = logger;
     }
 
-    /// <summary>
-    /// Decodes every frame_*.png in a folder.
-    /// </summary>
-    /// <param name="framesDirectory">Folder containing frame PNGs.</param>
-    /// <param name="progress">Optional progress sink.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <summary>Decodes every frame_*.png in a folder.</summary>
     public Task<FolderDecodeResult> DecodeFolderAsync(
         string framesDirectory,
         IProgress<DecodeProgress>? progress = null,
@@ -76,9 +66,6 @@ public sealed class DecodePipelineService
     /// Verifies the reassembled payload and writes it: raw payloads to a chosen file, 7z payloads
     /// decompressed into a chosen folder.
     /// </summary>
-    /// <param name="result">A readable, complete decode result.</param>
-    /// <param name="outputPath">Target file (raw) or folder (7z).</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
     public async Task SaveAsync(
         PayloadAssembler assembler,
         MetadataPayload metadata,

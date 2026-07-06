@@ -1,32 +1,17 @@
-using System;
 using System.ComponentModel;
 using System.Windows;
 using FluxCast.ViewModels;
 
 namespace FluxCast;
 
-/// <summary>
-/// Shell window. The window is always resizable; the presenter scales the frame image to fit
-/// (nearest-neighbor, aspect-locked), which the capture-tolerant decoder handles at any size.
-/// </summary>
+/// <summary>Shell window.</summary>
 public partial class MainWindow : Window
 {
-    /// <summary>
-    /// Initializes a new instance of the <see cref="MainWindow"/> class.
-    /// </summary>
     public MainWindow()
     {
         InitializeComponent();
-        Flux.Ui.Controls.WindowChromeAnimator.Attach(this, RootContent);
+        Flux.Ui.Controls.FluxWindowChrome.Attach(this, RootContent);
         DataContextChanged += OnDataContextChanged;
-    }
-
-    /// <inheritdoc/>
-    protected override void OnSourceInitialized(EventArgs e)
-    {
-        base.OnSourceInitialized(e);
-        Flux.Ui.Controls.NativeChrome.EnableWindowAnimations(this);
-        Flux.Ui.Controls.Win11Corners.Apply(this);
     }
 
     private void OnDataContextChanged(object sender, DependencyPropertyChangedEventArgs e)

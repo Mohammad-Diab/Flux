@@ -13,10 +13,6 @@ public sealed class RegionScreenCapture : IScreenCapture
     private readonly ScreenRegionCapture _capture = new();
     private readonly Int32Rect _region;
 
-    /// <summary>
-    /// Initializes a new instance of the <see cref="RegionScreenCapture"/> class.
-    /// </summary>
-    /// <param name="region">Capture region in physical pixels.</param>
     public RegionScreenCapture(Int32Rect region) => _region = region;
 
     /// <inheritdoc/>
@@ -24,18 +20,13 @@ public sealed class RegionScreenCapture : IScreenCapture
 }
 
 /// <summary>
-/// Clicks a calibrated physical-pixel point for the optical loop. The point is mutable so a
-/// stall recalibration can update it without recreating the loop.
+/// Clicks a calibrated physical-pixel point; mutable so a stall recalibration can retarget
+/// the running loop.
 /// </summary>
 public sealed class PointNextClicker : INextClicker
 {
-    /// <summary>Gets or sets the Next-button point in physical pixels.</summary>
     public (int X, int Y) Point { get; set; }
 
-    /// <summary>
-    /// Initializes a new instance of the <see cref="PointNextClicker"/> class.
-    /// </summary>
-    /// <param name="point">Initial Next-button point in physical pixels.</param>
     public PointNextClicker((int X, int Y) point) => Point = point;
 
     /// <inheritdoc/>

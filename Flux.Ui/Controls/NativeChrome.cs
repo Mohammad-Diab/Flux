@@ -24,11 +24,7 @@ public static class NativeChrome
     [DllImport("user32.dll", EntryPoint = "SetWindowLongW")]
     private static extern int SetWindowLong(IntPtr hWnd, int index, int newLong);
 
-    /// <summary>
-    /// Adds the min/max/system-menu style bits to the window so Windows plays its native
-    /// minimize/maximize/restore animations. Safe to call once the native handle exists.
-    /// </summary>
-    /// <param name="window">The window to enable native animations for.</param>
+    /// <summary>Safe to call once the native handle exists.</summary>
     public static void EnableWindowAnimations(Window window)
     {
         if (!MotionSettings.Current.AnimationsEnabled)

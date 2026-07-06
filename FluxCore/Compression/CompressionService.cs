@@ -1,3 +1,4 @@
+using FluxCore.IO;
 using Microsoft.Extensions.Logging;
 using SharpCompress.Common;
 using SharpCompress.Writers;
@@ -31,12 +32,7 @@ public sealed class CompressionService
     /// </summary>
     public string CompressionMethod => Using7zExe ? "7z.exe (fast, best ratio)" : "Built-in (slower, good ratio)";
 
-    /// <summary>
-    /// Initializes a new instance of the <see cref="CompressionService"/> class.
-    /// </summary>
-    /// <param name="sevenZipPath">Path to 7z.exe. If null, searches PATH.</param>
-    /// <param name="prefer7zExe">If true, prefers 7z.exe when available (default: true).</param>
-    /// <param name="logger">Optional logger.</param>
+    /// <summary>Creates the service; a null <paramref name="sevenZipPath"/> searches common locations and PATH.</summary>
     public CompressionService(string? sevenZipPath = null, bool prefer7zExe = true, ILogger<CompressionService>? logger = null)
     {
         _logger = logger;
@@ -47,10 +43,10 @@ public sealed class CompressionService
         if (_prefer7zExe && !_has7zExe)
         {
             _logger?.LogWarning(
-       "7z.exe not found. Falling back to built-in compression (40-60% slower, slightly lower ratio).\n" +
-      "For best performance, install 7-Zip from: https://www.7-zip.org/download.html\n" +
-      "Searched: {Path}",
-      _sevenZipPath ?? "PATH");
+                "7z.exe not found. Falling back to built-in compression (40-60% slower, slightly lower ratio).\n" +
+                "For best performance, install 7-Zip from: https://www.7-zip.org/download.html\n" +
+                "Searched: {Path}",
+                _sevenZipPath ?? "PATH");
         }
         else if (_has7zExe)
         {
@@ -62,14 +58,7 @@ public sealed class CompressionService
         }
     }
 
-    /// <summary>
-    /// Compresses a file or folder using 7z (preferred) or built-in compression (fallback).
-    /// </summary>
-    /// <param name="sourcePath">Path to file or folder to compress.</param>
-    /// <param name="progress">Optional 0-100 progress sink; only reported when using 7z.exe.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>Compression result containing compressed data and metadata.</returns>
-    /// <exception cref="CompressionException">Thrown when compression fails.</exception>
+    /// <summary>Compresses a file or folder; progress is only reported when using 7z.exe.</summary>
     public async Task<CompressionResult> CompressAsync(
         string sourcePath, IProgress<int>? progress = null, CancellationToken cancellationToken = default)
     {
@@ -79,18 +68,11 @@ public sealed class CompressionService
             throw new FileNotFoundException($"Source not found: {sourcePath}");
 
         return Using7zExe
-      ? await Compress7zExeAsync(sourcePath, progress, cancellationToken)
+            ? await Compress7zExeAsync(sourcePath, progress, cancellationToken)
             : await CompressSharpCompressAsync(sourcePath, cancellationToken);
     }
 
-    /// <summary>
-    /// Decompresses in-memory 7z data to a target directory.
-    /// </summary>
-    /// <param name="compressedData">Compressed 7z data.</param>
-    /// <param name="targetDirectory">Target directory for extraction.</param>
-    /// <param name="progress">Optional 0-100 progress sink; only reported when using 7z.exe.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    /// <exception cref="CompressionException">Thrown when decompression fails.</exception>
+    /// <summary>Decompresses in-memory 7z data; progress is only reported when using 7z.exe.</summary>
     public async Task DecompressAsync(
         byte[] compressedData, string targetDirectory, IProgress<int>? progress = null, CancellationToken cancellationToken = default)
     {
@@ -98,31 +80,15 @@ public sealed class CompressionService
         ArgumentNullException.ThrowIfNull(targetDirectory);
 
         // Stage to a temp archive so decompression always streams from disk (one code path).
-        var tempArchive = Path.Combine(Path.GetTempPath(), $"flux_{Guid.NewGuid():N}.7z");
-        try
-        {
-            await File.WriteAllBytesAsync(tempArchive, compressedData, cancellationToken);
-            await DecompressFileAsync(tempArchive, targetDirectory, progress, cancellationToken);
-        }
-        finally
-        {
-            if (File.Exists(tempArchive))
-            {
-                try { File.Delete(tempArchive); }
-                catch { /* Ignore cleanup errors */ }
-            }
-        }
+        using var tempArchive = new TempFile();
+        await File.WriteAllBytesAsync(tempArchive.Path, compressedData, cancellationToken);
+        await DecompressFileAsync(tempArchive.Path, targetDirectory, progress, cancellationToken);
     }
 
     /// <summary>
-    /// Decompresses a 7z archive file to a target directory, streaming from disk (no full-payload
-    /// buffer in memory). Used by the disk-backed assembler for large transfers.
+    /// Decompresses a 7z archive streaming from disk (no full-payload buffer in memory), used by
+    /// the disk-backed assembler for large transfers.
     /// </summary>
-    /// <param name="archivePath">Path to the 7z archive.</param>
-    /// <param name="targetDirectory">Target directory for extraction.</param>
-    /// <param name="progress">Optional 0-100 progress sink; only reported when using 7z.exe.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    /// <exception cref="CompressionException">Thrown when decompression fails.</exception>
     public async Task DecompressFileAsync(
         string archivePath, string targetDirectory, IProgress<int>? progress = null, CancellationToken cancellationToken = default)
     {
@@ -145,61 +111,40 @@ public sealed class CompressionService
         await DecompressSharpCompressFileAsync(archivePath, targetDirectory, cancellationToken);
     }
 
-    /// <summary>
-    /// Creates a raw (uncompressed) passthrough result.
-    /// </summary>
-    /// <param name="data">Data to pass through.</param>
-    /// <returns>Compression result with identical input and output.</returns>
+    /// <summary>Creates a raw (uncompressed) passthrough result.</summary>
     public CompressionResult CreateRaw(byte[] data)
     {
         ArgumentNullException.ThrowIfNull(data);
         return new CompressionResult(data, data.Length);
     }
 
-    /// <summary>
-    /// Checks if 7z is available on the system.
-    /// </summary>
-    /// <returns>True if 7z.exe is found; false otherwise.</returns>
-    public bool Is7zAvailable() => _has7zExe;
-
     #region 7z.exe Implementation
 
     private async Task<CompressionResult> Compress7zExeAsync(
         string sourcePath, IProgress<int>? progress, CancellationToken cancellationToken)
     {
-        var tempArchive = Path.Combine(Path.GetTempPath(), $"flux_{Guid.NewGuid():N}.7z");
+        using var tempArchive = new TempFile();
 
-        try
-        {
-            long originalSize = GetSize(sourcePath);
-            _logger?.LogInformation("Compressing {Source} ({Size} bytes) with 7z.exe", sourcePath, originalSize);
+        long originalSize = PathSize.GetTotalBytes(sourcePath);
+        _logger?.LogInformation("Compressing {Source} ({Size} bytes) with 7z.exe", sourcePath, originalSize);
 
-            // Use maximum compression: -mx=9, LZMA2, solid archive. -bsp1 streams progress
-            // percentages to stdout. Archive the folder (or file) itself so its top-level name is
-            // preserved — extraction recreates "<folder>/…" rather than dumping loose contents.
-            var arguments = $"a -t7z -mx=9 -m0=lzma2 -ms=on -bsp1 \"{tempArchive}\" \"{sourcePath}\"";
+        // Use maximum compression: -mx=9, LZMA2, solid archive. -bsp1 streams progress
+        // percentages to stdout. Archive the folder (or file) itself so its top-level name is
+        // preserved — extraction recreates "<folder>/…" rather than dumping loose contents.
+        var arguments = $"a -t7z -mx=9 -m0=lzma2 -ms=on -bsp1 \"{tempArchive.Path}\" \"{sourcePath}\"";
 
-            await Run7zAsync(arguments, progress, cancellationToken);
+        await Run7zAsync(arguments, progress, cancellationToken);
 
-            if (!File.Exists(tempArchive))
-                throw new CompressionException("7z compression produced no output archive.");
+        if (!File.Exists(tempArchive.Path))
+            throw new CompressionException("7z compression produced no output archive.");
 
-            var compressedData = await File.ReadAllBytesAsync(tempArchive, cancellationToken);
-            var result = new CompressionResult(compressedData, originalSize);
+        var compressedData = await File.ReadAllBytesAsync(tempArchive.Path, cancellationToken);
+        var result = new CompressionResult(compressedData, originalSize);
 
-            _logger?.LogInformation("7z.exe compression complete: {CompressedSize} bytes (ratio: {Ratio:P2})",
-                    result.CompressedSize, result.CompressionRatio);
+        _logger?.LogInformation("7z.exe compression complete: {CompressedSize} bytes (ratio: {Ratio:P2})",
+                result.CompressedSize, result.CompressionRatio);
 
-            return result;
-        }
-        finally
-        {
-            if (File.Exists(tempArchive))
-            {
-                try { File.Delete(tempArchive); }
-                catch { /* Ignore cleanup errors */ }
-            }
-        }
+        return result;
     }
 
     private async Task Decompress7zExeFileAsync(
@@ -277,14 +222,14 @@ public sealed class CompressionService
 
     private async Task<CompressionResult> CompressSharpCompressAsync(string sourcePath, CancellationToken cancellationToken)
     {
-        long originalSize = GetSize(sourcePath);
+        long originalSize = PathSize.GetTotalBytes(sourcePath);
         _logger?.LogInformation("Compressing {Source} ({Size} bytes) with built-in compression", sourcePath, originalSize);
 
-        var tempArchive = Path.Combine(Path.GetTempPath(), $"flux_{Guid.NewGuid():N}.7z");
+        using var tempArchive = new TempFile();
 
         try
         {
-            using (var stream = File.Create(tempArchive))
+            using (var stream = File.Create(tempArchive.Path))
             using (var writer = WriterFactory.Open(stream, ArchiveType.SevenZip, new WriterOptions(CompressionType.LZMA)
             {
                 LeaveStreamOpen = false,
@@ -293,7 +238,6 @@ public sealed class CompressionService
             {
                 if (File.Exists(sourcePath))
                 {
-                    // Single file
                     writer.Write(Path.GetFileName(sourcePath), sourcePath);
                 }
                 else if (Directory.Exists(sourcePath))
@@ -305,25 +249,17 @@ public sealed class CompressionService
                 }
             }
 
-            var compressedData = await File.ReadAllBytesAsync(tempArchive, cancellationToken);
+            var compressedData = await File.ReadAllBytesAsync(tempArchive.Path, cancellationToken);
             var result = new CompressionResult(compressedData, originalSize);
 
             _logger?.LogInformation("Built-in compression complete: {CompressedSize} bytes (ratio: {Ratio:P2})",
-         result.CompressedSize, result.CompressionRatio);
+                result.CompressedSize, result.CompressionRatio);
 
             return result;
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             throw new CompressionException($"SharpCompress compression failed: {ex.Message}", ex);
-        }
-        finally
-        {
-            if (File.Exists(tempArchive))
-            {
-                try { File.Delete(tempArchive); }
-                catch { /* Ignore cleanup errors */ }
-            }
         }
     }
 
@@ -385,11 +321,10 @@ public sealed class CompressionService
     {
         if (OperatingSystem.IsWindows())
         {
-            // Windows-specific paths
             var commonPaths = new[]
-     {
-          @"C:\Program Files\7-Zip\7z.exe",
-     @"C:\Program Files (x86)\7-Zip\7z.exe",
+            {
+                @"C:\Program Files\7-Zip\7z.exe",
+                @"C:\Program Files (x86)\7-Zip\7z.exe",
             };
 
             foreach (var path in commonPaths)
@@ -400,7 +335,6 @@ public sealed class CompressionService
         }
         else if (OperatingSystem.IsLinux() || OperatingSystem.IsMacOS())
         {
-            // Unix-specific paths
             var unixPaths = new[] { "/usr/bin/7z", "/usr/local/bin/7z", "/usr/bin/7za" };
             foreach (var path in unixPaths)
             {
@@ -409,7 +343,6 @@ public sealed class CompressionService
             }
         }
 
-        // Search PATH environment variable
         var pathEnv = Environment.GetEnvironmentVariable("PATH");
         if (pathEnv != null)
         {
@@ -427,21 +360,19 @@ public sealed class CompressionService
             }
         }
 
-        return null; // Not found
+        return null;
     }
 
-    private static long GetSize(string path)
+    private sealed class TempFile : IDisposable
     {
-        if (File.Exists(path))
-            return new FileInfo(path).Length;
+        public string Path { get; } =
+            System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"flux_{Guid.NewGuid():N}.7z");
 
-        if (Directory.Exists(path))
+        public void Dispose()
         {
-            return Directory.GetFiles(path, "*", SearchOption.AllDirectories)
-    .Sum(f => new FileInfo(f).Length);
+            try { File.Delete(Path); }
+            catch { /* Ignore cleanup errors */ }
         }
-
-        return 0;
     }
 
     #endregion

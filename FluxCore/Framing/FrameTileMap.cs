@@ -30,12 +30,7 @@ public sealed class FrameTileMap
     /// <summary>Gets a value indicating whether the beacon block renders black (frame id is even) or white (odd).</summary>
     public bool BeaconIsBlack => Header.FrameId % 2 == 0;
 
-    /// <summary>
-    /// Initializes a new instance of the <see cref="FrameTileMap"/> class.
-    /// </summary>
-    /// <param name="header">Frame header.</param>
-    /// <param name="tileValues">Per-tile value (row-major, 14,400 entries); only Data and Header tiles are meaningful. Palette indices for Palette256, 0-7 cube-corner indices for CubeCorner8.</param>
-    /// <param name="colorScheme">Color scheme for data and header tiles.</param>
+    /// <summary>Tile values are row-major: palette indices for Palette256, 0-7 cube-corner indices for CubeCorner8.</summary>
     public FrameTileMap(FrameHeader header, byte[] tileValues, TileColorScheme colorScheme = TileColorScheme.Palette256)
     {
         ArgumentNullException.ThrowIfNull(tileValues);

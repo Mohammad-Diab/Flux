@@ -1,4 +1,3 @@
-using System.Security.Cryptography;
 using FluxCore.Compression;
 using FluxCore.Ecc;
 using FluxCore.Framing;
@@ -38,21 +37,13 @@ public sealed class PayloadAssembler : IDisposable
     private bool _writeClosed;
     private bool _disposed;
 
-    /// <summary>
-    /// Initializes a new instance of the <see cref="PayloadAssembler"/> class.
-    /// </summary>
-    /// <param name="metadata">Decoded frame-0 metadata for the transfer.</param>
+    /// <summary>Creates an assembler for the transfer described by the frame-0 metadata.</summary>
     public PayloadAssembler(MetadataPayload metadata)
         : this(metadata, DiskThresholdBytes)
     {
     }
 
-    /// <summary>
-    /// Initializes a new instance with an explicit disk threshold (primarily for testing the
-    /// disk-backed path without a 100 MB payload).
-    /// </summary>
-    /// <param name="metadata">Decoded frame-0 metadata for the transfer.</param>
-    /// <param name="diskThresholdBytes">Payload size at or above which frames spill to disk.</param>
+    /// <summary>The explicit disk threshold exists to test the disk-backed path without a 100 MB payload.</summary>
     public PayloadAssembler(MetadataPayload metadata, long diskThresholdBytes)
     {
         ArgumentNullException.ThrowIfNull(metadata);
@@ -189,8 +180,7 @@ public sealed class PayloadAssembler : IDisposable
         // 7-Zip) without a file-sharing conflict, then hash it with a fresh read handle.
         FinalizeWriting();
         using var stream = File.OpenRead(_payloadFilePath!);
-        byte[] hash = SHA256.HashData(stream);
-        if (!hash.AsSpan().SequenceEqual(_metadata.Sha256))
+        if (!Sha256Helper.Verify(stream, _metadata.Sha256))
             throw new InvalidDataException(
                 "Reassembled payload failed SHA-256 verification; one or more frames are corrupt.");
     }

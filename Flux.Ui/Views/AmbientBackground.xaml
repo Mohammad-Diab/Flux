@@ -3,28 +3,19 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              IsHitTestVisible="False">
     <UserControl.Resources>
+        <SineEase x:Key="DriftEase" EasingMode="EaseInOut"/>
         <!-- Started/stopped from code-behind so it honors the motion setting (perpetual otherwise). -->
         <Storyboard x:Key="Drift" RepeatBehavior="Forever" AutoReverse="True">
             <DoubleAnimation Storyboard.TargetName="Orb1" Storyboard.TargetProperty="X"
-                             From="0" To="220" Duration="0:0:34">
-                <DoubleAnimation.EasingFunction><SineEase EasingMode="EaseInOut"/></DoubleAnimation.EasingFunction>
-            </DoubleAnimation>
+                             From="0" To="220" Duration="0:0:34" EasingFunction="{StaticResource DriftEase}"/>
             <DoubleAnimation Storyboard.TargetName="Orb1" Storyboard.TargetProperty="Y"
-                             From="0" To="120" Duration="0:0:27">
-                <DoubleAnimation.EasingFunction><SineEase EasingMode="EaseInOut"/></DoubleAnimation.EasingFunction>
-            </DoubleAnimation>
+                             From="0" To="120" Duration="0:0:27" EasingFunction="{StaticResource DriftEase}"/>
             <DoubleAnimation Storyboard.TargetName="Orb2" Storyboard.TargetProperty="X"
-                             From="0" To="-240" Duration="0:0:40">
-                <DoubleAnimation.EasingFunction><SineEase EasingMode="EaseInOut"/></DoubleAnimation.EasingFunction>
-            </DoubleAnimation>
+                             From="0" To="-240" Duration="0:0:40" EasingFunction="{StaticResource DriftEase}"/>
             <DoubleAnimation Storyboard.TargetName="Orb2" Storyboard.TargetProperty="Y"
-                             From="0" To="-140" Duration="0:0:31">
-                <DoubleAnimation.EasingFunction><SineEase EasingMode="EaseInOut"/></DoubleAnimation.EasingFunction>
-            </DoubleAnimation>
+                             From="0" To="-140" Duration="0:0:31" EasingFunction="{StaticResource DriftEase}"/>
             <DoubleAnimation Storyboard.TargetName="Orb3" Storyboard.TargetProperty="X"
-                             From="-160" To="160" Duration="0:0:45">
-                <DoubleAnimation.EasingFunction><SineEase EasingMode="EaseInOut"/></DoubleAnimation.EasingFunction>
-            </DoubleAnimation>
+                             From="-160" To="160" Duration="0:0:45" EasingFunction="{StaticResource DriftEase}"/>
         </Storyboard>
     </UserControl.Resources>
 

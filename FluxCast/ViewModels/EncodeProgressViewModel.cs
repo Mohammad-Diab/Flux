@@ -30,17 +30,7 @@ public partial class EncodeProgressViewModel : ObservableObject
     [ObservableProperty]
     private string? _errorText;
 
-    /// <summary>
-    /// Initializes a new instance of the <see cref="EncodeProgressViewModel"/> class and
-    /// immediately starts the encode.
-    /// </summary>
-    /// <param name="encodeService">Encode service.</param>
-    /// <param name="sourcePath">Source file or folder.</param>
-    /// <param name="sessionRoot">Session root directory.</param>
-    /// <param name="options">Encode options.</param>
-    /// <param name="onCompleted">Invoked on the UI thread when encoding completes.</param>
-    /// <param name="onCancelledOrFailed">Invoked when the user cancels or acknowledges an error.</param>
-    /// <param name="logger">Logger.</param>
+    // Construction immediately starts the encode; callbacks run on the UI thread.
     public EncodeProgressViewModel(
         FluxEncodeService encodeService,
         string sourcePath,

@@ -1,3 +1,5 @@
+using FluxCore.Imaging;
+
 namespace FluxCore.Framing;
 
 /// <summary>
@@ -65,13 +67,14 @@ public static class FrameFormat
     /// <summary>Encoded bytes across all metadata codewords (12 x 255).</summary>
     public const int MetadataEncodedBytes = MetadataCodewordCount * CodewordLength;
 
+    /// <summary>Parity symbols per metadata-frame codeword.</summary>
+    public const int MetadataParitySymbols = CodewordLength - MetadataCodewordDataBytes;
+
     /// <summary>
     /// Metadata-frame tiles consumed at 3 bits per tile to carry the encoded codewords
     /// (12 x 255 x 8 / 3 = 8160). Remaining metadata-frame tiles render black.
     /// </summary>
-    public const int MetadataTilesUsed = MetadataEncodedBytes * 8 / CubeCornerBitsPerTile;
-
-    private const int CubeCornerBitsPerTile = 3;
+    public const int MetadataTilesUsed = MetadataEncodedBytes * 8 / CubeCornerColors.BitsPerTile;
 
     private static readonly TileRole[] Roles = new TileRole[TotalTiles];
     private static readonly (int X, int Y)[] DataTilePositions;

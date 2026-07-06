@@ -7,9 +7,6 @@ namespace Flux.Ui.Services;
 /// <summary>Applies light/dark by swapping the shared Color tokens; DynamicResource-bound brushes retint live.</summary>
 public sealed class ThemeService
 {
-    /// <summary>Whether the last applied appearance resolved to light.</summary>
-    public bool IsLight { get; private set; }
-
     /// <summary>Applies the appearance for <paramref name="mode"/> (System reads the Windows setting).</summary>
     public void Apply(AppThemeMode mode)
     {
@@ -19,7 +16,6 @@ public sealed class ThemeService
             AppThemeMode.Dark => false,
             _ => IsWindowsLight(),
         };
-        IsLight = light;
 
         var r = Application.Current.Resources;
         r["TextPrimaryColor"] = C(light ? "#1A1D24" : "#EEF1F7");
@@ -41,7 +37,7 @@ public sealed class ThemeService
     }
 
     /// <summary>Reads the current Windows app-theme preference (true = light).</summary>
-    public static bool IsWindowsLight()
+    private static bool IsWindowsLight()
     {
         try
         {

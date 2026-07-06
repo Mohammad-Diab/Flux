@@ -40,9 +40,6 @@ public partial class ShellViewModel : ObservableObject
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
         "Flux", "FluxCast", "sessions");
 
-    /// <summary>
-    /// Initializes a new instance of the <see cref="ShellViewModel"/> class.
-    /// </summary>
     public ShellViewModel(
         FluxEncodeService encodeService,
         SourceValidator validator,

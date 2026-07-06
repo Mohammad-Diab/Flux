@@ -39,15 +39,7 @@ public readonly struct FrameHeader : IEquatable<FrameHeader>
     /// <summary>Gets the CRC-32 checksum over the first <see cref="PayloadLength"/> payload bytes.</summary>
     public uint PayloadCrc32 { get; init; }
 
-    /// <summary>
-    /// Initializes a new instance of the <see cref="FrameHeader"/> struct with the current format version.
-    /// </summary>
-    /// <param name="frameId">Frame ID (0-based).</param>
-    /// <param name="totalFrames">Total frames in the transfer.</param>
-    /// <param name="payloadLength">Real payload bytes in this frame.</param>
-    /// <param name="payloadCrc32">CRC-32 over the real payload bytes.</param>
-    /// <param name="eccLevel">ECC level of this frame's payload codewords.</param>
-    /// <param name="isMetadataFrame">Whether this is the metadata frame.</param>
+    /// <summary>Creates a header stamped with the current format version.</summary>
     public FrameHeader(uint frameId, uint totalFrames, ushort payloadLength, uint payloadCrc32,
         EccLevel eccLevel, bool isMetadataFrame = false)
     {

@@ -14,9 +14,6 @@ public partial class RegionSelectorWindow : Window
     private Point _start;
     private bool _dragging;
 
-    /// <summary>
-    /// Initializes a new instance of the <see cref="RegionSelectorWindow"/> class.
-    /// </summary>
     public RegionSelectorWindow()
     {
         InitializeComponent();

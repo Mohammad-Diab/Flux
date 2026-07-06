@@ -20,12 +20,7 @@ public readonly struct Rgb24 : IEquatable<Rgb24>
     /// </summary>
     public byte B { get; init; }
 
-    /// <summary>
-    /// Initializes a new instance of the <see cref="Rgb24"/> struct.
-    /// </summary>
-    /// <param name="r">Red component (0-255).</param>
-    /// <param name="g">Green component (0-255).</param>
-    /// <param name="b">Blue component (0-255).</param>
+    /// <summary>Creates a color from its components.</summary>
     public Rgb24(byte r, byte g, byte b)
     {
         R = r;
@@ -43,33 +38,21 @@ public readonly struct Rgb24 : IEquatable<Rgb24>
     /// </summary>
     public bool IsWhite => R == 255 && G == 255 && B == 255;
 
-    /// <summary>
-    /// Determines whether the specified <see cref="Rgb24"/> is equal to the current <see cref="Rgb24"/>.
-    /// </summary>
+    /// <inheritdoc/>
     public bool Equals(Rgb24 other) => R == other.R && G == other.G && B == other.B;
 
-    /// <summary>
-    /// Determines whether the specified object is equal to the current <see cref="Rgb24"/>.
-    /// </summary>
+    /// <inheritdoc/>
     public override bool Equals(object? obj) => obj is Rgb24 other && Equals(other);
 
-    /// <summary>
-    /// Returns the hash code for this instance.
-    /// </summary>
+    /// <inheritdoc/>
     public override int GetHashCode() => HashCode.Combine(R, G, B);
 
-    /// <summary>
-    /// Determines whether two specified <see cref="Rgb24"/> instances are equal.
-    /// </summary>
+    /// <summary>Equality operator.</summary>
     public static bool operator ==(Rgb24 left, Rgb24 right) => left.Equals(right);
 
-    /// <summary>
-    /// Determines whether two specified <see cref="Rgb24"/> instances are not equal.
-    /// </summary>
+    /// <summary>Inequality operator.</summary>
     public static bool operator !=(Rgb24 left, Rgb24 right) => !left.Equals(right);
 
-    /// <summary>
-    /// Returns a string representation of the color.
-    /// </summary>
+    /// <inheritdoc/>
     public override string ToString() => $"RGB({R}, {G}, {B})";
 }
