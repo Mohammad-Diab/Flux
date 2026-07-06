@@ -20,6 +20,7 @@ public class CaptureLoopServiceTests
         private readonly List<SKBitmap> _frames;
         private int _index;
         private int _ignoreClicks;
+        private int _capturesAtEnd;
 
         public FakeScreen(List<SKBitmap> frames) => _frames = frames;
 
@@ -28,7 +29,24 @@ public class CaptureLoopServiceTests
         /// <summary>Number of upcoming clicks to ignore (simulates RDP dropping a click).</summary>
         public int IgnoreNextClicks { get => _ignoreClicks; set => _ignoreClicks = value; }
 
-        public SKBitmap Capture() => _frames[_index].Copy();
+        /// <summary>1-based click number that advances by two frames (simulates a skipped frame).</summary>
+        public int SkipAtClick { get; set; } = -1;
+
+        /// <summary>Frame index to "show" a few captures after parking at the last frame — simulates re-showing a gap during recovery.</summary>
+        public int PresentWhenDone { get; set; } = -1;
+
+        public SKBitmap Capture()
+        {
+            if (_index >= _frames.Count - 1)
+            {
+                _capturesAtEnd++;
+                // Let the last frame be accepted first, then start "showing" the missing frame.
+                if (PresentWhenDone >= 0 && _capturesAtEnd > 3)
+                    return _frames[PresentWhenDone].Copy();
+            }
+
+            return _frames[_index].Copy();
+        }
 
         public void ClickNext()
         {
@@ -39,8 +57,8 @@ public class CaptureLoopServiceTests
                 return;
             }
 
-            if (_index < _frames.Count - 1)
-                _index++;
+            int step = ClickCount == SkipAtClick ? 2 : 1;
+            _index = Math.Min(_index + step, _frames.Count - 1);
         }
 
         public void JumpTo(int index) => _index = index;
@@ -81,6 +99,14 @@ public class CaptureLoopServiceTests
             new CaptureLoopOptions(PollIntervalMs: 0, StabilityIntervalMs: 0, MaxPollsPerClick: 6, MaxReclicks: 3));
 
     private static Task<StallResolution> Abort(CancellationToken _) => Task.FromResult(StallResolution.Abort);
+
+    /// <summary>Collects loop statuses synchronously (deterministic, unlike Progress&lt;T&gt;).</summary>
+    private sealed class CollectingProgress : IProgress<LoopStatus>
+    {
+        public List<LoopStatus> Items { get; } = [];
+
+        public void Report(LoopStatus value) => Items.Add(value);
+    }
 
     [Fact]
     public async Task Run_CleanMultiFrameTransfer_CompletesAndVerifies()
@@ -163,6 +189,38 @@ public class CaptureLoopServiceTests
 
         Assert.Equal(CaptureLoopState.Complete, report.State);
         Assert.Equal(payload, report.Assembler!.AssembleAndVerify());
+    }
+
+    [Fact]
+    public async Task Run_SkippedFrame_RecoveredInGapPass()
+    {
+        // Click 2 skips a middle frame; the loop should recover it once it's re-shown, then verify.
+        var (frames, payload, _) = BuildTransfer(40_000);
+        var screen = new FakeScreen(frames) { SkipAtClick = 2, PresentWhenDone = 2 };
+        var loop = CreateLoop(screen);
+
+        var report = await loop.RunAsync(null, Abort, CancellationToken.None);
+
+        Assert.Equal(CaptureLoopState.Complete, report.State);
+        Assert.Equal(payload, report.Assembler!.AssembleAndVerify());
+        Assert.Equal(frames.Count - 1, report.FramesReceived);
+        Assert.Equal(0, report.Stalls);
+    }
+
+    [Fact]
+    public async Task Run_SkippedFrame_ReportsRecoveringGapsWithMissingIds()
+    {
+        var (frames, _, _) = BuildTransfer(40_000);
+        var screen = new FakeScreen(frames) { SkipAtClick = 2, PresentWhenDone = 2 };
+        var loop = CreateLoop(screen);
+
+        var progress = new CollectingProgress();
+        var report = await loop.RunAsync(progress, Abort, CancellationToken.None);
+
+        Assert.Equal(CaptureLoopState.Complete, report.State);
+        var recovering = progress.Items.Where(s => s.State == CaptureLoopState.RecoveringGaps).ToList();
+        Assert.NotEmpty(recovering);
+        Assert.Contains(recovering, s => s.MissingFrameIds is { Count: > 0 } m && m.Contains(2u));
     }
 
     [Fact]

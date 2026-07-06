@@ -44,9 +44,25 @@
                              Visibility="{Binding IsDecompressing, Converter={StaticResource BoolToVisibility}}"/>
             </StackPanel>
 
-            <Border Grid.Row="2" Style="{StaticResource Card}" Margin="0,12,0,0" Padding="6">
-                <Image Source="{Binding LastThumbnail}" Stretch="Uniform"/>
-            </Border>
+            <Grid Grid.Row="2" Margin="0,12,0,0">
+                <Border Style="{StaticResource Card}" Padding="6">
+                    <Image Source="{Binding LastThumbnail}" Stretch="Uniform"/>
+                </Border>
+                <!-- Shown when frames were skipped: which frames to re-show on the sender. -->
+                <Border Background="{StaticResource SurfaceAltBrush}" CornerRadius="8" Padding="12"
+                        Visibility="{Binding IsRecovering, Converter={StaticResource BoolToVisibility}}">
+                    <StackPanel>
+                        <TextBlock Text="Missing frames" FontSize="13" FontWeight="SemiBold"
+                                   Foreground="{StaticResource TextPrimaryBrush}"/>
+                        <TextBlock Text="On the sender, use Back or “go to frame” to re-show each frame below — FluxRead grabs them automatically."
+                                   Style="{StaticResource SubtleText}" FontSize="11" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                        <ScrollViewer MaxHeight="80" VerticalScrollBarVisibility="Auto" Margin="0,8,0,0">
+                            <TextBlock Text="{Binding MissingFramesText}" FontFamily="Consolas" FontSize="12"
+                                       Foreground="{StaticResource AccentBrush}" TextWrapping="Wrap"/>
+                        </ScrollViewer>
+                    </StackPanel>
+                </Border>
+            </Grid>
 
             <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,14,0,0">
                 <Button x:Name="PauseButton" Content="{Binding PauseLabel}" Style="{StaticResource SecondaryButton}"

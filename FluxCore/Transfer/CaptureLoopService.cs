@@ -106,6 +106,13 @@ public sealed class CaptureLoopService
                 cancellationToken.ThrowIfCancellationRequested();
                 await WaitIfPausedAsync(cancellationToken);
 
+                // Highest frame seen but gaps remain — clicking Next can't reach them; recover.
+                if (assembler.LastAcceptedId >= assembler.ExpectedPayloadFrames)
+                {
+                    await RecoverGapsAsync(assembler, metadata, progress, cancellationToken);
+                    break;
+                }
+
                 _clicker.ClickNext();
                 // Empty message: this fires once per click and would otherwise flood the log; the
                 // live state label already shows "Waiting for the next frame…".
@@ -123,6 +130,14 @@ public sealed class CaptureLoopService
                 totalReclicks++;
                 if (reclicks < _options.MaxReclicks)
                     continue;
+
+                // Stuck after progress → recover; but zero frames received means calibration, not gaps.
+                if (assembler.ReceivedFrames > 0)
+                {
+                    stalls++;
+                    await RecoverGapsAsync(assembler, metadata, progress, cancellationToken);
+                    break;
+                }
 
                 stalls++;
                 Report(progress, CaptureLoopState.Stalled, assembler, metadata, lastFrameId, reclicks,
@@ -231,6 +246,59 @@ public sealed class CaptureLoopService
         return false;
     }
 
+    /// <summary>Waits (no clicking) for the user to re-show each missing frame, capturing each until complete.</summary>
+    private async Task RecoverGapsAsync(
+        PayloadAssembler assembler,
+        MetadataPayload metadata,
+        IProgress<LoopStatus>? progress,
+        CancellationToken cancellationToken)
+    {
+        var missing = assembler.MissingFrameIds;
+        Report(progress, CaptureLoopState.RecoveringGaps, assembler, metadata, assembler.LastAcceptedId, 0,
+            FormatMissingMessage(missing), null, missing);
+
+        while (!assembler.IsComplete)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            await WaitIfPausedAsync(cancellationToken);
+            await Task.Delay(_options.PollIntervalMs, cancellationToken);
+
+            using var capture = await CaptureStableAsync(cancellationToken);
+
+            var probe = _decoder.TryProbe(capture);
+            if (!probe.Registered || probe.Header is not { } header)
+                continue;
+            if (!IsAcceptablePayloadFrame(header, metadata, assembler))
+                continue;
+
+            var decoded = _decoder.Decode(capture);
+            if (decoded.Status != DecodeStatus.Success || decoded.Header is not { } fullHeader)
+                continue;
+            if (!IsAcceptablePayloadFrame(fullHeader, metadata, assembler))
+                continue;
+
+            assembler.AddFrame(fullHeader, decoded.Payload!);
+            var stillMissing = assembler.MissingFrameIds;
+            var png = EncodeThumbnail(capture);
+            var message = stillMissing.Count == 0
+                ? $"Recovered frame {fullHeader.FrameId}. All frames received."
+                : $"Recovered frame {fullHeader.FrameId}. {FormatMissingMessage(stillMissing)}";
+            Report(progress, CaptureLoopState.RecoveringGaps, assembler, metadata, fullHeader.FrameId, 0,
+                message, png, stillMissing);
+        }
+    }
+
+    private static string FormatMissingMessage(IReadOnlyList<uint> missing)
+    {
+        if (missing.Count == 0)
+            return "All frames received.";
+
+        const int max = 12;
+        string shown = string.Join(", ", missing.Take(max));
+        string suffix = missing.Count > max ? $" … (+{missing.Count - max} more)" : "";
+        return $"Missing {missing.Count} frame(s) — on the sender, use Back or “go to frame” to show: {shown}{suffix}";
+    }
+
     private static bool IsAcceptablePayloadFrame(in FrameHeader header, MetadataPayload metadata, PayloadAssembler assembler) =>
         !header.IsMetadataFrame &&
         header.FrameId >= 1 &&
@@ -321,7 +389,8 @@ public sealed class CaptureLoopService
         uint lastFrameId = 0,
         int reclicks = 0,
         string message = "",
-        byte[]? png = null)
+        byte[]? png = null,
+        IReadOnlyList<uint>? missing = null)
     {
         progress?.Report(new LoopStatus(
             state,
@@ -330,7 +399,8 @@ public sealed class CaptureLoopService
             lastFrameId,
             reclicks,
             message,
-            png));
+            png,
+            missing));
     }
 
     private static TransferReport Cancelled(MetadataPayload? metadata, PayloadAssembler? assembler, int reclicks, int stalls, TimeSpan elapsed) =>

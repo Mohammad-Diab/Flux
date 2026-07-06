@@ -52,6 +52,12 @@ public partial class LiveCaptureViewModel : ObservableObject
     private bool _isPaused;
 
     [ObservableProperty]
+    private bool _isRecovering;
+
+    [ObservableProperty]
+    private string _missingFramesText = "";
+
+    [ObservableProperty]
     private bool _isDecompressing;
 
     [ObservableProperty]
@@ -98,6 +104,10 @@ public partial class LiveCaptureViewModel : ObservableObject
     public void Apply(LoopStatus status)
     {
         StateText = FriendlyState(status.State);
+        IsRecovering = status.State == CaptureLoopState.RecoveringGaps;
+
+        if (status.MissingFrameIds is { } missing)
+            MissingFramesText = FormatMissing(missing);
 
         if (status.TotalFrames > 0)
         {
@@ -127,12 +137,23 @@ public partial class LiveCaptureViewModel : ObservableObject
         CaptureLoopState.ClickingNext => "Clicking Next…",
         CaptureLoopState.WaitingForAdvance => "Waiting for the next frame…",
         CaptureLoopState.Stalled => "Stalled — needs attention",
+        CaptureLoopState.RecoveringGaps => "Recovering missing frames…",
         CaptureLoopState.Reassembling => "Reassembling & verifying…",
         CaptureLoopState.Complete => "Complete",
         CaptureLoopState.Failed => "Failed",
         CaptureLoopState.Cancelled => "Cancelled",
         _ => state.ToString(),
     };
+
+    private static string FormatMissing(IReadOnlyList<uint> missing)
+    {
+        if (missing.Count == 0)
+            return "";
+
+        const int max = 24;
+        string head = string.Join(", ", missing.Take(max));
+        return missing.Count > max ? $"{head} … (+{missing.Count - max} more)" : head;
+    }
 
     private static BitmapSource Decode(byte[] png)
     {

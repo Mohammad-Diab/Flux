@@ -18,6 +18,9 @@ public enum CaptureLoopState
     /// <summary>Advance did not happen after repeated re-clicks; awaiting user intervention.</summary>
     Stalled,
 
+    /// <summary>Skipped frames can't be reached by clicking forward; waiting for the user to re-show each.</summary>
+    RecoveringGaps,
+
     /// <summary>All frames received; reassembling and verifying the payload.</summary>
     Reassembling,
 
@@ -67,6 +70,7 @@ public sealed record CaptureLoopOptions(
 /// <param name="Reclicks">Re-clicks spent on the current frame.</param>
 /// <param name="Message">Human-readable status or warning.</param>
 /// <param name="LastFramePng">PNG of the most recently accepted capture, for a thumbnail (optional).</param>
+/// <param name="MissingFrameIds">Frame ids still missing (set only while recovering gaps).</param>
 public sealed record LoopStatus(
     CaptureLoopState State,
     int ReceivedFrames,
@@ -74,7 +78,8 @@ public sealed record LoopStatus(
     uint LastFrameId,
     int Reclicks,
     string Message,
-    byte[]? LastFramePng = null);
+    byte[]? LastFramePng = null,
+    IReadOnlyList<uint>? MissingFrameIds = null);
 
 /// <summary>Outcome of an optical transfer.</summary>
 /// <param name="State">Terminal loop state.</param>
