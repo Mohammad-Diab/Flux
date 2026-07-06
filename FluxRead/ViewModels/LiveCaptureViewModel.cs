@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.IO;
 using System.Windows.Media.Imaging;
 using CommunityToolkit.Mvvm.ComponentModel;
+using Flux.Ui.Controls;
 using FluxCore.Transfer;
 
 namespace FluxRead.ViewModels;
@@ -121,6 +122,8 @@ public partial class LiveCaptureViewModel : ObservableObject
             ProgressText = status.Message;
         }
 
+        UpdateTaskbar(status.State);
+
         // The message is already event-specific ("Received frame 12 (12/299).", stalls, etc.) —
         // log it verbatim; routine ticks send an empty message and are skipped.
         if (!string.IsNullOrEmpty(status.Message))
@@ -128,6 +131,26 @@ public partial class LiveCaptureViewModel : ObservableObject
 
         if (status.LastFramePng is { } png)
             LastThumbnail = Decode(png);
+    }
+
+    private void UpdateTaskbar(CaptureLoopState state)
+    {
+        switch (state)
+        {
+            case CaptureLoopState.Failed:
+            case CaptureLoopState.Cancelled:
+                TaskbarProgress.Current.Clear();
+                break;
+            case CaptureLoopState.WaitingForFrame0:
+                TaskbarProgress.Current.Indeterminate();
+                break;
+            default:
+                if (ExpectedCount > 0 && ReceivedCount > 0)
+                    TaskbarProgress.Current.Report(TransferProgress);
+                else
+                    TaskbarProgress.Current.Indeterminate();
+                break;
+        }
     }
 
     /// <summary>Maps a loop state to a plain-English label for the UI.</summary>

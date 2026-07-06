@@ -34,13 +34,13 @@
                                    Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,12"/>
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="X" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                            <TextBox x:Name="CapX" Text="100" Width="64" Margin="0,0,12,0"/>
+                            <TextBox x:Name="CapX" Text="100" Width="88" Margin="0,0,12,0"/>
                             <TextBlock Text="Y" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                            <TextBox x:Name="CapY" Text="100" Width="64" Margin="0,0,12,0"/>
+                            <TextBox x:Name="CapY" Text="100" Width="88" Margin="0,0,12,0"/>
                             <TextBlock Text="W" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                            <TextBox x:Name="CapW" Text="500" Width="64" Margin="0,0,12,0"/>
+                            <TextBox x:Name="CapW" Text="500" Width="88" Margin="0,0,12,0"/>
                             <TextBlock Text="H" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                            <TextBox x:Name="CapH" Text="300" Width="64" Margin="0,0,12,0"/>
+                            <TextBox x:Name="CapH" Text="300" Width="88" Margin="0,0,12,0"/>
                             <Button Content="Capture" Style="{StaticResource SecondaryButton}" Click="OnCapture"/>
                         </StackPanel>
                         <TextBlock x:Name="CapResult" Margin="2,10,0,0" FontFamily="Consolas"
@@ -58,9 +58,9 @@
                                    Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,12"/>
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="X" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                            <TextBox x:Name="ClickX" Text="400" Width="72" Margin="0,0,12,0"/>
+                            <TextBox x:Name="ClickX" Text="400" Width="88" Margin="0,0,12,0"/>
                             <TextBlock Text="Y" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                            <TextBox x:Name="ClickY" Text="400" Width="72" Margin="0,0,12,0"/>
+                            <TextBox x:Name="ClickY" Text="400" Width="88" Margin="0,0,12,0"/>
                             <Button Content="Click there in 3s (cursor restored)"
                                     Style="{StaticResource SecondaryButton}" Click="OnClick"/>
                         </StackPanel>

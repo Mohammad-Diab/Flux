@@ -1,5 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Flux.Ui.Controls;
 using FluxCore.Transfer;
 using Microsoft.Extensions.Logging;
 
@@ -76,15 +77,18 @@ public partial class EncodeProgressViewModel : ObservableObject
         {
             var result = await Task.Run(
                 () => encodeService.EncodeAsync(sourcePath, sessionRoot, options, progress, _cts.Token));
+            TaskbarProgress.Current.Clear();
             onCompleted(result);
         }
         catch (OperationCanceledException)
         {
+            TaskbarProgress.Current.Clear();
             onCancelledOrFailed();
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Encoding failed for {Source}", sourcePath);
+            TaskbarProgress.Current.Clear();
             IsIndeterminate = false;
             ErrorText = ex.Message;
         }
@@ -101,11 +105,13 @@ public partial class EncodeProgressViewModel : ObservableObject
                     IsIndeterminate = false;
                     ProgressValue = report.CompressionPercent / 100.0;
                     DetailText = $"Archiving the source with 7-Zip — {report.CompressionPercent}%";
+                    TaskbarProgress.Current.Report(ProgressValue);
                 }
                 else
                 {
                     IsIndeterminate = true;
                     DetailText = "Archiving the source with 7-Zip. This can take a while for large inputs.";
+                    TaskbarProgress.Current.Indeterminate();
                 }
                 break;
 
@@ -114,6 +120,7 @@ public partial class EncodeProgressViewModel : ObservableObject
                 DetailText = $"{report.CompletedFrames} of {report.TotalFrames} frames";
                 IsIndeterminate = false;
                 ProgressValue = report.TotalFrames == 0 ? 0 : (double)report.CompletedFrames / report.TotalFrames;
+                TaskbarProgress.Current.Report(ProgressValue);
                 break;
 
             case EncodePhase.Completed:

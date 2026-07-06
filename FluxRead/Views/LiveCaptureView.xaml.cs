@@ -5,6 +5,7 @@ using System.Windows.Controls;
 using System.Windows.Interop;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
+using Flux.Ui.Controls;
 using FluxCore.Imaging;
 using FluxCore.Transfer;
 using FluxRead.Interop;
@@ -186,6 +187,7 @@ public partial class LiveCaptureView : UserControl
         }
         finally
         {
+            TaskbarProgress.Current.Clear();
             _elapsedTimer.Stop();
             _transferWatch.Stop();
             _vm.IsRunning = false;
@@ -303,6 +305,7 @@ public partial class LiveCaptureView : UserControl
                 {
                     _vm.DecompressProgress = p / 100.0;
                     _vm.StateText = $"Decompressing… {p}%";
+                    TaskbarProgress.Current.Report(p / 100.0);
                 });
             }
 

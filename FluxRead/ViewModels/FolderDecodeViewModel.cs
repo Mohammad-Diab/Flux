@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Flux.Ui.Controls;
 using FluxCore.Framing;
 using FluxRead.Services;
 using Microsoft.Extensions.Logging;
@@ -83,7 +84,11 @@ public partial class FolderDecodeViewModel : ObservableObject
             IsDecoding = true;
             ProgressValue = 0;
             StatusText = metadata.PayloadType == PayloadType.Raw ? "Saving…" : "Decompressing…";
-            var progress = new Progress<int>(p => ProgressValue = p / 100.0);
+            var progress = new Progress<int>(p =>
+            {
+                ProgressValue = p / 100.0;
+                TaskbarProgress.Current.Report(ProgressValue);
+            });
             await _pipeline.SaveAsync(_result.Assembler!, metadata, target, progress);
             StatusText = $"Saved to {target}";
             _dialogs.OpenInExplorer(target);
@@ -97,6 +102,7 @@ public partial class FolderDecodeViewModel : ObservableObject
         {
             IsDecoding = false;
             ProgressValue = 0;
+            TaskbarProgress.Current.Clear();
         }
     }
 
@@ -115,7 +121,10 @@ public partial class FolderDecodeViewModel : ObservableObject
         Summary = "Decoding…";
 
         var progress = new Progress<DecodeProgress>(p =>
-            ProgressValue = p.Total == 0 ? 0 : (double)p.Completed / p.Total);
+        {
+            ProgressValue = p.Total == 0 ? 0 : (double)p.Completed / p.Total;
+            TaskbarProgress.Current.Report(ProgressValue);
+        });
 
         try
         {
@@ -138,6 +147,7 @@ public partial class FolderDecodeViewModel : ObservableObject
         finally
         {
             IsDecoding = false;
+            TaskbarProgress.Current.Clear();
         }
     }
 
