@@ -5,11 +5,13 @@ using System.Windows.Interop;
 using System.Windows.Threading;
 using Flux.Ui.Controls;
 using Flux.Ui.Services;
+using FluxCore.Decoding;
 using FluxCore.Imaging;
 using FluxCore.Transfer;
 using FluxRead.Interop;
 using FluxRead.Services;
 using FluxRead.ViewModels;
+using SkiaSharp;
 
 namespace FluxRead.Views;
 
@@ -70,23 +72,120 @@ public partial class LiveCaptureView : UserControl
         };
     }
 
-    private void OnSelectRegion(object sender, RoutedEventArgs e)
+    // Scan the whole screen for frames: none → manual drag; one → use it; several → let the user pick.
+    private async void OnDetectRegion(object sender, RoutedEventArgs e)
     {
         var owner = Window.GetWindow(this);
-        var selector = new RegionSelectorWindow { Owner = owner };
-        if (owner is not null)
-            owner.WindowState = WindowState.Minimized;
-
-        bool confirmed = selector.ShowDialog() == true && selector.Region is not null;
-        if (owner is not null)
-            owner.WindowState = WindowState.Normal;
-
-        if (!confirmed)
+        if (owner is null)
             return;
 
-        _region = selector.Region!.Value;
+        _vm.RegionText = "Scanning the screen for a frame…";
+        owner.WindowState = WindowState.Minimized;
+        await Task.Delay(350);
+
+        var virtualScreen = DpiUtil.GetVirtualScreenPhysical();
+        using var shot = _previewCapture.Capture(virtualScreen);
+        owner.WindowState = WindowState.Normal;
+
+        var regions = await Task.Run(() => new FrameLocator(ColorMap.Default).Locate(shot));
+
+        if (regions.Count == 0)
+        {
+            _vm.RegionText = "No frame found — select the region manually.";
+            SelectRegionManually(owner);
+            return;
+        }
+
+        FrameRegion chosen;
+        if (regions.Count == 1)
+        {
+            chosen = regions[0];
+        }
+        else
+        {
+            var picker = new FramePickerWindow(shot, regions) { Owner = owner };
+            if (picker.ShowDialog() != true || picker.SelectedIndex is not { } index)
+            {
+                _vm.RegionText = "No region selected.";
+                return;
+            }
+
+            chosen = regions[index];
+        }
+
+        ApplyRegion(new Int32Rect(virtualScreen.X + chosen.X, virtualScreen.Y + chosen.Y, chosen.Width, chosen.Height));
+
+        // Reuse the same screenshot to also find the Next button in the toolbar below the frame.
+        _vm.CalibrationText = "Looking for the Next button…";
+        if (!await TryAutoNextAsync(shot, virtualScreen, chosen))
+            _vm.CalibrationText = "Next button not found — calibrate it with F8.";
+    }
+
+    // Read the "Next" label from the sender's toolbar (the strip below the frame) with on-device OCR.
+    private async void OnDetectNext(object sender, RoutedEventArgs e)
+    {
+        var owner = Window.GetWindow(this);
+        if (owner is null)
+            return;
+
+        _vm.CalibrationText = "Looking for the Next button…";
+        owner.WindowState = WindowState.Minimized;
+        await Task.Delay(350);
+
+        var virtualScreen = DpiUtil.GetVirtualScreenPhysical();
+        using var shot = _previewCapture.Capture(virtualScreen);
+        owner.WindowState = WindowState.Normal;
+
+        bool found = _vm.HasRegion
+            ? await TryAutoNextAsync(shot, virtualScreen, ToShotRegion(virtualScreen))
+            : await OcrNextLocator.FindNextAsync(shot, virtualScreen.X, virtualScreen.Y) is { } p && ApplyNextPoint(p);
+
+        if (!found)
+            _vm.CalibrationText = "Next button not found — calibrate it with F8.";
+    }
+
+    private FrameRegion ToShotRegion(Int32Rect virtualScreen) =>
+        new(_region.X - virtualScreen.X, _region.Y - virtualScreen.Y, _region.Width, _region.Height, null);
+
+    private async Task<bool> TryAutoNextAsync(SKBitmap shot, Int32Rect virtualScreen, FrameRegion frame)
+    {
+        int sx = Math.Max(0, frame.X - frame.Width / 4);
+        int sy = frame.Y + frame.Height;
+        int sw = Math.Min(shot.Width - sx, frame.Width + frame.Width / 2);
+        int sh = Math.Min(shot.Height - sy, frame.Height);
+        if (sw <= 0 || sh <= 0)
+            return false;
+
+        using var strip = new SKBitmap(sw, sh, SKColorType.Bgra8888, SKAlphaType.Premul);
+        using (var canvas = new SKCanvas(strip))
+            canvas.DrawBitmap(shot, new SKRect(sx, sy, sx + sw, sy + sh), new SKRect(0, 0, sw, sh));
+
+        return await OcrNextLocator.FindNextAsync(strip, virtualScreen.X + sx, virtualScreen.Y + sy) is { } point
+            && ApplyNextPoint(point);
+    }
+
+    private void OnSelectRegionManual(object sender, RoutedEventArgs e)
+    {
+        if (Window.GetWindow(this) is { } owner)
+            SelectRegionManually(owner);
+    }
+
+    private void SelectRegionManually(Window owner)
+    {
+        var selector = new RegionSelectorWindow { Owner = owner };
+        owner.WindowState = WindowState.Minimized;
+        bool confirmed = selector.ShowDialog() == true && selector.Region is not null;
+        owner.WindowState = WindowState.Normal;
+
+        if (confirmed)
+            ApplyRegion(selector.Region!.Value);
+    }
+
+    private void ApplyRegion(Int32Rect region)
+    {
+        _region = region;
         _vm.HasRegion = true;
-        _vm.RegionText = $"Region: {_region.Width}×{_region.Height} at ({_region.X},{_region.Y})";
+        _vm.RegionText = $"Region: {region.Width}×{region.Height} at ({region.X},{region.Y})";
         StartPreview();
     }
 
@@ -100,14 +199,20 @@ public partial class LiveCaptureView : UserControl
         hotkey.Pressed += (_, _) =>
         {
             NativeMethods.GetCursorPos(out var pos);
-            _nextPoint = (pos.X, pos.Y);
-            _vm.HasCalibration = true;
-            _vm.CalibrationText = $"Next button at ({pos.X},{pos.Y})";
+            ApplyNextPoint((pos.X, pos.Y));
             hotkey.Dispose();
-            StartPreview();
         };
         hotkey.Arm();
         _vm.CalibrationText = "Hover over the Client's NEXT button, then press F8…";
+    }
+
+    private bool ApplyNextPoint((int X, int Y) point)
+    {
+        _nextPoint = point;
+        _vm.HasCalibration = true;
+        _vm.CalibrationText = $"Next button at ({point.X},{point.Y})";
+        StartPreview();
+        return true;
     }
 
     private void StartPreview()
