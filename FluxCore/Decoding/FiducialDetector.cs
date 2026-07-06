@@ -25,15 +25,7 @@ public static class FiducialDetector
     /// <returns>True when exactly four well-supported finder clusters are found.</returns>
     public static bool TryDetect(LumaImage image, out FinderPoint[] corners)
     {
-        ArgumentNullException.ThrowIfNull(image);
-
-        var clusters = new List<Cluster>();
-        for (int y = 0; y < image.Height; y++)
-        {
-            ScanRow(image, y, clusters);
-        }
-
-        var supported = clusters.Where(c => c.Count >= MinClusterHits).ToList();
+        var supported = CollectSupportedClusters(image);
         if (supported.Count < 4)
         {
             corners = [];
@@ -42,6 +34,25 @@ public static class FiducialDetector
 
         corners = PickExtremalCorners(supported);
         return corners.Length == 4;
+    }
+
+    /// <summary>All well-supported finder centers (unordered) — for locating one or more frames in a larger image.</summary>
+    public static IReadOnlyList<FinderPoint> DetectAll(LumaImage image) =>
+        CollectSupportedClusters(image)
+            .Select(c => new FinderPoint(c.MeanX, c.MeanY, c.MeanModule))
+            .ToArray();
+
+    private static List<Cluster> CollectSupportedClusters(LumaImage image)
+    {
+        ArgumentNullException.ThrowIfNull(image);
+
+        var clusters = new List<Cluster>();
+        for (int y = 0; y < image.Height; y++)
+        {
+            ScanRow(image, y, clusters);
+        }
+
+        return clusters.Where(c => c.Count >= MinClusterHits).ToList();
     }
 
     private static void ScanRow(LumaImage image, int y, List<Cluster> clusters)
