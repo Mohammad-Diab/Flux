@@ -9,9 +9,17 @@
             <ColumnDefinition Width="Auto"/>
         </Grid.ColumnDefinitions>
 
-        <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="16,0,0,0">
+        <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="10,0,0,0">
+            <!-- Back (system-style, top-left) — shown only on a nested page such as Settings. -->
+            <Button x:Name="BackButton" Style="{StaticResource CaptionButton}" VerticalAlignment="Center"
+                    Command="{Binding BackCommand, ElementName=Root}" ToolTip="Back" Margin="0,0,4,0"
+                    shell:WindowChrome.IsHitTestVisibleInChrome="True"
+                    Visibility="{Binding ShowBackButton, ElementName=Root, Converter={StaticResource BoolToVisibility}}">
+                <TextBlock Text="&#xE72B;" FontFamily="Segoe MDL2 Assets" FontSize="14"/>
+            </Button>
+
             <!-- Vector brand mark (crisp at any DPI): gradient square + app-specific arrow. -->
-            <Grid Width="22" Height="22" VerticalAlignment="Center">
+            <Grid Width="22" Height="22" VerticalAlignment="Center" Margin="6,0,0,0">
                 <Border CornerRadius="6" Background="{StaticResource AccentGradient}"/>
                 <Viewbox Width="12" Height="12" HorizontalAlignment="Center" VerticalAlignment="Center">
                     <Path Data="{Binding BrandGeometry, ElementName=Root}" Fill="White"/>
@@ -25,9 +33,11 @@
 
         <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Top"
                     shell:WindowChrome.IsHitTestVisibleInChrome="True">
-            <Button x:Name="SettingsButton" Style="{StaticResource CaptionButton}" Content="&#xE713;"
+            <Button x:Name="SettingsButton" Style="{StaticResource CaptionButton}"
                     Command="{Binding SettingsCommand, ElementName=Root}" ToolTip="Settings"
-                    Visibility="{Binding ShowSettingsButton, ElementName=Root, Converter={StaticResource BoolToVisibility}}"/>
+                    Visibility="{Binding ShowSettingsButton, ElementName=Root, Converter={StaticResource BoolToVisibility}}">
+                <TextBlock Text="&#xE713;" FontFamily="Segoe MDL2 Assets" FontSize="14"/>
+            </Button>
             <Button x:Name="MinButton" Style="{StaticResource CaptionButton}" Click="OnMinimize" ToolTip="Minimize">
                 <Rectangle Width="12" Height="1" Fill="{StaticResource CaptionGlyphBrush}" SnapsToDevicePixels="True"/>
             </Button>

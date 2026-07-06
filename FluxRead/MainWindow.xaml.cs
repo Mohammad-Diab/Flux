@@ -15,6 +15,7 @@ public partial class MainWindow : Window
     private readonly FolderDecodeView _folderView;
     private readonly LiveCaptureView _liveView;
     private readonly SettingsView _settingsView;
+    private int _currentTab;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="MainWindow"/> class.
@@ -45,21 +46,14 @@ public partial class MainWindow : Window
         if (ModeHost is null)
             return;
 
-        // Directional slide: tabs to the right enter from the right, those to the left from the left.
-        if (LiveModeButton.IsChecked == true)
-        {
-            ModeHost.SlideFrom = -36;
-            ModeHost.Content = _liveView;
-        }
-        else if (FolderModeButton.IsChecked == true)
-        {
-            ModeHost.SlideFrom = 36;
-            ModeHost.Content = _folderView;
-        }
-        else
-        {
-            ModeHost.SlideFrom = 36;
-            ModeHost.Content = _settingsView;
-        }
+        int tab = LiveModeButton.IsChecked == true ? 0
+            : FolderModeButton.IsChecked == true ? 1
+            : 2;
+
+        // Slide in the direction of travel: a later tab enters from the right, an earlier tab from
+        // the left — so going back is the exact reverse of going forward.
+        ModeHost.SlideFrom = tab >= _currentTab ? 36 : -36;
+        _currentTab = tab;
+        ModeHost.Content = tab switch { 0 => _liveView, 1 => _folderView, _ => (object)_settingsView };
     }
 }

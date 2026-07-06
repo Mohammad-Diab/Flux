@@ -23,7 +23,17 @@ public partial class ShellViewModel : ObservableObject
     private readonly FluxSettings _settingsModel;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsSettingsOpen))]
+    [NotifyPropertyChangedFor(nameof(CanOpenSettings))]
     private object? _current;
+
+    private object? _beforeSettings;
+
+    /// <summary>Whether the Settings page is currently shown.</summary>
+    public bool IsSettingsOpen => Current is SettingsViewModel;
+
+    /// <summary>Whether the settings gear should be offered (i.e. not already on Settings).</summary>
+    public bool CanOpenSettings => !IsSettingsOpen;
 
     /// <summary>Gets the root directory for encode sessions.</summary>
     public static string SessionRoot { get; } = Path.Combine(
@@ -57,14 +67,22 @@ public partial class ShellViewModel : ObservableObject
     public void ShowSetup() =>
         Current = new EncodeSetupViewModel(_validator, _dialogs, StartEncode);
 
-    /// <summary>Opens Settings, returning to the current screen when done.</summary>
+    /// <summary>Opens Settings; the title-bar back button returns to the previous screen.</summary>
     [RelayCommand]
     private void ShowSettings()
     {
         if (Current is SettingsViewModel)
             return;
-        var previous = Current;
-        Current = new SettingsViewModel(_settings, _theme, _settingsModel, onDone: () => Current = previous);
+        _beforeSettings = Current;
+        Current = new SettingsViewModel(_settings, _theme, _settingsModel);
+    }
+
+    /// <summary>Returns from Settings to the screen shown before it was opened.</summary>
+    [RelayCommand]
+    private void CloseSettings()
+    {
+        if (_beforeSettings is not null)
+            Current = _beforeSettings;
     }
 
     private void StartEncode(string sourcePath, EncodeOptions options) =>

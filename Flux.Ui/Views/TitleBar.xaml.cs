@@ -36,6 +36,14 @@ public partial class TitleBar : UserControl
     public static readonly DependencyProperty ShowSettingsButtonProperty =
         DependencyProperty.Register(nameof(ShowSettingsButton), typeof(bool), typeof(TitleBar), new PropertyMetadata(false));
 
+    /// <summary>Identifies the <see cref="BackCommand"/> property.</summary>
+    public static readonly DependencyProperty BackCommandProperty =
+        DependencyProperty.Register(nameof(BackCommand), typeof(ICommand), typeof(TitleBar), new PropertyMetadata(null));
+
+    /// <summary>Identifies the <see cref="ShowBackButton"/> property.</summary>
+    public static readonly DependencyProperty ShowBackButtonProperty =
+        DependencyProperty.Register(nameof(ShowBackButton), typeof(bool), typeof(TitleBar), new PropertyMetadata(false));
+
     private Window? _hostWindow;
 
     /// <summary>
@@ -80,6 +88,20 @@ public partial class TitleBar : UserControl
     {
         get => (bool)GetValue(ShowSettingsButtonProperty);
         set => SetValue(ShowSettingsButtonProperty, value);
+    }
+
+    /// <summary>Gets or sets the command invoked by the back button.</summary>
+    public ICommand? BackCommand
+    {
+        get => (ICommand?)GetValue(BackCommandProperty);
+        set => SetValue(BackCommandProperty, value);
+    }
+
+    /// <summary>Gets or sets whether the back button is shown (e.g. on a nested page).</summary>
+    public bool ShowBackButton
+    {
+        get => (bool)GetValue(ShowBackButtonProperty);
+        set => SetValue(ShowBackButtonProperty, value);
     }
 
     private void OnLoaded(object sender, RoutedEventArgs e)

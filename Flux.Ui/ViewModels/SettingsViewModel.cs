@@ -15,7 +15,7 @@ public partial class SettingsViewModel : ObservableObject
     private readonly SettingsService _settings;
     private readonly ThemeService _theme;
     private readonly FluxSettings _model;
-    private readonly Action? _onDone;
+    private readonly Action? _onOpenDevTools;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="SettingsViewModel"/> class.
@@ -23,17 +23,17 @@ public partial class SettingsViewModel : ObservableObject
     /// <param name="settings">Persistence service.</param>
     /// <param name="theme">Theme applier.</param>
     /// <param name="model">Shared, already-loaded settings instance.</param>
-    /// <param name="onDone">Optional "done" callback (shown as a button when provided).</param>
-    public SettingsViewModel(SettingsService settings, ThemeService theme, FluxSettings model, Action? onDone = null)
+    /// <param name="onOpenDevTools">Optional dev-tools opener; its section shows only when provided.</param>
+    public SettingsViewModel(SettingsService settings, ThemeService theme, FluxSettings model, Action? onOpenDevTools = null)
     {
         _settings = settings;
         _theme = theme;
         _model = model;
-        _onDone = onDone;
+        _onOpenDevTools = onOpenDevTools;
     }
 
-    /// <summary>Whether the Done button is shown (page mode) versus hidden (tab mode).</summary>
-    public bool ShowDone => _onDone is not null;
+    /// <summary>Whether the developer-tools section is available (host-provided).</summary>
+    public bool ShowDevTools => _onOpenDevTools is not null;
 
     public bool IsSystem { get => _model.ThemeMode == AppThemeMode.System; set { if (value) SetTheme(AppThemeMode.System); } }
     public bool IsLight { get => _model.ThemeMode == AppThemeMode.Light; set { if (value) SetTheme(AppThemeMode.Light); } }
@@ -55,7 +55,7 @@ public partial class SettingsViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private void Done() => _onDone?.Invoke();
+    private void OpenDevTools() => _onOpenDevTools?.Invoke();
 
     private void SetTheme(AppThemeMode mode)
     {

@@ -1,9 +1,11 @@
 <UserControl x:Class="Flux.Ui.Views.SettingsView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-    <Grid Margin="24">
+    <Grid>
         <ScrollViewer VerticalScrollBarVisibility="Auto">
-            <StackPanel MaxWidth="600" HorizontalAlignment="Left">
+            <!-- Inset lives here (not on the Grid) so the ScrollViewer clips at the window edge,
+                 leaving room for the cards' drop shadow instead of cropping it. -->
+            <StackPanel MaxWidth="624" HorizontalAlignment="Left" Margin="24">
                 <TextBlock Text="Settings" Style="{StaticResource HeadingText}"/>
                 <TextBlock Text="Appearance and performance." Style="{StaticResource SubtleText}" Margin="0,4,0,0"/>
 
@@ -28,9 +30,16 @@
                     </StackPanel>
                 </Border>
 
-                <Button Content="Done" Style="{StaticResource PrimaryButton}" HorizontalAlignment="Left"
-                        Margin="0,20,0,0" Command="{Binding DoneCommand}"
-                        Visibility="{Binding ShowDone, Converter={StaticResource BoolToVisibility}}"/>
+                <Border Style="{StaticResource Card}" Margin="0,16,0,0"
+                        Visibility="{Binding ShowDevTools, Converter={StaticResource BoolToVisibility}}">
+                    <StackPanel>
+                        <TextBlock Text="Developer" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="Low-level tools for exercising the capture, click, and DPI interop by hand."
+                                   Style="{StaticResource SubtleText}" Margin="0,2,0,14"/>
+                        <Button Content="Open dev tools…" Style="{StaticResource SecondaryButton}"
+                                HorizontalAlignment="Left" Command="{Binding OpenDevToolsCommand}"/>
+                    </StackPanel>
+                </Border>
             </StackPanel>
         </ScrollViewer>
     </Grid>

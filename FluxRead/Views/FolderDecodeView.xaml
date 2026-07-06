@@ -52,19 +52,16 @@
 
         <Grid Grid.Row="3" Margin="0,16,0,0">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="Auto"/>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
-            <Button Grid.Column="0" Content="⚙  dev tools" VerticalAlignment="Center"
-                    Style="{StaticResource SubtleButton}" Click="OnOpenDevTools"/>
-            <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="16,0,0,0">
+            <StackPanel Grid.Column="0" VerticalAlignment="Center">
                 <TextBlock Text="{Binding Summary}" Style="{StaticResource SubtleText}"/>
                 <TextBlock Text="{Binding StatusText}" FontSize="12" Foreground="{StaticResource AccentBrush}"
                            TextWrapping="Wrap" Margin="0,4,0,0"
                            Visibility="{Binding StatusText, Converter={StaticResource NullToCollapsed}}"/>
             </StackPanel>
-            <Button Grid.Column="2" Content="Save…" Command="{Binding SaveCommand}"
+            <Button Grid.Column="1" Content="Save…" Command="{Binding SaveCommand}"
                     Style="{StaticResource PrimaryButton}" MinWidth="130" Margin="16,0,0,0"/>
         </Grid>
     </Grid>
