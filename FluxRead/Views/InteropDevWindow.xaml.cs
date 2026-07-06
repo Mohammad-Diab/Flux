@@ -12,9 +12,27 @@ namespace FluxRead.Views;
 /// </summary>
 public partial class InteropDevWindow : Window
 {
+    private static InteropDevWindow? _open;
+
     private readonly ScreenRegionCapture _capture = new();
     private HotkeyListener? _hotkey;
     private bool _excluded;
+
+    /// <summary>Opens the single dev-tools window, or refocuses it if already open.</summary>
+    public static void ShowSingle(Window? owner)
+    {
+        if (_open is null)
+        {
+            _open = new InteropDevWindow { Owner = owner };
+            _open.Closed += (_, _) => _open = null;
+            _open.Show();
+            return;
+        }
+
+        if (_open.WindowState == WindowState.Minimized)
+            _open.WindowState = WindowState.Normal;
+        _open.Activate();
+    }
 
     public InteropDevWindow()
     {

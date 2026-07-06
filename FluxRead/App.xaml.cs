@@ -46,7 +46,7 @@ public partial class App : Application
             provider.GetRequiredService<SettingsService>(),
             provider.GetRequiredService<ThemeService>(),
             provider.GetRequiredService<FluxSettings>(),
-            onOpenDevTools: () => new InteropDevWindow { Owner = Application.Current.MainWindow }.Show()));
+            onOpenDevTools: () => InteropDevWindow.ShowSingle(Application.Current.MainWindow)));
         services.AddSingleton(provider => new SettingsView
         {
             DataContext = provider.GetRequiredService<SettingsViewModel>(),
