@@ -19,7 +19,27 @@
                             <ColumnDefinition Width="Auto"/>
                             <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
-                        <TextBox Grid.Column="0" Text="{Binding SelectedPath, Mode=OneWay}" IsReadOnly="True"/>
+                        <Grid Grid.Column="0" AllowDrop="True" Background="Transparent"
+                              DragOver="OnSourceDragOver" Drop="OnSourceDrop">
+                            <TextBox Text="{Binding SelectedPath, Mode=OneWay}" IsReadOnly="True" AllowDrop="False"/>
+                            <TextBlock Text="Drop a file or folder here" IsHitTestVisible="False"
+                                       Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center"
+                                       Margin="14,0,0,0" FontSize="13">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding SelectedPath}" Value="{x:Null}">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding SelectedPath}" Value="">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                        </Grid>
                         <Button Grid.Column="1" Content="File…" Command="{Binding PickFileCommand}"
                                 Style="{StaticResource SecondaryButton}" MinWidth="104" Margin="8,0,0,0"/>
                         <Button Grid.Column="2" Content="Folder…" Command="{Binding PickFolderCommand}"

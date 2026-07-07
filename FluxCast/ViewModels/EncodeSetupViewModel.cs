@@ -92,6 +92,16 @@ public partial class EncodeSetupViewModel : ObservableObject
             await SelectAsync(path, isFolder: true);
     }
 
+    /// <summary>Accepts a dropped path, detecting file vs folder from disk.</summary>
+    public Task SelectDroppedAsync(string path)
+    {
+        if (Directory.Exists(path))
+            return SelectAsync(path, isFolder: true);
+        if (File.Exists(path))
+            return SelectAsync(path, isFolder: false);
+        return Task.CompletedTask;
+    }
+
     [RelayCommand(CanExecute = nameof(CanStart))]
     private void Start() =>
         _onStart(SelectedPath!, new EncodeOptions(SelectedEccLevel.Level, Compress));
