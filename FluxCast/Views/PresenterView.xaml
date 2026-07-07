@@ -17,48 +17,50 @@
                 <TextBlock Grid.Row="1" Text="Keep this window still during transfer" FontSize="10.5"
                            Foreground="#FF8A9199" HorizontalAlignment="Center" Margin="0,0,0,8"/>
 
-                <DockPanel Grid.Row="0" Margin="14,0">
-                    <Button Content="❎  End session" Command="{Binding CloseCommand}" Focusable="False"
-                            DockPanel.Dock="Left" VerticalAlignment="Center" Margin="0,0,8,0" MinHeight="44"
+                <!-- Next keeps its text label: the receiver's OCR locates that button by the word "Next". -->
+                <Grid Grid.Row="0" Margin="14,0">
+                    <Button Content="End session" Command="{Binding CloseCommand}" Focusable="False"
+                            HorizontalAlignment="Left" VerticalAlignment="Center" MinHeight="44"
                             Style="{StaticResource DangerGhostButton}"/>
-                    <Border DockPanel.Dock="Right" Width="120"/>
 
-                    <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="*"/>
-                    </Grid.ColumnDefinitions>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
+                        <Button ToolTip="First frame" Command="{Binding FirstCommand}" Focusable="False"
+                                Style="{StaticResource SecondaryButton}" MinWidth="50" Padding="0" MinHeight="44">
+                            <TextBlock Text="&#xE892;" FontFamily="Segoe MDL2 Assets" FontSize="15"/>
+                        </Button>
+                        <Button Command="{Binding BackCommand}" Focusable="False" Margin="6,0,0,0"
+                                Style="{StaticResource SecondaryButton}" MinWidth="104" MinHeight="44">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="&#xE76B;" FontFamily="Segoe MDL2 Assets" FontSize="13" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                                <TextBlock Text="Back" FontSize="16" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
 
-                    <StackPanel Grid.Column="0" Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Center">
-                        <Button Content="⏮  First" Command="{Binding FirstCommand}" Focusable="False"
-                                Style="{StaticResource SecondaryButton}" MinHeight="44"/>
-                        <Button Content="◀  Back" Command="{Binding BackCommand}" Focusable="False" Margin="8,0,0,0"
-                                Style="{StaticResource SecondaryButton}" FontSize="16" MinWidth="88" MinHeight="44"/>
-                    </StackPanel>
-
-                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" HorizontalAlignment="Center">
-                        <TextBlock Text="Frame" FontSize="16" Foreground="White" VerticalAlignment="Center" Margin="0,0,8,0"/>
-                        <TextBox Text="{Binding GotoText, UpdateSourceTrigger=PropertyChanged}" Width="58" Height="44"
+                        <TextBlock Text="Frame" FontSize="15" Foreground="White" VerticalAlignment="Center" Margin="16,0,8,0"/>
+                        <TextBox Text="{Binding GotoText, UpdateSourceTrigger=PropertyChanged}" Width="56" Height="44"
                                  Padding="4,0" TextAlignment="Center" VerticalContentAlignment="Center" ToolTip="Go to frame number">
                             <TextBox.InputBindings>
                                 <KeyBinding Key="Enter" Command="{Binding GotoCommand}"/>
                             </TextBox.InputBindings>
                         </TextBox>
-                        <TextBlock Text="{Binding TotalFrames, StringFormat=of {0}}" FontSize="16" Foreground="White"
-                                   VerticalAlignment="Center" Margin="8,0,10,0"/>
+                        <TextBlock Text="{Binding TotalFrames, StringFormat=of {0}}" FontSize="15" Foreground="White"
+                                   VerticalAlignment="Center" Margin="8,0,8,0"/>
                         <Button Content="Go" Command="{Binding GotoCommand}" Focusable="False"
                                 Style="{StaticResource SecondaryButton}" MinHeight="44"/>
-                    </StackPanel>
 
-                    <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
-                        <Button Content="Next  ▶" Command="{Binding NextCommand}" Focusable="False"
-                                Style="{StaticResource PrimaryButton}" FontSize="16" MinWidth="88" MinHeight="44"/>
-                        <Button Content="Last  ⏭" Command="{Binding LastCommand}" Focusable="False" Margin="8,0,0,0"
-                                Style="{StaticResource SecondaryButton}" MinHeight="44"/>
+                        <Button Command="{Binding NextCommand}" Focusable="False" Margin="16,0,0,0"
+                                Style="{StaticResource PrimaryButton}" MinWidth="104" MinHeight="44">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="Next" FontSize="16" VerticalAlignment="Center"/>
+                                <TextBlock Text="&#xE76C;" FontFamily="Segoe MDL2 Assets" FontSize="13" VerticalAlignment="Center" Margin="10,0,0,0"/>
+                            </StackPanel>
+                        </Button>
+                        <Button ToolTip="Last frame" Command="{Binding LastCommand}" Focusable="False" Margin="6,0,0,0"
+                                Style="{StaticResource SecondaryButton}" MinWidth="50" Padding="0" MinHeight="44">
+                            <TextBlock Text="&#xE893;" FontFamily="Segoe MDL2 Assets" FontSize="15"/>
+                        </Button>
                     </StackPanel>
-                    </Grid>
-                </DockPanel>
+                </Grid>
             </Grid>
         </Border>
 
