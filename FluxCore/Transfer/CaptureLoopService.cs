@@ -102,7 +102,7 @@ public sealed class CaptureLoopService
                 // Highest frame seen but gaps remain — clicking Next can't reach them; recover.
                 if (assembler.LastAcceptedId >= assembler.ExpectedPayloadFrames)
                 {
-                    await RecoverGapsAsync(assembler, metadata, stuck: false, progress, cancellationToken);
+                    await RecoverGapsAsync(assembler, metadata, progress, cancellationToken);
                     break;
                 }
 
@@ -124,17 +124,10 @@ public sealed class CaptureLoopService
                 if (reclicks < _options.MaxReclicks)
                     continue;
 
-                // Stuck after progress → recover; but zero frames received means calibration, not gaps.
-                if (assembler.ReceivedFrames > 0)
-                {
-                    stalls++;
-                    await RecoverGapsAsync(assembler, metadata, stuck: true, progress, cancellationToken);
-                    break;
-                }
-
+                // Not advancing → let the user fix it and resume clicking; skipped frames are recovered at the end.
                 stalls++;
                 Report(progress, CaptureLoopState.Stalled, assembler, metadata, lastFrameId, reclicks,
-                    $"Stuck at frame {lastFrameId} after {reclicks} clicks.");
+                    $"Stuck at frame {assembler.LastAcceptedId + 1} after {reclicks} tries.");
 
                 var resolution = onStall is null
                     ? StallResolution.Abort
@@ -223,37 +216,30 @@ public sealed class CaptureLoopService
         return false;
     }
 
-    // stuck = stalled mid-transfer (sender not advancing); reports the stuck frame id, not a gap list.
+    /// <summary>Waits (no clicking) for the user to re-show each skipped frame, capturing each until complete.</summary>
     private async Task RecoverGapsAsync(
         PayloadAssembler assembler,
         MetadataPayload metadata,
-        bool stuck,
         IProgress<LoopStatus>? progress,
         CancellationToken cancellationToken)
     {
-        ReportRecovery(progress, assembler, metadata, stuck, EntryMessage(assembler, stuck), null);
+        var missing = assembler.MissingFrameIds;
+        Report(progress, CaptureLoopState.RecoveringGaps, assembler, metadata, assembler.LastAcceptedId, 0,
+            FormatMissingMessage(missing), null, missing);
 
         while (!assembler.IsComplete)
         {
             if (await TryAcquireAcceptableFrameAsync(assembler, metadata, cancellationToken) is not { } accepted)
                 continue;
 
-            string message = $"Recovered frame {accepted.Header.FrameId}."
-                + (assembler.IsComplete ? " All frames received."
-                    : stuck ? "" : $" {FormatMissingMessage(assembler.MissingFrameIds)}");
-            ReportRecovery(progress, assembler, metadata, stuck, message, accepted.Png);
+            var stillMissing = assembler.MissingFrameIds;
+            var message = stillMissing.Count == 0
+                ? $"Recovered frame {accepted.Header.FrameId}. All frames received."
+                : $"Recovered frame {accepted.Header.FrameId}. {FormatMissingMessage(stillMissing)}";
+            Report(progress, CaptureLoopState.RecoveringGaps, assembler, metadata, accepted.Header.FrameId, 0,
+                message, accepted.Png, stillMissing);
         }
     }
-
-    private static string EntryMessage(PayloadAssembler assembler, bool stuck) =>
-        stuck ? $"No new frame arrived. Waiting for the sender at frame {assembler.FirstMissingId ?? 0}."
-              : FormatMissingMessage(assembler.MissingFrameIds);
-
-    private static void ReportRecovery(
-        IProgress<LoopStatus>? progress, PayloadAssembler assembler, MetadataPayload metadata,
-        bool stuck, string message, byte[]? png) =>
-        Report(progress, CaptureLoopState.RecoveringGaps, assembler, metadata, assembler.LastAcceptedId, 0,
-            message, png, stuck ? null : assembler.MissingFrameIds, stuck ? assembler.FirstMissingId ?? 0 : 0);
 
     /// <summary>One poll tick: capture a stable image, probe, fully decode, and accept a new payload frame.</summary>
     private async Task<(FrameHeader Header, byte[]? Png)?> TryAcquireAcceptableFrameAsync(
@@ -385,8 +371,7 @@ public sealed class CaptureLoopService
         int reclicks = 0,
         string message = "",
         byte[]? png = null,
-        IReadOnlyList<uint>? missing = null,
-        uint stuckFrameId = 0)
+        IReadOnlyList<uint>? missing = null)
     {
         progress?.Report(new LoopStatus(
             state,
@@ -399,8 +384,7 @@ public sealed class CaptureLoopService
             missing,
             assembler?.ReceivedBytes ?? 0,
             assembler is null ? 0 : (int)assembler.LastAcceptedId - assembler.ReceivedFrames,
-            metadata?.PayloadLength ?? 0,
-            stuckFrameId));
+            metadata?.PayloadLength ?? 0));
     }
 
     private static TransferReport Cancelled(MetadataPayload? metadata, PayloadAssembler? assembler, int reclicks, int stalls, TimeSpan elapsed) =>

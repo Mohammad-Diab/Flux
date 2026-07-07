@@ -74,7 +74,6 @@ public sealed record CaptureLoopOptions(
 /// <param name="ReceivedBytes">Payload bytes received so far.</param>
 /// <param name="MissingFrames">Frames skipped below the highest accepted id (recoverable gaps).</param>
 /// <param name="TotalBytes">Total payload bytes of the transfer (0 until metadata is read).</param>
-/// <param name="StuckFrameId">Frame the loop stalled on and is now waiting for (0 = ordinary gap recovery).</param>
 public sealed record LoopStatus(
     CaptureLoopState State,
     int ReceivedFrames,
@@ -86,8 +85,7 @@ public sealed record LoopStatus(
     IReadOnlyList<uint>? MissingFrameIds = null,
     long ReceivedBytes = 0,
     int MissingFrames = 0,
-    long TotalBytes = 0,
-    uint StuckFrameId = 0);
+    long TotalBytes = 0);
 
 /// <summary>Outcome of an optical transfer.</summary>
 /// <param name="State">Terminal loop state.</param>

@@ -35,8 +35,10 @@ public partial class LiveCaptureView : UserControl
 
     private Int32Rect _region;
     private (int X, int Y)? _nextPoint;
+    private RegionScreenCapture? _captureSource;
     private PointNextClicker? _clicker;
     private CaptureLoopService? _loop;
+    private MiniCaptureWindow? _mini;
     private CancellationTokenSource? _cts;
 
     public LiveCaptureView(DecodePipelineService pipeline, DialogService dialogs)
@@ -72,7 +74,6 @@ public partial class LiveCaptureView : UserControl
         };
     }
 
-    // Scan the whole screen for frames: none → manual drag; one → use it; several → let the user pick.
     private async void OnDetectRegion(object sender, RoutedEventArgs e)
     {
         var owner = Window.GetWindow(this);
@@ -121,7 +122,6 @@ public partial class LiveCaptureView : UserControl
             _vm.CalibrationText = "Next button not found — calibrate it with F8.";
     }
 
-    // Read the "Next" label from the sender's toolbar (the strip below the frame) with on-device OCR.
     private async void OnDetectNext(object sender, RoutedEventArgs e)
     {
         var owner = Window.GetWindow(this);
@@ -209,6 +209,8 @@ public partial class LiveCaptureView : UserControl
     private bool ApplyNextPoint((int X, int Y) point)
     {
         _nextPoint = point;
+        if (_clicker is not null)
+            _clicker.Point = point;   // retarget a running loop after a stall recalibration
         _vm.HasCalibration = true;
         _vm.CalibrationText = $"Next button at ({point.X},{point.Y})";
         StartPreview();
@@ -273,7 +275,7 @@ public partial class LiveCaptureView : UserControl
         _transferWatch.Restart();
         _elapsedTimer.Start();
 
-        var capture = new RegionScreenCapture(_region);
+        _captureSource = new RegionScreenCapture(_region);
         _clicker = new PointNextClicker(point);
         // Poll more frequently (so a quick advance is caught fast) while keeping roughly the same
         // ~1.8s budget before a re-click — re-clicking too early would over-advance and skip a frame.
@@ -283,12 +285,12 @@ public partial class LiveCaptureView : UserControl
             MaxReclicks: 5,
             StabilityMaxAttempts: 16,
             StabilityIntervalMs: 60);
-        _loop = new CaptureLoopService(capture, _clicker, ColorMap.Default, options);
+        _loop = new CaptureLoopService(_captureSource, _clicker, ColorMap.Default, options);
         var progress = new Progress<LoopStatus>(_vm.Apply);
 
-        var mini = new MiniCaptureWindow(_vm, TogglePause, () => _cts.Cancel()) { Owner = owner };
+        _mini = new MiniCaptureWindow(_vm, TogglePause, () => _cts.Cancel()) { Owner = owner };
         owner.Hide();
-        mini.Show();
+        _mini.Show();
 
         try
         {
@@ -308,7 +310,9 @@ public partial class LiveCaptureView : UserControl
             _vm.IsRunning = false;
             _loop = null;
             _clicker = null;
-            mini.Close();
+            _captureSource = null;
+            _mini?.Close();
+            _mini = null;
             owner.Show();
             owner.Activate();
         }
@@ -361,43 +365,99 @@ public partial class LiveCaptureView : UserControl
     }
 
     private Task<StallResolution> ResolveStallAsync(CancellationToken cancellationToken) =>
-        Dispatcher.InvokeAsync(() =>
+        Dispatcher.InvokeAsync(async () =>
         {
-            var result = MessageBox.Show(
-                "The frame is stuck. Yes = retry the click · No = recalibrate the Next button · Cancel = abort.",
-                "Transfer stalled", MessageBoxButton.YesNoCancel, MessageBoxImage.Warning);
+            var dialog = new StallDialog(
+                "The sender stopped advancing after several tries. Resume, re-find the Next button, "
+                + "or re-detect the frame — then FluxRead keeps going.") { Owner = _mini };
+            dialog.ShowDialog();
 
-            return result switch
+            switch (dialog.Choice)
             {
-                MessageBoxResult.Yes => StallResolution.Retry,
-                MessageBoxResult.No => Recalibrate(),
-                _ => StallResolution.Abort,
-            };
-        }).Task;
+                case StallChoice.RecalibrateNext:
+                    await RecalibrateNextAsync();
+                    return StallResolution.Retry;
+                case StallChoice.AdjustRegion:
+                    await AdjustRegionAsync();
+                    return StallResolution.Retry;
+                case StallChoice.Cancel:
+                    return StallResolution.Abort;
+                default:
+                    return StallResolution.Retry;
+            }
+        }).Task.Unwrap();
 
-    private StallResolution Recalibrate()
+    private async Task<SKBitmap> CaptureWithMiniHiddenAsync(Int32Rect virtualScreen)
     {
-        var owner = Window.GetWindow(this)!;
-        using var hotkey = new HotkeyListener(owner);
-        var tcs = new TaskCompletionSource<(int X, int Y)>();
-        hotkey.Pressed += (_, _) =>
+        if (_mini is not null)
+            _mini.WindowState = WindowState.Minimized;
+        await Task.Delay(350);
+        var shot = _previewCapture.Capture(virtualScreen);
+        if (_mini is not null)
+            _mini.WindowState = WindowState.Normal;
+        return shot;
+    }
+
+    private async Task RecalibrateNextAsync()
+    {
+        _vm.AddLog("Re-finding the Next button…");
+        var virtualScreen = DpiUtil.GetVirtualScreenPhysical();
+        using var shot = await CaptureWithMiniHiddenAsync(virtualScreen);
+
+        if (!await TryAutoNextAsync(shot, virtualScreen, ToShotRegion(virtualScreen)))
         {
-            NativeMethods.GetCursorPos(out var pos);
-            tcs.TrySetResult((pos.X, pos.Y));
-        };
+            _vm.AddLog("Couldn't find Next automatically — use F8 to calibrate.");
+            RecalibrateWithF8();
+        }
+    }
+
+    private void RecalibrateWithF8()
+    {
+        var host = _mini ?? Window.GetWindow(this);
+        if (host is null)
+            return;
+
+        using var hotkey = new HotkeyListener(host);
+        var tcs = new TaskCompletionSource<(int X, int Y)>();
+        hotkey.Pressed += (_, _) => { NativeMethods.GetCursorPos(out var pos); tcs.TrySetResult((pos.X, pos.Y)); };
         hotkey.Arm();
 
-        MessageBox.Show("Hover over the Client's NEXT button, press F8, then click OK.", "Recalibrate");
+        MessageBox.Show(host, "Hover over the sender's Next button, press F8, then click OK.", "Recalibrate");
         if (tcs.Task.IsCompleted)
+            ApplyNextPoint(tcs.Task.Result);
+    }
+
+    private async Task AdjustRegionAsync()
+    {
+        _vm.AddLog("Re-detecting the frame…");
+        var virtualScreen = DpiUtil.GetVirtualScreenPhysical();
+        using var shot = await CaptureWithMiniHiddenAsync(virtualScreen);
+
+        var regions = await Task.Run(() => new FrameLocator(ColorMap.Default).Locate(shot));
+        if (regions.Count == 0)
         {
-            _nextPoint = tcs.Task.Result;
-            var (x, y) = tcs.Task.Result;
-            if (_clicker is not null)
-                _clicker.Point = (x, y);
-            _vm.CalibrationText = $"Next button at ({x},{y})";
+            _vm.AddLog("No frame found — keeping the current region.");
+            return;
         }
 
-        return StallResolution.Recalibrate;
+        FrameRegion chosen;
+        if (regions.Count == 1)
+        {
+            chosen = regions[0];
+        }
+        else
+        {
+            var picker = new FramePickerWindow(shot, regions) { Owner = _mini };
+            if (picker.ShowDialog() != true || picker.SelectedIndex is not { } index)
+                return;
+            chosen = regions[index];
+        }
+
+        _region = new Int32Rect(virtualScreen.X + chosen.X, virtualScreen.Y + chosen.Y, chosen.Width, chosen.Height);
+        if (_captureSource is not null)
+            _captureSource.Region = _region;
+        _vm.RegionText = $"Region: {_region.Width}×{_region.Height} at ({_region.X},{_region.Y})";
+        _vm.AddLog("Region updated.");
     }
 
     private async Task HandleReportAsync(TransferReport report)

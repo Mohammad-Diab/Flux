@@ -6,17 +6,19 @@ using SkiaSharp;
 namespace FluxRead.Services;
 
 /// <summary>
-/// Captures a fixed physical-pixel region for the optical loop.
+/// Captures a physical-pixel region for the optical loop; the region is mutable so a stall
+/// adjustment can re-point the running loop.
 /// </summary>
 public sealed class RegionScreenCapture : IScreenCapture
 {
     private readonly ScreenRegionCapture _capture = new();
-    private readonly Int32Rect _region;
 
-    public RegionScreenCapture(Int32Rect region) => _region = region;
+    public Int32Rect Region { get; set; }
+
+    public RegionScreenCapture(Int32Rect region) => Region = region;
 
     /// <inheritdoc/>
-    public SKBitmap Capture() => _capture.Capture(_region);
+    public SKBitmap Capture() => _capture.Capture(Region);
 }
 
 /// <summary>

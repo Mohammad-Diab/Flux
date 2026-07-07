@@ -128,18 +128,9 @@ public partial class LiveCaptureViewModel : ObservableObject
     public void Apply(LoopStatus status)
     {
         IsRecovering = status.State == CaptureLoopState.RecoveringGaps;
-        bool stuck = status.StuckFrameId > 0;
-        StateText = stuck ? "Waiting for the sender…" : FriendlyState(status.State);
+        StateText = FriendlyState(status.State);
 
-        if (IsRecovering && stuck)
-        {
-            RecoveryTitle = "No new frames arriving";
-            RecoveryHint = $"Frame {status.StuckFrameId} hasn't arrived after several tries. Make sure the sender " +
-                $"is running and showing frame {status.StuckFrameId} — if it stopped, reopen it and go to that frame. " +
-                "FluxRead resumes automatically once frames appear.";
-            MissingFramesText = "";
-        }
-        else if (IsRecovering && status.MissingFrameIds is { } missing)
+        if (IsRecovering && status.MissingFrameIds is { } missing)
         {
             RecoveryTitle = "Missing frames";
             RecoveryHint = "On the sender, use Back or “go to frame” to re-show each frame below — FluxRead grabs them automatically.";

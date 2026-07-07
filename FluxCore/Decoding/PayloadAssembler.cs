@@ -100,21 +100,6 @@ public sealed class PayloadAssembler : IDisposable
     public bool HasFrame(uint frameId) =>
         _useDisk ? _diskFrameIds!.Contains(frameId) : _frames!.ContainsKey(frameId);
 
-    /// <summary>Gets the lowest payload frame id not yet received, or null when complete.</summary>
-    public uint? FirstMissingId
-    {
-        get
-        {
-            for (uint id = 1; id <= ExpectedPayloadFrames; id++)
-            {
-                if (!HasFrame(id))
-                    return id;
-            }
-
-            return null;
-        }
-    }
-
     /// <summary>Gets the frame ids not yet received, in ascending order.</summary>
     public IReadOnlyList<uint> MissingFrameIds
     {
