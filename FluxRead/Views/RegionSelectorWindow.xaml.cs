@@ -27,7 +27,9 @@ public partial class RegionSelectorWindow : Window
         MouseLeftButtonDown += OnDown;
         MouseMove += OnMove;
         MouseLeftButtonUp += OnUp;
-        KeyDown += OnKeyDown;
+        PreviewKeyDown += OnKeyDown;
+        // Borderless transparent overlay has no focusable content, so grab keyboard focus for Esc.
+        Loaded += (_, _) => { Activate(); Keyboard.Focus(this); };
     }
 
     /// <summary>Gets the selected region in physical pixels, or null if cancelled.</summary>
