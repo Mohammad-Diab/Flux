@@ -463,8 +463,9 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="ToolTip">
+                    <!-- Margin reserves room for the drop shadow's blur; the popup sizes to content, so without it the shadow clips at the edges. -->
                     <Border Background="{StaticResource SurfaceAltBrush}" BorderBrush="{StaticResource BorderBrush}"
-                            BorderThickness="1" CornerRadius="8" Padding="10,6" Effect="{StaticResource SoftShadow}">
+                            BorderThickness="1" CornerRadius="8" Padding="10,6" Margin="16,12,16,20" Effect="{StaticResource SoftShadow}">
                         <ContentPresenter TextElement.Foreground="{StaticResource TextPrimaryBrush}"/>
                     </Border>
                 </ControlTemplate>
