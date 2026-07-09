@@ -7,8 +7,9 @@ using Flux.Ui.Controls;
 namespace Flux.Ui.Views;
 
 /// <summary>
-/// Non-interactive layer of slow-drifting spectrum glow orbs behind the app content. The drift
-/// runs only while motion is enabled, and starts/stops live when the setting changes.
+/// Non-interactive layer of slow-drifting spectrum glow orbs behind the app content. It is hidden
+/// entirely (its gradients not rendered, its drift stopped) when animations and effects are
+/// disabled for performance, and updates live when the setting changes.
 /// </summary>
 public partial class AmbientBackground : UserControl
 {
@@ -25,7 +26,7 @@ public partial class AmbientBackground : UserControl
     {
         _drift ??= (Storyboard)Resources["Drift"];
         MotionSettings.Current.PropertyChanged += OnMotionChanged;
-        UpdateDrift();
+        ApplyMotionSetting();
     }
 
     private void OnUnloaded(object sender, RoutedEventArgs e)
@@ -34,14 +35,16 @@ public partial class AmbientBackground : UserControl
         _drift?.Stop(this);
     }
 
-    private void OnMotionChanged(object? sender, PropertyChangedEventArgs e) => UpdateDrift();
+    private void OnMotionChanged(object? sender, PropertyChangedEventArgs e) => ApplyMotionSetting();
 
-    private void UpdateDrift()
+    private void ApplyMotionSetting()
     {
+        bool enabled = MotionSettings.Current.AnimationsEnabled;
+        Visibility = enabled ? Visibility.Visible : Visibility.Collapsed;
+
         if (_drift is null)
             return;
-
-        if (MotionSettings.Current.AnimationsEnabled)
+        if (enabled)
             _drift.Begin(this, isControllable: true);
         else
             _drift.Stop(this);

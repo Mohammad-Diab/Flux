@@ -65,13 +65,14 @@
     <LinearGradientBrush x:Key="AccentGradientHorizontal" StartPoint="0,0" EndPoint="1,0"
                          GradientStops="{StaticResource SpectrumStops}"/>
 
-    <DropShadowEffect x:Key="SoftShadow" BlurRadius="24" ShadowDepth="6" Direction="270" Opacity="0.45" Color="#000000"/>
+    <DropShadowEffect x:Key="SoftShadow" BlurRadius="20" ShadowDepth="4" Direction="270" Opacity="0.28" Color="#000000"/>
 
     <CubicEase x:Key="EaseOut" EasingMode="EaseOut"/>
 
     <BooleanToVisibilityConverter x:Key="BoolToVisibility"/>
     <converters:NullToCollapsedConverter x:Key="NullToCollapsed"/>
     <converters:InverseBoolConverter x:Key="InverseBool"/>
+    <converters:EffectWhenEnabledConverter x:Key="EffectWhenEnabled"/>
 
     <!-- Ambient-orb layer opacity; ThemeService dims it on light backgrounds. -->
     <sys:Double x:Key="AmbientOpacity">1</sys:Double>
@@ -221,7 +222,7 @@
         <Setter Property="MinHeight" Value="{StaticResource CtaHeight}"/>
         <Setter Property="FontSize" Value="15"/>
         <Setter Property="Padding" Value="26,0"/>
-        <Setter Property="Effect" Value="{StaticResource SoftShadow}"/>
+        <Setter Property="Effect" Value="{Binding AnimationsEnabled, Source={StaticResource MotionSettings}, Converter={StaticResource EffectWhenEnabled}, ConverterParameter={StaticResource SoftShadow}}"/>
     </Style>
 
     <Style x:Key="SecondaryButton" TargetType="Button" BasedOn="{StaticResource BaseButton}">
@@ -465,7 +466,7 @@
                 <ControlTemplate TargetType="ToolTip">
                     <!-- Margin reserves room for the drop shadow's blur; the popup sizes to content, so without it the shadow clips at the edges. -->
                     <Border Background="{StaticResource SurfaceAltBrush}" BorderBrush="{StaticResource BorderBrush}"
-                            BorderThickness="1" CornerRadius="8" Padding="10,6" Margin="16,12,16,20" Effect="{StaticResource SoftShadow}">
+                            BorderThickness="1" CornerRadius="8" Padding="10,6" Margin="16,12,16,20" Effect="{Binding AnimationsEnabled, Source={StaticResource MotionSettings}, Converter={StaticResource EffectWhenEnabled}, ConverterParameter={StaticResource SoftShadow}}">
                         <ContentPresenter TextElement.Foreground="{StaticResource TextPrimaryBrush}"/>
                     </Border>
                 </ControlTemplate>
@@ -480,7 +481,7 @@
         <Setter Property="BorderThickness" Value="1"/>
         <Setter Property="CornerRadius" Value="14"/>
         <Setter Property="Padding" Value="16"/>
-        <Setter Property="Effect" Value="{StaticResource SoftShadow}"/>
+        <Setter Property="Effect" Value="{Binding AnimationsEnabled, Source={StaticResource MotionSettings}, Converter={StaticResource EffectWhenEnabled}, ConverterParameter={StaticResource SoftShadow}}"/>
     </Style>
 
     <!-- ============ Tabs (pill) ============ -->
@@ -659,7 +660,7 @@
                         <Popup x:Name="PART_Popup" IsOpen="{TemplateBinding IsDropDownOpen}" Placement="Bottom" AllowsTransparency="True"
                                Focusable="False" PopupAnimation="Slide">
                             <Border Background="{StaticResource SurfaceAltBrush}" BorderBrush="{StaticResource BorderBrush}"
-                                    BorderThickness="1" CornerRadius="8" Margin="0,4,0,0" Effect="{StaticResource SoftShadow}"
+                                    BorderThickness="1" CornerRadius="8" Margin="0,4,0,0" Effect="{Binding AnimationsEnabled, Source={StaticResource MotionSettings}, Converter={StaticResource EffectWhenEnabled}, ConverterParameter={StaticResource SoftShadow}}"
                                     MinWidth="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}">
                                 <ScrollViewer MaxHeight="260">
                                     <ItemsPresenter/>

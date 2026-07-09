@@ -31,7 +31,7 @@ public static class FluxAppHost
     public static void Start(ServiceProvider services, Func<ServiceProvider, Window> createMain)
     {
         var settings = services.GetRequiredService<FluxSettings>();
-        MotionSettings.Current.UserEnableAnimations = settings.EnableAnimations;
+        MotionSettings.Current.UserEnableAnimations = !settings.PerformanceMode;
         services.GetRequiredService<ThemeService>().Apply(settings.ThemeMode);
 
         var main = createMain(services);

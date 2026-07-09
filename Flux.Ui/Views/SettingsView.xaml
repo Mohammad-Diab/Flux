@@ -22,10 +22,10 @@
 
                 <Border Style="{StaticResource Card}" Margin="0,16,0,0">
                     <StackPanel>
-                        <TextBlock Text="Motion" FontSize="15" FontWeight="SemiBold"/>
-                        <TextBlock Text="Turn off animations for smoother performance on slower hardware. Animations also follow the Windows animation setting."
+                        <TextBlock Text="Performance" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="Turns off animations, shadows, and background effects for the fastest, lightest rendering on slower hardware. Also follows the Windows animation setting."
                                    Style="{StaticResource SubtleText}" Margin="0,2,0,14"/>
-                        <CheckBox Content="Show animations" IsChecked="{Binding EnableAnimations, Mode=TwoWay}"/>
+                        <CheckBox Content="Performance mode" IsChecked="{Binding PerformanceMode, Mode=TwoWay}"/>
                     </StackPanel>
                 </Border>
 

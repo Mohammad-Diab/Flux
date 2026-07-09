@@ -12,7 +12,7 @@ public enum AppThemeMode { System, Light, Dark }
 public sealed class FluxSettings
 {
     public AppThemeMode ThemeMode { get; set; } = AppThemeMode.System;
-    public bool EnableAnimations { get; set; } = true;
+    public bool PerformanceMode { get; set; }
 }
 
 /// <summary>Loads and saves <see cref="FluxSettings"/> as JSON under %LOCALAPPDATA%\Flux\{appName}.</summary>

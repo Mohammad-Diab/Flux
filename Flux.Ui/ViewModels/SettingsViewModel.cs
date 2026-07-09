@@ -7,8 +7,8 @@ using Flux.Ui.Services;
 namespace Flux.Ui.ViewModels;
 
 /// <summary>
-/// Backs the Settings screen: appearance (System/Light/Dark) and motion. Each change is applied
-/// live and persisted immediately.
+/// Backs the Settings screen: appearance (System/Light/Dark) and performance. Each change is
+/// applied live and persisted immediately.
 /// </summary>
 public partial class SettingsViewModel : ObservableObject
 {
@@ -33,16 +33,16 @@ public partial class SettingsViewModel : ObservableObject
     public bool IsLight { get => _model.ThemeMode == AppThemeMode.Light; set { if (value) SetTheme(AppThemeMode.Light); } }
     public bool IsDark { get => _model.ThemeMode == AppThemeMode.Dark; set { if (value) SetTheme(AppThemeMode.Dark); } }
 
-    /// <summary>User's animation preference; false skips transitions and effects.</summary>
-    public bool EnableAnimations
+    /// <summary>Performance mode: when on, skips animations and expensive visual effects.</summary>
+    public bool PerformanceMode
     {
-        get => _model.EnableAnimations;
+        get => _model.PerformanceMode;
         set
         {
-            if (_model.EnableAnimations == value)
+            if (_model.PerformanceMode == value)
                 return;
-            _model.EnableAnimations = value;
-            MotionSettings.Current.UserEnableAnimations = value;
+            _model.PerformanceMode = value;
+            MotionSettings.Current.UserEnableAnimations = !value;
             _settings.Save(_model);
             OnPropertyChanged();
         }
