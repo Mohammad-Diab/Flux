@@ -28,8 +28,8 @@ public partial class RegionSelectorWindow : Window
         MouseMove += OnMove;
         MouseLeftButtonUp += OnUp;
         PreviewKeyDown += OnKeyDown;
-        // Borderless transparent overlay has no focusable content, so grab keyboard focus for Esc.
-        Loaded += (_, _) => { Activate(); Keyboard.Focus(this); };
+        // Focus once shown (Loaded is too early — the modal window isn't active yet) so Esc reaches the overlay.
+        ContentRendered += (_, _) => { Activate(); Keyboard.Focus(RootCanvas); };
     }
 
     /// <summary>Gets the selected region in physical pixels, or null if cancelled.</summary>

@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         WindowStyle="None" AllowsTransparency="True" Background="#33000000"
         Topmost="True" ShowInTaskbar="False" ResizeMode="NoResize" Cursor="Cross">
-    <Canvas x:Name="RootCanvas">
+    <Canvas x:Name="RootCanvas" Focusable="True" FocusVisualStyle="{x:Null}">
         <Rectangle x:Name="SelectionRect" Stroke="#FF2EA0FF" StrokeThickness="2" Fill="#302EA0FF"
                    Visibility="Collapsed"/>
         <Border Canvas.Left="16" Canvas.Top="16" Background="#CC000000" CornerRadius="4" Padding="12,8">
