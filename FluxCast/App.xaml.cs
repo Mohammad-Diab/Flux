@@ -41,6 +41,7 @@ public partial class App : Application
             provider.GetRequiredService<ILogger<FluxEncodeService>>()));
         services.AddSingleton<SourceValidator>();
         services.AddSingleton<DialogService>();
+        services.AddSingleton<CastHistoryService>();
         services.AddSingleton<ShellViewModel>();
         services.AddSingleton(provider => new MainWindow
         {

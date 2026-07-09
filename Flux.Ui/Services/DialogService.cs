@@ -1,12 +1,21 @@
 using System.Diagnostics;
 using System.IO;
+using System.Windows;
 using Microsoft.Win32;
 
 namespace Flux.Ui.Services;
 
-/// <summary>Thin wrapper over the WPF file/folder pickers and the Explorer reveal.</summary>
+/// <summary>Thin wrapper over the WPF file/folder pickers, message boxes, and the Explorer reveal.</summary>
 public sealed class DialogService
 {
+    /// <summary>Shows a yes/no confirmation; returns true only if the user chose Yes.</summary>
+    public bool Confirm(string title, string message) =>
+        MessageBox.Show(message, title, MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes;
+
+    /// <summary>Shows an informational message with an OK button.</summary>
+    public void Inform(string title, string message) =>
+        MessageBox.Show(message, title, MessageBoxButton.OK, MessageBoxImage.Information);
+
     public string? PickFile(string title)
     {
         var dialog = new OpenFileDialog { Title = title, CheckFileExists = true };

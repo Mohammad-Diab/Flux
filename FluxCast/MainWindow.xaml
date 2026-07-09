@@ -22,6 +22,9 @@
         <DataTemplate DataType="{x:Type vm:PresenterViewModel}">
             <views:PresenterView/>
         </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:RecentCastsViewModel}">
+            <views:RecentCastsView/>
+        </DataTemplate>
         <DataTemplate DataType="{x:Type uivm:SettingsViewModel}">
             <ui:SettingsView/>
         </DataTemplate>
@@ -33,6 +36,15 @@
                          BrandGeometry="M7,1 L13,7 L9.5,7 L9.5,13 L4.5,13 L4.5,7 L1,7 Z"
                          ShowSettingsButton="{Binding CanOpenSettings}" SettingsCommand="{Binding ShowSettingsCommand}"
                          ShowBackButton="{Binding IsSettingsOpen}" BackCommand="{Binding CloseSettingsCommand}"/>
+            <Border DockPanel.Dock="Top" Padding="24,8,24,2"
+                    Visibility="{Binding ShowTabs, Converter={StaticResource BoolToVisibility}}">
+                <StackPanel Orientation="Horizontal">
+                    <RadioButton Content="Cast" GroupName="Tab" Style="{StaticResource TabRadio}"
+                                 IsChecked="{Binding IsHistoryTab, Converter={StaticResource InverseBool}, Mode=TwoWay}"/>
+                    <RadioButton Content="History" GroupName="Tab" Style="{StaticResource TabRadio}"
+                                 IsChecked="{Binding IsHistoryTab, Mode=TwoWay}"/>
+                </StackPanel>
+            </Border>
             <controls:TransitionHost Content="{Binding Current}"
                                      HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch"/>
         </DockPanel>
