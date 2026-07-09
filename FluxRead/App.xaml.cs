@@ -59,9 +59,11 @@ public partial class App : Application
         services.AddSingleton(provider => new LiveCaptureView(
             provider.GetRequiredService<DecodePipelineService>(),
             provider.GetRequiredService<DialogService>()));
+        services.AddSingleton<ShellViewModel>();
         services.AddSingleton(provider => new MainWindow(
             provider.GetRequiredService<FolderDecodeView>(),
             provider.GetRequiredService<LiveCaptureView>(),
-            provider.GetRequiredService<SettingsView>()));
+            provider.GetRequiredService<SettingsView>(),
+            provider.GetRequiredService<ShellViewModel>()));
     }
 }
