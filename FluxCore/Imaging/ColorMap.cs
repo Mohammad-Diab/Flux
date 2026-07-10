@@ -118,29 +118,8 @@ public sealed class ColorMap
         return new ColorMap(palette);
     }
 
-    // The default palette is an evenly spaced 8x8x4 RGB lattice (8 red x 8 green x 4 blue
-    // levels = 256). Minimum pairwise distance is ~36 RGB units, so classification stays
-    // unambiguous under lossy capture noise. The lattice point that would be white (index 255)
-    // is replaced with a lattice-gap color, keeping white reserved for structural tiles.
-    private static ColorMap CreateDefault()
-    {
-        ReadOnlySpan<byte> redGreenLevels = [0, 36, 73, 109, 146, 182, 219, 255];
-        ReadOnlySpan<byte> blueLevels = [0, 85, 170, 255];
-        var palette = new Rgb24[256];
-
-        for (int r = 0; r < 8; r++)
-        {
-            for (int g = 0; g < 8; g++)
-            {
-                for (int b = 0; b < 4; b++)
-                {
-                    palette[(r * 8 + g) * 4 + b] = new Rgb24(redGreenLevels[r], redGreenLevels[g], blueLevels[b]);
-                }
-            }
-        }
-
-        palette[255] = new Rgb24(18, 18, 43);
-
-        return new ColorMap(palette);
-    }
+    // The default palette is the generator's 256-colour lattice (8 red × 8 green × 4 blue,
+    // minimum pairwise distance ~36 RGB units so classification stays unambiguous under lossy
+    // capture). PaletteGenerator.Generate(256) reproduces the historical palette exactly.
+    private static ColorMap CreateDefault() => new(PaletteGenerator.Generate(256).Colors);
 }
