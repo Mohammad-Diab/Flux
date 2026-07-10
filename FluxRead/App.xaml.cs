@@ -3,6 +3,7 @@ using Flux.Ui.Services;
 using Flux.Ui.ViewModels;
 using Flux.Ui.Views;
 using FluxCore.Compression;
+using FluxCore.Transfer;
 using FluxRead.Services;
 using FluxRead.ViewModels;
 using FluxRead.Views;
@@ -42,6 +43,7 @@ public partial class App : Application
             provider.GetRequiredService<CompressionService>(),
             provider.GetRequiredService<ILogger<DecodePipelineService>>()));
         services.AddSingleton<DialogService>();
+        services.AddSingleton<ReceptionHistoryService>();
         services.AddSingleton(provider => new SettingsViewModel(
             provider.GetRequiredService<SettingsService>(),
             provider.GetRequiredService<ThemeService>(),
@@ -58,11 +60,21 @@ public partial class App : Application
         });
         services.AddSingleton(provider => new LiveCaptureView(
             provider.GetRequiredService<DecodePipelineService>(),
+            provider.GetRequiredService<DialogService>(),
+            provider.GetRequiredService<ReceptionHistoryService>()));
+        services.AddSingleton(provider => new ReceivedItemsViewModel(
+            provider.GetRequiredService<ReceptionHistoryService>(),
             provider.GetRequiredService<DialogService>()));
+        services.AddSingleton(provider => new ReceivedItemsView
+        {
+            DataContext = provider.GetRequiredService<ReceivedItemsViewModel>(),
+        });
         services.AddSingleton<ShellViewModel>();
         services.AddSingleton(provider => new MainWindow(
             provider.GetRequiredService<FolderDecodeView>(),
             provider.GetRequiredService<LiveCaptureView>(),
+            provider.GetRequiredService<ReceivedItemsView>(),
+            provider.GetRequiredService<ReceivedItemsViewModel>(),
             provider.GetRequiredService<SettingsView>(),
             provider.GetRequiredService<ShellViewModel>()));
     }

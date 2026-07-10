@@ -194,6 +194,7 @@ public partial class LiveCaptureViewModel : ObservableObject
     private static string FriendlyState(CaptureLoopState state) => state switch
     {
         CaptureLoopState.WaitingForFrame0 => "Looking for the first frame…",
+        CaptureLoopState.Resuming => "Resuming…",
         CaptureLoopState.ClickingNext => "Transferring…",
         CaptureLoopState.WaitingForAdvance => "Transferring…",
         CaptureLoopState.Stalled => "Stalled — needs attention",

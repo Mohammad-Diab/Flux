@@ -1,3 +1,4 @@
+using System.IO;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
@@ -8,6 +9,11 @@ namespace FluxRead.ViewModels;
 /// </summary>
 public partial class ShellViewModel : ObservableObject
 {
+    /// <summary>Root folder holding per-reception session directories.</summary>
+    public static string SessionRoot { get; } = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+        "Flux", "FluxRead", "sessions");
+
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CanOpenSettings))]
     private bool _isSettingsOpen;

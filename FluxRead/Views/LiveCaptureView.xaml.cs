@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Interop;
@@ -28,6 +29,7 @@ public partial class LiveCaptureView : UserControl
     private readonly LiveCaptureViewModel _vm;
     private readonly DecodePipelineService _pipeline;
     private readonly DialogService _dialogs;
+    private readonly ReceptionHistoryService _history;
     private readonly ScreenRegionCapture _previewCapture = new();
     private readonly DispatcherTimer _previewTimer;
     private readonly DispatcherTimer _elapsedTimer;
@@ -41,10 +43,11 @@ public partial class LiveCaptureView : UserControl
     private MiniCaptureWindow? _mini;
     private CancellationTokenSource? _cts;
 
-    public LiveCaptureView(DecodePipelineService pipeline, DialogService dialogs)
+    public LiveCaptureView(DecodePipelineService pipeline, DialogService dialogs, ReceptionHistoryService history)
     {
         _pipeline = pipeline;
         _dialogs = dialogs;
+        _history = history;
         _vm = new LiveCaptureViewModel();
         DataContext = _vm;
         InitializeComponent();
@@ -285,7 +288,8 @@ public partial class LiveCaptureView : UserControl
             MaxReclicks: 5,
             StabilityMaxAttempts: 16,
             StabilityIntervalMs: 60);
-        _loop = new CaptureLoopService(_captureSource, _clicker, ColorMap.Default, options);
+        _loop = new CaptureLoopService(_captureSource, _clicker, ColorMap.Default, options,
+            assemblerFactory: metadata => _history.OpenAssembler(ShellViewModel.SessionRoot, metadata));
         var progress = new Progress<LoopStatus>(_vm.Apply);
 
         _mini = new MiniCaptureWindow(_vm, TogglePause, () => _cts.Cancel()) { Owner = owner };
@@ -294,7 +298,7 @@ public partial class LiveCaptureView : UserControl
 
         try
         {
-            var report = await Task.Run(() => _loop.RunAsync(progress, ResolveStallAsync, _cts.Token));
+            var report = await Task.Run(() => _loop.RunAsync(progress, ResolveStallAsync, _cts.Token, ResolveResumeAsync));
             await HandleReportAsync(report);
         }
         catch (Exception ex)
@@ -386,6 +390,44 @@ public partial class LiveCaptureView : UserControl
                     return StallResolution.Retry;
             }
         }).Task.Unwrap();
+
+    private Task<ResumeMode> ResolveResumeAsync(ResumeContext context, CancellationToken cancellationToken) =>
+        Dispatcher.InvokeAsync(() =>
+        {
+            var dialog = new ResumeDialog(context.ReceivedFrames, context.ExpectedPayloadFrames, context.FirstMissingFrameId)
+            {
+                Owner = _mini,
+            };
+            dialog.ShowDialog();
+
+            switch (dialog.Choice)
+            {
+                case ResumeChoice.Automatic:
+                    _vm.AddLog($"Resuming — skipping ahead to frame {context.FirstMissingFrameId}.");
+                    return ResumeMode.Automatic;
+
+                case ResumeChoice.Manual:
+                    var manual = new ManualResumeDialog(context.FirstMissingFrameId) { Owner = _mini };
+                    manual.ShowDialog();
+                    if (manual.Continued)
+                    {
+                        _vm.AddLog($"Resuming manually from frame {context.FirstMissingFrameId}.");
+                        return ResumeMode.Manual;
+                    }
+
+                    _cts?.Cancel();
+                    return ResumeMode.Automatic;
+
+                case ResumeChoice.StartOver:
+                    _vm.AddLog("Starting over — discarding received frames.");
+                    return ResumeMode.StartOver;
+
+                default:
+                    // Cancelled: return any mode; the seek aborts on the cancelled token, keeping received frames.
+                    _cts?.Cancel();
+                    return ResumeMode.Automatic;
+            }
+        }).Task;
 
     private async Task<SKBitmap> CaptureWithMiniHiddenAsync(Int32Rect virtualScreen)
     {
@@ -503,6 +545,11 @@ public partial class LiveCaptureView : UserControl
             }
 
             await _pipeline.SaveAsync(report.Assembler, metadata, target, progress);
+
+            // Verified and saved: retire the received buffer, keeping the manifest as a history record.
+            if (report.Assembler.IsPersistent)
+                _history.MarkComplete(Path.GetDirectoryName(report.Assembler.PayloadFilePath)!, target);
+
             _vm.IsDecompressing = false;
             _vm.AddLog($"Saved to {target}");
             _vm.StateText = "Saved";

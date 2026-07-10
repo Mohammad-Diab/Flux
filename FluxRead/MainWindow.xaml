@@ -21,6 +21,8 @@
                                  Style="{StaticResource TabRadio}" IsChecked="True" Checked="OnModeChanged"/>
                     <RadioButton x:Name="FolderModeButton" Content="Folder decode" GroupName="Mode"
                                  Style="{StaticResource TabRadio}" Checked="OnModeChanged"/>
+                    <RadioButton x:Name="ReceivedModeButton" Content="Received" GroupName="Mode"
+                                 Style="{StaticResource TabRadio}" Checked="OnModeChanged"/>
                 </StackPanel>
             </Border>
             <controls:TransitionHost x:Name="ModeHost" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch"/>

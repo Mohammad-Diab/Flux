@@ -1,3 +1,4 @@
+using System.Buffers.Binary;
 using FluxCore.Compression;
 using FluxCore.Ecc;
 using FluxCore.Framing;
@@ -14,6 +15,12 @@ namespace FluxCore.Decoding;
 /// switch to a disk-backed mode: each frame is written straight to its offset in a single
 /// pre-sized temp file, so peak memory stays at roughly one frame regardless of payload size and
 /// the 2 GB single-array limit no longer applies. Dispose the assembler to delete the temp file.
+/// </para>
+/// <para>
+/// The persisting constructor is a third mode: always disk-backed, into a caller-owned directory
+/// that survives <see cref="Dispose"/>, with each accepted frame id appended to a small index
+/// file. This lets an interrupted reception be reopened and resumed from the frames it already
+/// holds.
 /// </para>
 /// </summary>
 public sealed class PayloadAssembler : IDisposable
@@ -36,6 +43,12 @@ public sealed class PayloadAssembler : IDisposable
     private readonly object _diskLock = new();
     private bool _writeClosed;
     private bool _disposed;
+
+    // Persisting mode: a caller-owned session directory that survives Dispose, plus an append-only
+    // index of received frame ids so the reception can be reopened and resumed.
+    private readonly bool _persistent;
+    private readonly string? _indexPath;
+    private FileStream? _indexStream;
 
     /// <summary>Creates an assembler for the transfer described by the frame-0 metadata.</summary>
     public PayloadAssembler(MetadataPayload metadata)
@@ -70,8 +83,52 @@ public sealed class PayloadAssembler : IDisposable
         }
     }
 
+    /// <summary>
+    /// Creates a persisting, always-disk-backed assembler that writes payload bytes to
+    /// <paramref name="payloadFilePath"/> and appends each accepted frame id to
+    /// <paramref name="receivedIndexPath"/>, so an interrupted transfer can be resumed. Unlike the
+    /// temp-file mode the files are caller-owned and are NOT deleted on <see cref="Dispose"/>.
+    /// Pass <paramref name="resume"/> true to reopen an existing session and preload the frames it
+    /// already holds; the caller must have verified the on-disk session is compatible with this
+    /// transfer (same signature, hash, length, frame count, and ECC level).
+    /// </summary>
+    public PayloadAssembler(MetadataPayload metadata, string payloadFilePath, string receivedIndexPath, bool resume)
+    {
+        ArgumentNullException.ThrowIfNull(metadata);
+        ArgumentNullException.ThrowIfNull(payloadFilePath);
+        ArgumentNullException.ThrowIfNull(receivedIndexPath);
+        if (!metadata.MatchesFrameFormat())
+            throw new ArgumentException("Metadata does not match this frame format version.", nameof(metadata));
+
+        _metadata = metadata;
+        _bytesPerFrame = metadata.EccLevel.PayloadBytesPerFrame();
+        _useDisk = true;
+        _persistent = true;
+        _diskFrameIds = new HashSet<uint>();
+        _payloadFilePath = payloadFilePath;
+        _indexPath = receivedIndexPath;
+
+        Directory.CreateDirectory(Path.GetDirectoryName(payloadFilePath)!);
+        _payloadStream = new FileStream(payloadFilePath, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.Read);
+        _payloadStream.SetLength(metadata.PayloadLength);
+
+        if (resume)
+        {
+            PreloadReceivedIds();
+            _indexStream = new FileStream(receivedIndexPath, FileMode.OpenOrCreate, FileAccess.Write, FileShare.Read);
+            _indexStream.Seek(0, SeekOrigin.End);
+        }
+        else
+        {
+            _indexStream = new FileStream(receivedIndexPath, FileMode.Create, FileAccess.Write, FileShare.Read);
+        }
+    }
+
     /// <summary>Gets a value indicating whether frames are being spilled to a temp file.</summary>
     public bool IsDiskBacked => _useDisk;
+
+    /// <summary>Gets a value indicating whether frames are persisted to a resumable session directory.</summary>
+    public bool IsPersistent => _persistent;
 
     /// <summary>
     /// Gets the path of the assembled payload temp file (disk-backed mode only). Valid once the
@@ -151,6 +208,16 @@ public sealed class PayloadAssembler : IDisposable
                 long offset = (long)(frameId - 1) * _bytesPerFrame;
                 _payloadStream!.Seek(offset, SeekOrigin.Begin);
                 _payloadStream.Write(payload, 0, payload.Length);
+
+                if (_persistent)
+                {
+                    // Payload before index: a crash between them loses a re-capturable frame, not a phantom one.
+                    _payloadStream.Flush();
+                    Span<byte> idBytes = stackalloc byte[sizeof(uint)];
+                    BinaryPrimitives.WriteUInt32LittleEndian(idBytes, frameId);
+                    _indexStream!.Write(idBytes);
+                    _indexStream.Flush();
+                }
             }
         }
         else if (!_frames!.TryAdd(frameId, payload))
@@ -162,6 +229,48 @@ public sealed class PayloadAssembler : IDisposable
             LastAcceptedId = frameId;
         ReceivedBytes += payload.Length;
         return true;
+    }
+
+    /// <summary>
+    /// Discards every received frame, restarting the reception from empty (persisting mode only).
+    /// Truncates the on-disk index so a fresh transfer of the same content starts clean.
+    /// </summary>
+    public void Reset()
+    {
+        if (!_persistent)
+            throw new InvalidOperationException("Only a persisting assembler can be reset.");
+
+        lock (_diskLock)
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            if (_writeClosed)
+                throw new InvalidOperationException("Cannot reset after the payload has been finalized.");
+
+            _diskFrameIds!.Clear();
+            LastAcceptedId = 0;
+            ReceivedBytes = 0;
+            _indexStream!.SetLength(0);
+            _indexStream.Flush();
+        }
+    }
+
+    /// <summary>Rebuilds the received-id set (and derived counters) from the on-disk index.</summary>
+    private void PreloadReceivedIds()
+    {
+        if (!File.Exists(_indexPath))
+            return;
+
+        var bytes = File.ReadAllBytes(_indexPath);
+        for (int i = 0; i + sizeof(uint) <= bytes.Length; i += sizeof(uint))
+        {
+            uint id = BinaryPrimitives.ReadUInt32LittleEndian(bytes.AsSpan(i));
+            if (id >= 1 && id < _metadata.TotalFrames && _diskFrameIds!.Add(id))
+            {
+                if (id > LastAcceptedId)
+                    LastAcceptedId = id;
+                ReceivedBytes += ExpectedFrameLength(id);
+            }
+        }
     }
 
     /// <summary>
@@ -199,6 +308,8 @@ public sealed class PayloadAssembler : IDisposable
             _payloadStream!.Flush();
             _payloadStream.Dispose();
             _payloadStream = null;
+            _indexStream?.Dispose();
+            _indexStream = null;
             _writeClosed = true;
         }
     }
@@ -278,7 +389,10 @@ public sealed class PayloadAssembler : IDisposable
         _disposed = true;
 
         _payloadStream?.Dispose();
-        if (_workDirectory is not null)
+        _indexStream?.Dispose();
+
+        // Persisting sessions are caller-owned and must survive; only the temp-file mode cleans up.
+        if (_workDirectory is not null && !_persistent)
         {
             try { Directory.Delete(_workDirectory, recursive: true); }
             catch { /* best-effort temp cleanup */ }

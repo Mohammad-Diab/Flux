@@ -32,6 +32,9 @@ public enum CaptureLoopState
 
     /// <summary>Loop cancelled by the user.</summary>
     Cancelled,
+
+    /// <summary>Reopening an interrupted reception: seeking to and capturing the first missing frame.</summary>
+    Resuming,
 }
 
 /// <summary>How the user resolves a stall.</summary>
@@ -45,6 +48,29 @@ public enum StallResolution
 
     /// <summary>Abandon the transfer.</summary>
     Abort,
+}
+
+/// <summary>How the user wants to resume an interrupted reception.</summary>
+public enum ResumeMode
+{
+    /// <summary>The reader clicks Next to skip ahead to the first missing frame automatically.</summary>
+    Automatic,
+
+    /// <summary>The user navigates the sender to the first missing frame themselves, then continues.</summary>
+    Manual,
+
+    /// <summary>Discard the frames already received and start the transfer over.</summary>
+    StartOver,
+}
+
+/// <summary>Context passed to the resume prompt when an interrupted reception is recognized.</summary>
+/// <param name="ReceivedFrames">Payload frames already received.</param>
+/// <param name="TotalFrames">Total frames including frame 0.</param>
+/// <param name="FirstMissingFrameId">The first payload frame still needed.</param>
+public sealed record ResumeContext(int ReceivedFrames, int TotalFrames, uint FirstMissingFrameId)
+{
+    /// <summary>Gets the number of payload frames expected (total minus frame 0).</summary>
+    public int ExpectedPayloadFrames => Math.Max(0, TotalFrames - 1);
 }
 
 /// <summary>Tuning parameters for the capture loop.</summary>

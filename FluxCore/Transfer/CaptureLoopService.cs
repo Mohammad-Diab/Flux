@@ -20,6 +20,7 @@ public sealed class CaptureLoopService
     private readonly FrameDecoder _decoder;
     private readonly CaptureLoopOptions _options;
     private readonly ILogger<CaptureLoopService>? _logger;
+    private readonly Func<MetadataPayload, PayloadAssembler> _assemblerFactory;
     private readonly object _pauseLock = new();
     private TaskCompletionSource<bool>? _pauseGate;
 
@@ -48,13 +49,18 @@ public sealed class CaptureLoopService
         }
     }
 
-    /// <summary>Creates the loop over a capture source, clicker, and decode palette.</summary>
+    /// <summary>
+    /// Creates the loop over a capture source, clicker, and decode palette. The optional
+    /// assembler factory builds the payload assembler once frame 0 is read; supply one that
+    /// returns a persisting assembler to enable resume (the default is a fresh in-memory one).
+    /// </summary>
     public CaptureLoopService(
         IScreenCapture capture,
         INextClicker clicker,
         ColorMap colorMap,
         CaptureLoopOptions? options = null,
-        ILogger<CaptureLoopService>? logger = null)
+        ILogger<CaptureLoopService>? logger = null,
+        Func<MetadataPayload, PayloadAssembler>? assemblerFactory = null)
     {
         ArgumentNullException.ThrowIfNull(capture);
         ArgumentNullException.ThrowIfNull(clicker);
@@ -65,6 +71,7 @@ public sealed class CaptureLoopService
         _decoder = new FrameDecoder(colorMap);
         _options = options ?? new CaptureLoopOptions();
         _logger = logger;
+        _assemblerFactory = assemblerFactory ?? (metadata => new PayloadAssembler(metadata));
     }
 
     /// <summary>
@@ -73,10 +80,15 @@ public sealed class CaptureLoopService
     /// <param name="progress">Status sink.</param>
     /// <param name="onStall">Invoked when stalled; returns how the user wants to resolve it.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
+    /// <param name="onResume">
+    /// Invoked when an interrupted reception is recognized (the assembler already holds frames);
+    /// returns how the user wants to resume. Null resumes automatically.
+    /// </param>
     public async Task<TransferReport> RunAsync(
         IProgress<LoopStatus>? progress,
         Func<CancellationToken, Task<StallResolution>>? onStall,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        Func<ResumeContext, CancellationToken, Task<ResumeMode>>? onResume = null)
     {
         MetadataPayload? metadata = null;
         PayloadAssembler? assembler = null;
@@ -90,9 +102,20 @@ public sealed class CaptureLoopService
         {
             metadata = await AcquireFrame0Async(progress, cancellationToken);
 
-            assembler = new PayloadAssembler(metadata);
+            assembler = _assemblerFactory(metadata);
             int total = (int)metadata.TotalFrames;
-            Report(progress, CaptureLoopState.ClickingNext, assembler, metadata, lastFrameId, 0, "Frame 0 read. Starting transfer.");
+
+            if (assembler.ReceivedFrames > 0 &&
+                !await PrepareResumeAsync(assembler, metadata, total, onResume, onStall, progress, cancellationToken))
+            {
+                return new TransferReport(CaptureLoopState.Failed, metadata, null, assembler.ReceivedFrames, total, totalReclicks, stalls, stopwatch.Elapsed, "Aborted during resume.");
+            }
+
+            lastFrameId = assembler.LastAcceptedId;
+            Report(progress, CaptureLoopState.ClickingNext, assembler, metadata, lastFrameId, 0,
+                assembler.ReceivedFrames > 0
+                    ? $"Resumed at {assembler.ReceivedFrames}/{assembler.ExpectedPayloadFrames} frames. Continuing transfer."
+                    : "Frame 0 read. Starting transfer.");
 
             while (!assembler.IsComplete)
             {
@@ -193,6 +216,131 @@ public sealed class CaptureLoopService
             Report(progress, CaptureLoopState.WaitingForFrame0, null, null, 0, 0, message);
             await Task.Delay(_options.PollIntervalMs, cancellationToken);
         }
+    }
+
+    /// <summary>
+    /// Recognizes an interrupted reception and, per the user's choice, seeks to and captures the
+    /// first missing frame so the main loop can carry on. Already-received frames are not
+    /// "acceptable" to the forward loop, so it would stall on them — this step skips past them.
+    /// </summary>
+    /// <returns>True to continue the transfer; false if the user aborted.</returns>
+    private async Task<bool> PrepareResumeAsync(
+        PayloadAssembler assembler,
+        MetadataPayload metadata,
+        int total,
+        Func<ResumeContext, CancellationToken, Task<ResumeMode>>? onResume,
+        Func<CancellationToken, Task<StallResolution>>? onStall,
+        IProgress<LoopStatus>? progress,
+        CancellationToken cancellationToken)
+    {
+        var missing = assembler.MissingFrameIds;
+        if (missing.Count == 0)
+            return true;
+
+        uint firstMissing = missing[0];
+        Report(progress, CaptureLoopState.Resuming, assembler, metadata, assembler.LastAcceptedId, 0,
+            $"Resuming — {assembler.ReceivedFrames}/{assembler.ExpectedPayloadFrames} frames already received.");
+
+        var mode = onResume is null
+            ? ResumeMode.Automatic
+            : await onResume(new ResumeContext(assembler.ReceivedFrames, total, firstMissing), cancellationToken);
+
+        if (mode == ResumeMode.StartOver)
+        {
+            assembler.Reset();
+            return true;
+        }
+
+        return await SeekToMissingAsync(
+            assembler, metadata, firstMissing, allowClicking: mode == ResumeMode.Automatic,
+            onStall, progress, cancellationToken);
+    }
+
+    /// <summary>
+    /// Advances to and captures the first missing frame. Automatic mode clicks Next to reach it;
+    /// manual mode never clicks and captures whichever missing frame the user shows.
+    /// </summary>
+    private async Task<bool> SeekToMissingAsync(
+        PayloadAssembler assembler,
+        MetadataPayload metadata,
+        uint firstMissing,
+        bool allowClicking,
+        Func<CancellationToken, Task<StallResolution>>? onStall,
+        IProgress<LoopStatus>? progress,
+        CancellationToken cancellationToken)
+    {
+        int reclicks = 0;
+        while (true)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            await WaitIfPausedAsync(cancellationToken);
+
+            using var capture = await CaptureStableAsync(cancellationToken);
+            var probe = _decoder.TryProbe(capture);
+            uint? shown = probe.Registered && probe.Header is { } h ? h.FrameId : null;
+
+            if (shown is { } id && id >= 1 && id < metadata.TotalFrames && !assembler.HasFrame(id))
+            {
+                var decoded = _decoder.Decode(capture);
+                if (decoded.Status == DecodeStatus.Success && decoded.Header is { } fullHeader &&
+                    IsAcceptablePayloadFrame(fullHeader, metadata, assembler))
+                {
+                    assembler.AddFrame(fullHeader, decoded.Payload!);
+                    Report(progress, CaptureLoopState.Resuming, assembler, metadata, fullHeader.FrameId, 0,
+                        $"Resumed at frame {fullHeader.FrameId} ({assembler.ReceivedFrames}/{assembler.ExpectedPayloadFrames}).",
+                        EncodeThumbnail(capture));
+                    return true;
+                }
+            }
+
+            if (!allowClicking)
+            {
+                Report(progress, CaptureLoopState.Resuming, assembler, metadata, assembler.LastAcceptedId, 0,
+                    $"Waiting for frame {firstMissing} — show it on the sender and it will be captured.");
+                await Task.Delay(_options.PollIntervalMs, cancellationToken);
+                continue;
+            }
+
+            _clicker.ClickNext();
+            Report(progress, CaptureLoopState.Resuming, assembler, metadata, assembler.LastAcceptedId, reclicks,
+                $"Skipping ahead to frame {firstMissing}…");
+
+            if (await PollForProbeAdvanceAsync(shown, cancellationToken))
+            {
+                reclicks = 0;
+                continue;
+            }
+
+            reclicks++;
+            if (reclicks < _options.MaxReclicks)
+                continue;
+
+            var resolution = onStall is null ? StallResolution.Abort : await onStall(cancellationToken);
+            if (resolution == StallResolution.Abort)
+                return false;
+            reclicks = 0;
+        }
+    }
+
+    /// <summary>Polls until the displayed frame id differs from <paramref name="previousShown"/> (a click landed).</summary>
+    private async Task<bool> PollForProbeAdvanceAsync(uint? previousShown, CancellationToken cancellationToken)
+    {
+        for (int poll = 0; poll < _options.MaxPollsPerClick; poll++)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            await WaitIfPausedAsync(cancellationToken);
+            await Task.Delay(_options.PollIntervalMs, cancellationToken);
+
+            using var capture = await CaptureStableAsync(cancellationToken);
+            var probe = _decoder.TryProbe(capture);
+            if (probe.Registered && probe.Header is { } header &&
+                (previousShown is null || header.FrameId != previousShown.Value))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private async Task<bool> PollForAdvanceAsync(

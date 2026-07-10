@@ -1,0 +1,28 @@
+<Window x:Class="FluxRead.Views.ResumeDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="FluxRead — Resume reception"
+        Icon="/Assets/AppIcon.ico"
+        SizeToContent="Height" Width="460" ResizeMode="NoResize"
+        Style="{StaticResource FluxWindow}"
+        WindowStartupLocation="CenterOwner">
+    <StackPanel x:Name="RootContent" Margin="24">
+        <TextBlock Text="Resume this reception?" Style="{StaticResource HeadingText}"/>
+        <TextBlock x:Name="DetailText" Style="{StaticResource SubtleText}" TextWrapping="Wrap" Margin="0,6,0,0"/>
+
+        <Button Content="Continue automatically" HorizontalAlignment="Stretch" Margin="0,20,0,0"
+                Style="{StaticResource PrimaryButton}" Click="OnAutomatic"/>
+        <TextBlock x:Name="AutomaticHint" Style="{StaticResource SubtleText}" FontSize="11" Margin="2,4,0,0"/>
+
+        <Button Content="I'll navigate the sender myself" HorizontalAlignment="Stretch" Margin="0,14,0,0"
+                Style="{StaticResource SecondaryButton}" Click="OnManual"/>
+        <TextBlock x:Name="ManualHint" Style="{StaticResource SubtleText}" FontSize="11" Margin="2,4,0,0"/>
+
+        <Button Content="Start over" HorizontalAlignment="Stretch" Margin="0,14,0,0"
+                Style="{StaticResource SecondaryButton}" Click="OnStartOver"/>
+        <TextBlock x:Name="StartOverHint" Style="{StaticResource SubtleText}" FontSize="11" Margin="2,4,0,0"/>
+
+        <Button Content="Cancel" HorizontalAlignment="Stretch" Margin="0,18,0,0"
+                Style="{StaticResource DangerGhostButton}" Click="OnCancel"/>
+    </StackPanel>
+</Window>

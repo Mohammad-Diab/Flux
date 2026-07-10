@@ -15,16 +15,27 @@ public partial class MainWindow : Window
 {
     private readonly FolderDecodeView _folderView;
     private readonly LiveCaptureView _liveView;
+    private readonly ReceivedItemsView _receivedView;
+    private readonly ReceivedItemsViewModel _receivedVm;
     private readonly SettingsView _settingsView;
     private readonly ShellViewModel _shell;
     private int _currentTab;
 
-    public MainWindow(FolderDecodeView folderView, LiveCaptureView liveView, SettingsView settingsView, ShellViewModel shell)
+    public MainWindow(
+        FolderDecodeView folderView,
+        LiveCaptureView liveView,
+        ReceivedItemsView receivedView,
+        ReceivedItemsViewModel receivedVm,
+        SettingsView settingsView,
+        ShellViewModel shell)
     {
         _folderView = folderView;
         _liveView = liveView;
+        _receivedView = receivedView;
+        _receivedVm = receivedVm;
         _settingsView = settingsView;
         _shell = shell;
+        _receivedVm.ResumeRequested = () => LiveModeButton.IsChecked = true;
         DataContext = shell;
         InitializeComponent();
         FluxWindowChrome.Attach(this, RootContent);
@@ -43,11 +54,13 @@ public partial class MainWindow : Window
         if (ModeHost is null)
             return;
 
-        int tab = LiveModeButton.IsChecked == true ? 0 : 1;
+        int tab = LiveModeButton.IsChecked == true ? 0 : FolderModeButton.IsChecked == true ? 1 : 2;
 
         // Slide by direction of travel: forward from the right, back from the left.
         ModeHost.SlideFrom = tab >= _currentTab ? 36 : -36;
         _currentTab = tab;
+        if (tab == 2)
+            _receivedVm.Refresh();
         if (!_shell.IsSettingsOpen)
             ModeHost.Content = TabContent(tab);
     }
@@ -68,5 +81,10 @@ public partial class MainWindow : Window
         }
     }
 
-    private object TabContent(int tab) => tab == 1 ? _folderView : _liveView;
+    private object TabContent(int tab) => tab switch
+    {
+        1 => _folderView,
+        2 => _receivedView,
+        _ => _liveView,
+    };
 }

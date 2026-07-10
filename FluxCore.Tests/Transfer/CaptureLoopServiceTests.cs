@@ -238,4 +238,114 @@ public class CaptureLoopServiceTests
 
         Assert.Equal(CaptureLoopState.Cancelled, report.State);
     }
+
+    /// <summary>Seeds a persisting session with the first <paramref name="prefix"/> payload frames.</summary>
+    private static (string Root, ReceptionHistoryService Service) SeedPartial(
+        MetadataPayload metadata, byte[] payload, int prefix)
+    {
+        var root = Path.Combine(Path.GetTempPath(), $"flux_resume_{Guid.NewGuid():N}", "sessions");
+        var service = new ReceptionHistoryService();
+        int perFrame = metadata.EccLevel.PayloadBytesPerFrame();
+
+        using var seed = service.OpenAssembler(root, metadata);
+        for (uint id = 1; id <= prefix; id++)
+        {
+            int offset = (int)(id - 1) * perFrame;
+            int length = Math.Min(perFrame, payload.Length - offset);
+            var chunk = payload[offset..(offset + length)];
+            seed.AddFrame(new FrameHeader(id, metadata.TotalFrames, (ushort)length,
+                Crc32Helper.ComputeChecksum(chunk), metadata.EccLevel), chunk);
+        }
+
+        return (root, service);
+    }
+
+    [Fact]
+    public async Task Run_ResumeAutomatic_FastForwardsPastHeldFrames_AndCompletes()
+    {
+        var (frames, payload, metadata) = BuildTransfer(40_000);
+        int prefix = (frames.Count - 1) / 2;
+        var (root, service) = SeedPartial(metadata, payload, prefix);
+        try
+        {
+            var screen = new FakeScreen(frames);
+            var loop = new CaptureLoopService(screen, screen, ColorMap.Default,
+                new CaptureLoopOptions(PollIntervalMs: 0, StabilityIntervalMs: 0, MaxPollsPerClick: 6, MaxReclicks: 3),
+                assemblerFactory: m => service.OpenAssembler(root, m));
+
+            Task<ResumeMode> OnResume(ResumeContext ctx, CancellationToken _)
+            {
+                Assert.Equal(prefix, ctx.ReceivedFrames);
+                Assert.Equal((uint)(prefix + 1), ctx.FirstMissingFrameId);
+                return Task.FromResult(ResumeMode.Automatic);
+            }
+
+            var report = await loop.RunAsync(null, Abort, CancellationToken.None, OnResume);
+
+            Assert.Equal(CaptureLoopState.Complete, report.State);
+            Assert.Equal(frames.Count - 1, report.Assembler!.ReceivedFrames);
+            report.Assembler.Verify();
+        }
+        finally
+        {
+            try { Directory.Delete(Path.GetDirectoryName(root)!, recursive: true); } catch { }
+        }
+    }
+
+    [Fact]
+    public async Task Run_ResumeManual_CapturesUserShownFrame_AndCompletes()
+    {
+        var (frames, payload, metadata) = BuildTransfer(40_000);
+        int prefix = (frames.Count - 1) / 2;
+        var (root, service) = SeedPartial(metadata, payload, prefix);
+        try
+        {
+            var screen = new FakeScreen(frames);
+            var loop = new CaptureLoopService(screen, screen, ColorMap.Default,
+                new CaptureLoopOptions(PollIntervalMs: 0, StabilityIntervalMs: 0, MaxPollsPerClick: 6, MaxReclicks: 3),
+                assemblerFactory: m => service.OpenAssembler(root, m));
+
+            // Manual: the user navigates the sender to the first missing frame, then continues.
+            Task<ResumeMode> OnResume(ResumeContext ctx, CancellationToken _)
+            {
+                screen.JumpTo((int)ctx.FirstMissingFrameId);
+                return Task.FromResult(ResumeMode.Manual);
+            }
+
+            var report = await loop.RunAsync(null, Abort, CancellationToken.None, OnResume);
+
+            Assert.Equal(CaptureLoopState.Complete, report.State);
+            report.Assembler!.Verify();
+        }
+        finally
+        {
+            try { Directory.Delete(Path.GetDirectoryName(root)!, recursive: true); } catch { }
+        }
+    }
+
+    [Fact]
+    public async Task Run_ResumeStartOver_DiscardsHeldFrames_AndRecapturesAll()
+    {
+        var (frames, payload, metadata) = BuildTransfer(40_000);
+        int prefix = (frames.Count - 1) / 2;
+        var (root, service) = SeedPartial(metadata, payload, prefix);
+        try
+        {
+            var screen = new FakeScreen(frames);
+            var loop = new CaptureLoopService(screen, screen, ColorMap.Default,
+                new CaptureLoopOptions(PollIntervalMs: 0, StabilityIntervalMs: 0, MaxPollsPerClick: 6, MaxReclicks: 3),
+                assemblerFactory: m => service.OpenAssembler(root, m));
+
+            var report = await loop.RunAsync(null, Abort, CancellationToken.None,
+                (_, _) => Task.FromResult(ResumeMode.StartOver));
+
+            Assert.Equal(CaptureLoopState.Complete, report.State);
+            Assert.Equal(frames.Count - 1, report.Assembler!.ReceivedFrames);
+            report.Assembler.Verify();
+        }
+        finally
+        {
+            try { Directory.Delete(Path.GetDirectoryName(root)!, recursive: true); } catch { }
+        }
+    }
 }
