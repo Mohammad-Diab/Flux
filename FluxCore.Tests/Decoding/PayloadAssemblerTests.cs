@@ -28,7 +28,7 @@ public class PayloadAssemblerTests
 
         var metadata = new MetadataPayload(
             Sha256Helper.ComputeHash(payload), type, level, totalFrames, payload.Length,
-            "asm-test.bin", payload.Length, new byte[32], ColorMap.Default);
+            "asm-test.bin", payload.Length, new byte[32], 256);
 
         var frames = new List<(FrameHeader, byte[])>();
         for (uint id = 1; id <= payloadFrames; id++)

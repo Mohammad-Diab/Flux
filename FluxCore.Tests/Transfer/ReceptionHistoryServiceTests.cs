@@ -38,7 +38,7 @@ public class ReceptionHistoryServiceTests : IDisposable
 
         var metadata = new MetadataPayload(
             Sha256Helper.ComputeHash(payload), PayloadType.Raw, EccLevel.Medium, total, payload.Length,
-            name, payload.Length, new byte[32], ColorMap.Default);
+            name, payload.Length, new byte[32], 256);
 
         var frames = new List<(FrameHeader, byte[])>();
         for (uint id = 1; id <= payloadFrames; id++)

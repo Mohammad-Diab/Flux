@@ -77,7 +77,7 @@ public class CaptureLoopServiceTests
 
         var metadata = new MetadataPayload(
             Sha256Helper.ComputeHash(payload), PayloadType.Raw, level, total, payload.Length,
-            "loop.bin", payload.Length, new byte[32], ColorMap.Default);
+            "loop.bin", payload.Length, new byte[32], 256);
 
         var frames = new List<SKBitmap>
         {

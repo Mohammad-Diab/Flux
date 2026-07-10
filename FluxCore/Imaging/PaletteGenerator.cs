@@ -27,11 +27,16 @@ public static class PaletteGenerator
 
     private static readonly Rgb24 WhiteReplacement = new(18, 18, 43);
 
+    /// <summary>Determines whether a colour count is supported (a power of two in [8, 256]).</summary>
+    /// <param name="colorCount">Number of colours.</param>
+    public static bool IsSupportedCount(int colorCount) =>
+        colorCount is >= MinColorCount and <= MaxColorCount && (colorCount & (colorCount - 1)) == 0;
+
     /// <summary>Generates the palette for a colour count (a power of two in [8, 256]).</summary>
     /// <param name="colorCount">Number of colours.</param>
     public static GeneratedPalette Generate(int colorCount)
     {
-        if (colorCount is < MinColorCount or > MaxColorCount || (colorCount & (colorCount - 1)) != 0)
+        if (!IsSupportedCount(colorCount))
             throw new ArgumentOutOfRangeException(nameof(colorCount),
                 $"Colour count must be a power of two between {MinColorCount} and {MaxColorCount}.");
 

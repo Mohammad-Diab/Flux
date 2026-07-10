@@ -153,7 +153,7 @@ public class FrameEncoderTests
             originalName: "vacation-photos.7z",
             originalLength: 900_000,
             contentSignature: DeterministicPayload(32, seed: 5),
-            colorMap: FluxCore.Imaging.ColorMap.Default);
+            colorCount: 256);
 
         var map = FrameEncoder.BuildMetadataFrame(metadata.Serialize(), 42);
 

@@ -74,7 +74,7 @@ public class FrameDecoderTests
             originalName: "archive.7z",
             originalLength: 150_000,
             contentSignature: DeterministicPayload(32, seed: 2),
-            colorMap: ColorMap.Default);
+            colorCount: 256);
         using var bitmap = RenderMetadataFrame(metadata.Serialize(), 7);
 
         var result = Decoder.DecodeMetadataFrame(bitmap);
@@ -93,7 +93,7 @@ public class FrameDecoderTests
         var metadata = new MetadataPayload(
             sha256: DeterministicPayload(32), payloadType: PayloadType.SevenZip, eccLevel: EccLevel.Medium,
             totalFrames: 12, payloadLength: 500_000, originalName: "rugged.7z", originalLength: 1_000_000,
-            contentSignature: DeterministicPayload(32, seed: 4), colorMap: ColorMap.Default);
+            contentSignature: DeterministicPayload(32, seed: 4), colorCount: 256);
         using var source = RenderMetadataFrame(metadata.Serialize(), 12);
 
         using var jpeg = SKImage.FromBitmap(source).Encode(SKEncodedImageFormat.Jpeg, 40);

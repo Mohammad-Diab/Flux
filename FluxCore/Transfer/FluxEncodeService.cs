@@ -77,7 +77,7 @@ public sealed class FluxEncodeService
             originalName: SourceName(sourcePath),
             originalLength: PathSize.GetTotalBytes(sourcePath),
             contentSignature: signature,
-            colorMap: ColorMap.Default);
+            colorCount: 256);
 
         int rendered = await RenderMissingFramesAsync(
             metadata, payload, framesDirectory, progress, cancellationToken);

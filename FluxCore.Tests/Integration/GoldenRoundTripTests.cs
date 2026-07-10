@@ -39,7 +39,7 @@ public class GoldenRoundTripTests
             originalName: originalName,
             originalLength: payload.Length,
             contentSignature: DeterministicPayload(32, seed: 1),
-            colorMap: ColorMap.Default);
+            colorCount: 256);
 
         var pngs = new List<byte[]>
         {

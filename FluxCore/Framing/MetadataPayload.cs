@@ -12,11 +12,11 @@ namespace FluxCore.Framing;
 /// </summary>
 public sealed class MetadataPayload
 {
-    /// <summary>Metadata format version (current = 2).</summary>
-    public const byte CurrentVersion = 2;
+    /// <summary>Metadata format version (current = 3).</summary>
+    public const byte CurrentVersion = 3;
 
     /// <summary>Serialized size in bytes excluding the variable-length name.</summary>
-    public const int FixedSize = 1 + 32 + 1 + 1 + 1 + 2 + 2 + 4 + 8 + 2 + 8 + 32 + ColorMap.SerializedSize;
+    public const int FixedSize = 1 + 32 + 1 + 1 + 1 + 2 + 2 + 4 + 8 + 2 + 8 + 32 + 2;
 
     /// <summary>Gets the metadata format version.</summary>
     public byte Version { get; init; } = CurrentVersion;
@@ -54,8 +54,8 @@ public sealed class MetadataPayload
     /// <summary>Gets the 32-byte content signature identifying the source (used for session/resume naming).</summary>
     public byte[] ContentSignature { get; }
 
-    /// <summary>Gets the color map used for data tiles.</summary>
-    public ColorMap ColorMap { get; }
+    /// <summary>Gets the data-tile colour count; the palette is regenerated from it via <see cref="PaletteGenerator"/>.</summary>
+    public int ColorCount { get; }
 
     /// <summary>Creates and validates the transfer metadata.</summary>
     public MetadataPayload(
@@ -67,12 +67,11 @@ public sealed class MetadataPayload
         string originalName,
         long originalLength,
         byte[] contentSignature,
-        ColorMap colorMap)
+        int colorCount = 256)
     {
         ArgumentNullException.ThrowIfNull(sha256);
         ArgumentNullException.ThrowIfNull(originalName);
         ArgumentNullException.ThrowIfNull(contentSignature);
-        ArgumentNullException.ThrowIfNull(colorMap);
 
         if (sha256.Length != 32)
             throw new ArgumentException("SHA-256 must be 32 bytes.", nameof(sha256));
@@ -86,6 +85,8 @@ public sealed class MetadataPayload
             throw new ArgumentException("Payload length cannot be negative.", nameof(payloadLength));
         if (originalLength < 0)
             throw new ArgumentException("Original length cannot be negative.", nameof(originalLength));
+        if (!PaletteGenerator.IsSupportedCount(colorCount))
+            throw new ArgumentException($"Unsupported colour count: {colorCount}.", nameof(colorCount));
 
         Sha256 = sha256;
         PayloadType = payloadType;
@@ -95,7 +96,7 @@ public sealed class MetadataPayload
         OriginalName = originalName;
         OriginalLength = originalLength;
         ContentSignature = contentSignature;
-        ColorMap = colorMap;
+        ColorCount = colorCount;
     }
 
     /// <summary>
@@ -112,7 +113,7 @@ public sealed class MetadataPayload
     /// Serializes the metadata payload. Layout (little-endian):
     /// Version(1) | Sha256(32) | PayloadType(1) | EccLevel(1) | TilePixelSize(1) |
     /// GridWidthTiles(2) | GridHeightTiles(2) | TotalFrames(4) | PayloadLength(8) |
-    /// NameLength(2) | Name(UTF-8) | OriginalLength(8) | ContentSignature(32) | ColorMap(768).
+    /// NameLength(2) | Name(UTF-8) | OriginalLength(8) | ContentSignature(32) | ColorCount(2).
     /// </summary>
     public byte[] Serialize()
     {
@@ -153,7 +154,7 @@ public sealed class MetadataPayload
         ContentSignature.CopyTo(buffer.AsSpan(offset));
         offset += 32;
 
-        ColorMap.Serialize().CopyTo(buffer.AsSpan(offset));
+        BinaryPrimitives.WriteUInt16LittleEndian(buffer.AsSpan(offset), (ushort)ColorCount);
 
         return buffer;
     }
@@ -199,7 +200,7 @@ public sealed class MetadataPayload
         var nameLength = BinaryPrimitives.ReadUInt16LittleEndian(data[offset..]);
         offset += 2;
 
-        if (offset + nameLength + 8 + 32 + ColorMap.SerializedSize > data.Length)
+        if (offset + nameLength + 8 + 32 + 2 > data.Length)
             throw new ArgumentException("Data is corrupted or truncated.", nameof(data));
 
         var originalName = Encoding.UTF8.GetString(data.Slice(offset, nameLength));
@@ -211,7 +212,7 @@ public sealed class MetadataPayload
         var contentSignature = data.Slice(offset, 32).ToArray();
         offset += 32;
 
-        var colorMap = ColorMap.Deserialize(data.Slice(offset, ColorMap.SerializedSize).ToArray());
+        var colorCount = BinaryPrimitives.ReadUInt16LittleEndian(data[offset..]);
 
         return new MetadataPayload(
             sha256,
@@ -222,7 +223,7 @@ public sealed class MetadataPayload
             originalName,
             originalLength,
             contentSignature,
-            colorMap)
+            colorCount)
         {
             Version = version,
             TilePixelSize = tilePixelSize,

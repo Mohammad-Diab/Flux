@@ -133,7 +133,7 @@ public class FrameRendererTests
             originalName: "notes.7z",
             originalLength: 100_000,
             contentSignature: DeterministicPayload(32, seed: 3),
-            colorMap: ColorMap.Default);
+            colorCount: 256);
 
         var map = FrameEncoder.BuildMetadataFrame(metadata.Serialize(), 5);
         var png = FrameRenderer.RenderPng(map, ColorMap.Default);

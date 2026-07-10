@@ -23,7 +23,7 @@ public class MetadataPayloadTests
             originalName: name,
             originalLength: 1_200_000,
             contentSignature: Filled(0xBB),
-            colorMap: ColorMap.Default);
+            colorCount: 256);
 
     [Fact]
     public void Constructor_SetsCurrentVersionAndFrameFormatGeometry()
@@ -41,17 +41,17 @@ public class MetadataPayloadTests
     public void Constructor_ThrowsOnInvalidArguments()
     {
         Assert.Throws<ArgumentException>(() => new MetadataPayload(
-            new byte[31], PayloadType.Raw, EccLevel.Low, 1, 0, "x", 0, Filled(0), ColorMap.Default));
+            new byte[31], PayloadType.Raw, EccLevel.Low, 1, 0, "x", 0, Filled(0), 256));
         Assert.Throws<ArgumentException>(() => new MetadataPayload(
-            Filled(0), PayloadType.Raw, EccLevel.Low, 1, 0, "x", 0, new byte[16], ColorMap.Default));
+            Filled(0), PayloadType.Raw, EccLevel.Low, 1, 0, "x", 0, new byte[16], 256));
         Assert.Throws<ArgumentException>(() => new MetadataPayload(
-            Filled(0), PayloadType.Raw, (EccLevel)9, 1, 0, "x", 0, Filled(0), ColorMap.Default));
+            Filled(0), PayloadType.Raw, (EccLevel)9, 1, 0, "x", 0, Filled(0), 256));
         Assert.Throws<ArgumentException>(() => new MetadataPayload(
-            Filled(0), PayloadType.Raw, EccLevel.Low, 0, 0, "x", 0, Filled(0), ColorMap.Default));
+            Filled(0), PayloadType.Raw, EccLevel.Low, 0, 0, "x", 0, Filled(0), 256));
         Assert.Throws<ArgumentException>(() => new MetadataPayload(
-            Filled(0), PayloadType.Raw, EccLevel.Low, 1, -1, "x", 0, Filled(0), ColorMap.Default));
+            Filled(0), PayloadType.Raw, EccLevel.Low, 1, -1, "x", 0, Filled(0), 256));
         Assert.Throws<ArgumentNullException>(() => new MetadataPayload(
-            Filled(0), PayloadType.Raw, EccLevel.Low, 1, 0, null!, 0, Filled(0), ColorMap.Default));
+            Filled(0), PayloadType.Raw, EccLevel.Low, 1, 0, null!, 0, Filled(0), 256));
     }
 
     [Theory]
@@ -76,20 +76,25 @@ public class MetadataPayloadTests
         Assert.Equal(original.OriginalName, restored.OriginalName);
         Assert.Equal(original.OriginalLength, restored.OriginalLength);
         Assert.Equal(original.ContentSignature, restored.ContentSignature);
+        Assert.Equal(original.ColorCount, restored.ColorCount);
         Assert.True(restored.MatchesFrameFormat());
     }
 
     [Fact]
-    public void SerializeDeserialize_PreservesColorMap()
+    public void SerializeDeserialize_PreservesColorCount()
     {
-        var original = CreateValid();
+        var original = new MetadataPayload(
+            Filled(0xAA), PayloadType.Raw, EccLevel.Medium, 5, 1000, "x", 2000, Filled(0xBB), colorCount: 64);
 
-        var restored = MetadataPayload.Deserialize(original.Serialize());
+        Assert.Equal(64, MetadataPayload.Deserialize(original.Serialize()).ColorCount);
+        Assert.Equal(256, MetadataPayload.Deserialize(CreateValid().Serialize()).ColorCount);
+    }
 
-        for (int i = 0; i < 256; i++)
-        {
-            Assert.Equal(ColorMap.Default.GetColor((byte)i), restored.ColorMap.GetColor((byte)i));
-        }
+    [Fact]
+    public void Constructor_ThrowsOnUnsupportedColorCount()
+    {
+        Assert.Throws<ArgumentException>(() => new MetadataPayload(
+            Filled(0), PayloadType.Raw, EccLevel.Low, 1, 0, "x", 0, Filled(0), colorCount: 100));
     }
 
     [Theory]
@@ -133,11 +138,13 @@ public class MetadataPayloadTests
             "Frame 0 must always fit in a Max-level frame.");
     }
 
-    [Fact]
-    public void Deserialize_RejectsV1Payload()
+    [Theory]
+    [InlineData(1)]
+    [InlineData(2)]
+    public void Deserialize_RejectsOlderVersions(byte version)
     {
         var data = new byte[MetadataPayload.FixedSize];
-        data[0] = 1;
+        data[0] = version;
 
         Assert.Throws<NotSupportedException>(() => MetadataPayload.Deserialize(data));
     }
