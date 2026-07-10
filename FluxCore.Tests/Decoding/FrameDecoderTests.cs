@@ -84,7 +84,7 @@ public class FrameDecoderTests
 
         var restored = MetadataPayload.Deserialize(result.Payload!);
         Assert.Equal("archive.7z", restored.OriginalName);
-        Assert.True(restored.MatchesFrameFormat());
+        Assert.True(restored.TryBuildLayout(out _));
     }
 
     [Fact]

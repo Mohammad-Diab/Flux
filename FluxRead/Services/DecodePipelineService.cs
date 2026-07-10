@@ -142,7 +142,7 @@ public sealed class DecodePipelineService
             return new FolderDecodeResult(null, null, rows, false, $"Frame 0 metadata is invalid: {ex.Message}");
         }
 
-        if (!metadata.MatchesFrameFormat())
+        if (!metadata.TryBuildLayout(out var layout))
             return new FolderDecodeResult(metadata, null, rows, false, "Frame 0 was made by an incompatible Flux version.");
 
         rows.Add(new FrameRow(Path.GetFileName(files[0]), "0", "Metadata",
@@ -153,18 +153,18 @@ public sealed class DecodePipelineService
         for (int i = 1; i < files.Length; i++)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            rows.Add(DecodePayloadFrame(decoder, assembler, files[i]));
+            rows.Add(DecodePayloadFrame(decoder, assembler, files[i], layout));
             progress?.Report(new DecodeProgress(i + 1, files.Length));
         }
 
         return new FolderDecodeResult(metadata, assembler, rows, assembler.IsComplete, null);
     }
 
-    private static FrameRow DecodePayloadFrame(FrameDecoder decoder, PayloadAssembler assembler, string file)
+    private static FrameRow DecodePayloadFrame(FrameDecoder decoder, PayloadAssembler assembler, string file, FrameLayout layout)
     {
         var name = Path.GetFileName(file);
         using var bitmap = SKBitmap.Decode(file);
-        var result = decoder.Decode(bitmap);
+        var result = decoder.Decode(bitmap, layout: layout);
 
         if (result.Status != DecodeStatus.Success)
         {

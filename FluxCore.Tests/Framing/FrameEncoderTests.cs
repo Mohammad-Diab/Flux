@@ -189,6 +189,6 @@ public class FrameEncoderTests
         var restored = MetadataPayload.Deserialize(content);
         Assert.Equal("vacation-photos.7z", restored.OriginalName);
         Assert.Equal(42u, restored.TotalFrames);
-        Assert.True(restored.MatchesFrameFormat());
+        Assert.True(restored.TryBuildLayout(out _));
     }
 }

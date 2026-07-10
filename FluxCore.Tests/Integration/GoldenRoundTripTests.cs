@@ -74,7 +74,7 @@ public class GoldenRoundTripTests
         Assert.True(metadataResult.Header!.Value.IsMetadataFrame);
 
         var metadata = MetadataPayload.Deserialize(metadataResult.Payload!);
-        Assert.True(metadata.MatchesFrameFormat());
+        Assert.True(metadata.TryBuildLayout(out _));
         Assert.Equal((uint)pngs.Count, metadata.TotalFrames);
 
         var payload = new byte[metadata.PayloadLength];

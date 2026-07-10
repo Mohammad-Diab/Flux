@@ -24,6 +24,9 @@ public sealed class CaptureLoopService
     private readonly object _pauseLock = new();
     private TaskCompletionSource<bool>? _pauseGate;
 
+    // Adopted from frame 0; only payload frames vary, frame 0 stays Default.
+    private FrameLayout _payloadLayout = FrameLayout.Default;
+
     /// <summary>Gets a value indicating whether the loop is currently paused.</summary>
     public bool IsPaused
     {
@@ -195,8 +198,11 @@ public sealed class CaptureLoopService
                 try
                 {
                     var metadata = MetadataPayload.Deserialize(result.Payload!);
-                    if (metadata.MatchesFrameFormat())
+                    if (metadata.TryBuildLayout(out var layout))
+                    {
+                        _payloadLayout = layout;
                         return metadata;
+                    }
                 }
                 catch (Exception ex) when (ex is NotSupportedException or ArgumentException)
                 {
@@ -276,12 +282,12 @@ public sealed class CaptureLoopService
             await WaitIfPausedAsync(cancellationToken);
 
             using var capture = await CaptureStableAsync(cancellationToken);
-            var probe = _decoder.TryProbe(capture);
+            var probe = _decoder.TryProbe(capture, _payloadLayout);
             uint? shown = probe.Registered && probe.Header is { } h ? h.FrameId : null;
 
             if (shown is { } id && id >= 1 && id < metadata.TotalFrames && !assembler.HasFrame(id))
             {
-                var decoded = _decoder.Decode(capture);
+                var decoded = _decoder.Decode(capture, layout: _payloadLayout);
                 if (decoded.Status == DecodeStatus.Success && decoded.Header is { } fullHeader &&
                     IsAcceptablePayloadFrame(fullHeader, metadata, assembler))
                 {
@@ -332,7 +338,7 @@ public sealed class CaptureLoopService
             await Task.Delay(_options.PollIntervalMs, cancellationToken);
 
             using var capture = await CaptureStableAsync(cancellationToken);
-            var probe = _decoder.TryProbe(capture);
+            var probe = _decoder.TryProbe(capture, _payloadLayout);
             if (probe.Registered && probe.Header is { } header &&
                 (previousShown is null || header.FrameId != previousShown.Value))
             {
@@ -401,13 +407,13 @@ public sealed class CaptureLoopService
 
         using var capture = await CaptureStableAsync(cancellationToken);
 
-        var probe = _decoder.TryProbe(capture);
+        var probe = _decoder.TryProbe(capture, _payloadLayout);
         if (!probe.Registered || probe.Header is not { } header)
             return null;
         if (!IsAcceptablePayloadFrame(header, metadata, assembler))
             return null;
 
-        var decoded = _decoder.Decode(capture);
+        var decoded = _decoder.Decode(capture, layout: _payloadLayout);
         if (decoded.Status != DecodeStatus.Success || decoded.Header is not { } fullHeader)
             return null;
         if (!IsAcceptablePayloadFrame(fullHeader, metadata, assembler))

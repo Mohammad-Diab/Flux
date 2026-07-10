@@ -34,7 +34,7 @@ public class MetadataPayloadTests
         Assert.Equal(FrameFormat.TilePixelSize, payload.TilePixelSize);
         Assert.Equal(FrameFormat.GridWidthTiles, payload.GridWidthTiles);
         Assert.Equal(FrameFormat.GridHeightTiles, payload.GridHeightTiles);
-        Assert.True(payload.MatchesFrameFormat());
+        Assert.True(payload.TryBuildLayout(out _));
     }
 
     [Fact]
@@ -77,7 +77,7 @@ public class MetadataPayloadTests
         Assert.Equal(original.OriginalLength, restored.OriginalLength);
         Assert.Equal(original.ContentSignature, restored.ContentSignature);
         Assert.Equal(original.ColorCount, restored.ColorCount);
-        Assert.True(restored.MatchesFrameFormat());
+        Assert.True(restored.TryBuildLayout(out _));
     }
 
     [Fact]
@@ -159,13 +159,45 @@ public class MetadataPayloadTests
     }
 
     [Fact]
-    public void MatchesFrameFormat_FalseForForeignGeometry()
+    public void TryBuildLayout_AdoptsNonDefaultGrid()
     {
-        var serialized = CreateValid().Serialize();
-        serialized[35] = 4;
+        var payload = new MetadataPayload(
+            Filled(0xAA), PayloadType.SevenZip, EccLevel.Medium, 42, 400_000, "d.pdf", 1_200_000, Filled(0xBB), 256)
+        {
+            GridWidthTiles = 240,
+            GridHeightTiles = 135,
+        };
 
-        var restored = MetadataPayload.Deserialize(serialized);
+        Assert.True(payload.TryBuildLayout(out var layout));
+        Assert.Equal(240, layout!.GridWidthTiles);
+        Assert.Equal(135, layout.GridHeightTiles);
+        Assert.Equal(FrameFormat.TilePixelSize, layout.TilePixelSize);
+    }
 
-        Assert.False(restored.MatchesFrameFormat());
+    [Fact]
+    public void TryBuildLayout_RejectsUnconstructibleGrid()
+    {
+        var payload = new MetadataPayload(
+            Filled(0xAA), PayloadType.SevenZip, EccLevel.Medium, 42, 400_000, "d.pdf", 1_200_000, Filled(0xBB), 256)
+        {
+            GridWidthTiles = 10,
+            GridHeightTiles = 10,
+        };
+
+        Assert.False(payload.TryBuildLayout(out _));
+    }
+
+    [Fact]
+    public void TryBuildLayout_RejectsPayloadOverflowingHeaderField()
+    {
+        // 400×200 @ Low exceeds the 65,535-byte ushort PayloadLength per frame.
+        var payload = new MetadataPayload(
+            Filled(0xAA), PayloadType.SevenZip, EccLevel.Low, 42, 400_000, "d.pdf", 1_200_000, Filled(0xBB), 256)
+        {
+            GridWidthTiles = 400,
+            GridHeightTiles = 200,
+        };
+
+        Assert.False(payload.TryBuildLayout(out _));
     }
 }

@@ -60,11 +60,11 @@ public sealed class PayloadAssembler : IDisposable
     public PayloadAssembler(MetadataPayload metadata, long diskThresholdBytes)
     {
         ArgumentNullException.ThrowIfNull(metadata);
-        if (!metadata.MatchesFrameFormat())
-            throw new ArgumentException("Metadata does not match this frame format version.", nameof(metadata));
+        if (!metadata.TryBuildLayout(out var layout))
+            throw new ArgumentException("Metadata describes an undecodable frame format.", nameof(metadata));
 
         _metadata = metadata;
-        _bytesPerFrame = metadata.EccLevel.PayloadBytesPerFrame();
+        _bytesPerFrame = metadata.EccLevel.PayloadBytesPerFrame(layout.CodewordCount);
         _useDisk = metadata.PayloadLength >= diskThresholdBytes;
 
         if (_useDisk)
@@ -97,11 +97,11 @@ public sealed class PayloadAssembler : IDisposable
         ArgumentNullException.ThrowIfNull(metadata);
         ArgumentNullException.ThrowIfNull(payloadFilePath);
         ArgumentNullException.ThrowIfNull(receivedIndexPath);
-        if (!metadata.MatchesFrameFormat())
-            throw new ArgumentException("Metadata does not match this frame format version.", nameof(metadata));
+        if (!metadata.TryBuildLayout(out var layout))
+            throw new ArgumentException("Metadata describes an undecodable frame format.", nameof(metadata));
 
         _metadata = metadata;
-        _bytesPerFrame = metadata.EccLevel.PayloadBytesPerFrame();
+        _bytesPerFrame = metadata.EccLevel.PayloadBytesPerFrame(layout.CodewordCount);
         _useDisk = true;
         _persistent = true;
         _diskFrameIds = new HashSet<uint>();

@@ -1,4 +1,5 @@
 using System.Buffers.Binary;
+using System.Diagnostics.CodeAnalysis;
 using System.Text;
 using FluxCore.Ecc;
 using FluxCore.Imaging;
@@ -100,14 +101,33 @@ public sealed class MetadataPayload
     }
 
     /// <summary>
-    /// Determines whether the echoed geometry matches this library's fixed frame format.
-    /// A decoder must refuse the transfer when this returns false.
+    /// Builds the payload-frame layout this transfer's geometry describes. The decoder adopts the
+    /// returned layout for every payload frame (frame 0 is always <see cref="FrameLayout.Default"/>).
+    /// Returns false when the version is incompatible, the grid is not a constructible layout, or a
+    /// frame's payload would overflow <see cref="FrameHeader.PayloadLength"/>; a decoder must refuse
+    /// the transfer in that case.
     /// </summary>
-    public bool MatchesFrameFormat() =>
-        Version == CurrentVersion &&
-        TilePixelSize == FrameFormat.TilePixelSize &&
-        GridWidthTiles == FrameFormat.GridWidthTiles &&
-        GridHeightTiles == FrameFormat.GridHeightTiles;
+    /// <param name="layout">The adopted payload layout when this returns true.</param>
+    public bool TryBuildLayout([NotNullWhen(true)] out FrameLayout? layout)
+    {
+        layout = null;
+        if (Version != CurrentVersion)
+            return false;
+
+        try
+        {
+            var candidate = new FrameLayout(GridWidthTiles, GridHeightTiles, TilePixelSize);
+            if (EccLevel.PayloadBytesPerFrame(candidate.CodewordCount) > ushort.MaxValue)
+                return false;
+
+            layout = candidate;
+            return true;
+        }
+        catch (ArgumentException)
+        {
+            return false;
+        }
+    }
 
     /// <summary>
     /// Serializes the metadata payload. Layout (little-endian):
