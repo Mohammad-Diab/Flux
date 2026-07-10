@@ -21,23 +21,24 @@ public static class FrameRenderer
         ArgumentNullException.ThrowIfNull(tiles);
         ArgumentNullException.ThrowIfNull(colorMap);
 
+        var layout = tiles.Layout;
         using var bitmap = new SKBitmap(
-            FrameFormat.FrameWidthPx, FrameFormat.FrameHeightPx, SKColorType.Rgba8888, SKAlphaType.Opaque);
+            layout.FrameWidthPx, layout.FrameHeightPx, SKColorType.Rgba8888, SKAlphaType.Opaque);
         using var canvas = new SKCanvas(bitmap);
         canvas.Clear(SKColors.White);
 
         using var paint = new SKPaint { Style = SKPaintStyle.Fill, IsAntialias = false };
 
-        for (int y = 0; y < FrameFormat.GridHeightTiles; y++)
+        for (int y = 0; y < layout.GridHeightTiles; y++)
         {
-            for (int x = 0; x < FrameFormat.GridWidthTiles; x++)
+            for (int x = 0; x < layout.GridWidthTiles; x++)
             {
                 if (!TryGetTileColor(tiles, colorMap, x, y, out var color))
                     continue;
 
                 paint.Color = color;
-                var (px, py) = FrameFormat.TileToPixel(x, y);
-                canvas.DrawRect((float)px, (float)py, FrameFormat.TilePixelSize, FrameFormat.TilePixelSize, paint);
+                var (px, py) = layout.TileToPixel(x, y);
+                canvas.DrawRect((float)px, (float)py, layout.TilePixelSize, layout.TilePixelSize, paint);
             }
         }
 
@@ -48,11 +49,11 @@ public static class FrameRenderer
 
     private static bool TryGetTileColor(FrameTileMap tiles, ColorMap colorMap, int x, int y, out SKColor color)
     {
-        switch (FrameFormat.GetRole(x, y))
+        switch (tiles.Layout.GetRole(x, y))
         {
             case TileRole.Finder:
             case TileRole.Timing:
-                if (!FrameFormat.IsStructuralBlack(x, y))
+                if (!tiles.Layout.IsStructuralBlack(x, y))
                     break;
                 color = Black;
                 return true;

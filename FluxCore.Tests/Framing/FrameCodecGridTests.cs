@@ -1,6 +1,8 @@
 using FluxCore.Decoding;
 using FluxCore.Ecc;
 using FluxCore.Framing;
+using FluxCore.Imaging;
+using SkiaSharp;
 using Xunit;
 
 namespace FluxCore.Tests.Framing;
@@ -54,6 +56,26 @@ public class FrameCodecGridTests
                 $"{w}x{h} @ {bits}bpt failed to decode");
             Assert.Equal(payload, decoded);
         }
+    }
+
+    [Theory]
+    [MemberData(nameof(Grids))]
+    public void ImageRoundTrip_AcrossGrids(int w, int h)
+    {
+        var layout = new FrameLayout(w, h, 8);
+        var payload = Deterministic(EccLevel.Medium.PayloadBytesPerFrame(layout.CodewordsForBits(8)));
+
+        var map = FrameEncoder.BuildFrame(1, 5, payload, EccLevel.Medium, 8, layout);
+        var png = FrameRenderer.RenderPng(map, ColorMap.Default);
+        using var bitmap = SKBitmap.Decode(png);
+
+        var result = new FrameDecoder(ColorMap.Default).Decode(bitmap, bitsPerTile: 8, layout: layout);
+
+        Assert.True(result.Status == DecodeStatus.Success,
+            $"{w}x{h}: {result.Status}/{result.FailureReason}; timing={result.Diagnostics.TimingMatchRatio:F3}; " +
+            $"lowConf={result.Diagnostics.LowConfidenceDataTiles}; finders={result.Diagnostics.FinderPoints.Length}; " +
+            $"img={bitmap.Width}x{bitmap.Height}");
+        Assert.Equal(payload, result.Payload);
     }
 
     [Fact]

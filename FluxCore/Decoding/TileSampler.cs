@@ -29,22 +29,27 @@ public sealed class TileSampler
     private readonly int _width;
     private readonly int _height;
     private readonly Homography _tileToImage;
+    private readonly FrameLayout _layout;
     private readonly double _offset;
 
-    /// <summary>Creates a sampler for a capture and its tile-space-to-image homography.</summary>
-    public TileSampler(SKBitmap bitmap, Homography tileToImage)
+    /// <summary>Creates a sampler for a capture, its tile-space-to-image homography, and grid layout.</summary>
+    public TileSampler(SKBitmap bitmap, Homography tileToImage, FrameLayout layout)
     {
         ArgumentNullException.ThrowIfNull(bitmap);
         ArgumentNullException.ThrowIfNull(tileToImage);
+        ArgumentNullException.ThrowIfNull(layout);
 
         _pixels = bitmap.Pixels;
         _width = bitmap.Width;
         _height = bitmap.Height;
         _tileToImage = tileToImage;
+        _layout = layout;
 
         // Projected tile pitch in captured-image pixels, measured at the grid center.
-        var a = tileToImage.Map(80.5, 45.5);
-        var b = tileToImage.Map(81.5, 45.5);
+        double cx = layout.GridWidthTiles / 2.0;
+        double cy = layout.GridHeightTiles / 2.0;
+        var a = tileToImage.Map(cx + 0.5, cy + 0.5);
+        var b = tileToImage.Map(cx + 1.5, cy + 0.5);
         double pitch = Math.Sqrt((b.X - a.X) * (b.X - a.X) + (b.Y - a.Y) * (b.Y - a.Y));
         _offset = OffsetFraction * pitch;
     }
@@ -100,15 +105,15 @@ public sealed class TileSampler
             c00.Blue * w00 + c10.Blue * w10 + c01.Blue * w01 + c11.Blue * w11);
     }
 
-    /// <summary>Samples every tile in the grid, returned row-major (14,400 entries).</summary>
+    /// <summary>Samples every tile in the grid, returned row-major.</summary>
     public TileSample[] SampleAll()
     {
-        var samples = new TileSample[FrameFormat.TotalTiles];
-        for (int y = 0; y < FrameFormat.GridHeightTiles; y++)
+        var samples = new TileSample[_layout.TotalTiles];
+        for (int y = 0; y < _layout.GridHeightTiles; y++)
         {
-            for (int x = 0; x < FrameFormat.GridWidthTiles; x++)
+            for (int x = 0; x < _layout.GridWidthTiles; x++)
             {
-                samples[y * FrameFormat.GridWidthTiles + x] = Sample(x, y);
+                samples[y * _layout.GridWidthTiles + x] = Sample(x, y);
             }
         }
 

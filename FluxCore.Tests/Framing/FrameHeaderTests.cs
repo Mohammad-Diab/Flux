@@ -91,11 +91,13 @@ public class FrameHeaderTests
     }
 
     [Fact]
-    public void IsPlausible_FalseWhenPayloadExceedsLevelCapacity()
+    public void IsPlausible_DoesNotBoundPayloadByDefaultCapacity()
     {
+        // The per-frame payload capacity depends on the grid, which the header can't know, so the
+        // decoder bounds PayloadLength against the actual layout — not IsPlausible.
         var header = new FrameHeader(1, 10, (ushort)(EccLevel.Max.PayloadBytesPerFrame() + 1), 0, EccLevel.Max);
 
-        Assert.False(header.IsPlausible());
+        Assert.True(header.IsPlausible());
     }
 
     [Fact]

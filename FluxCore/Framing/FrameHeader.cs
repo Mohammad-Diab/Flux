@@ -61,7 +61,6 @@ public readonly struct FrameHeader : IEquatable<FrameHeader>
         (byte)EccLevel <= (byte)EccLevel.Max &&
         TotalFrames > 0 &&
         FrameId < TotalFrames &&
-        PayloadLength <= EccLevel.PayloadBytesPerFrame() &&
         (!IsMetadataFrame || FrameId == 0);
 
     /// <summary>Serializes the header into a destination span of at least <see cref="Size"/> bytes.</summary>

@@ -35,18 +35,21 @@ public sealed class FrameDecoder
     /// <param name="previousFrameId">Frame id of the last successful decode; a matching id short-circuits to SameFrameAsBefore.</param>
     /// <param name="expectedFrameId">Frame id the caller expects; any other decoded id returns WrongFrame.</param>
     /// <param name="bitsPerTile">Colour depth the payload was packed at; 8 is one palette byte per tile.</param>
+    /// <param name="layout">Grid layout; defaults to the canonical 160×90.</param>
     public FrameDecodeResult Decode(
-        SKBitmap capture, uint? previousFrameId = null, uint? expectedFrameId = null, int bitsPerTile = 8)
+        SKBitmap capture, uint? previousFrameId = null, uint? expectedFrameId = null, int bitsPerTile = 8,
+        FrameLayout? layout = null)
     {
         ArgumentNullException.ThrowIfNull(capture);
+        layout ??= FrameLayout.Default;
 
-        if (!TryRegister(capture, out var registration))
+        if (!TryRegister(capture, layout, out var registration))
             return registration.FailureResult!;
 
         var sampler = registration.Sampler!;
         var samples = sampler.SampleAll();
 
-        var (classifications, lowConfidence, meanDistance, maxDistance) = ClassifyDataTiles(samples);
+        var (classifications, lowConfidence, meanDistance, maxDistance) = ClassifyDataTiles(samples, layout);
         var baseDiagnostics = new DecodeDiagnostics
         {
             FinderPoints = registration.Corners,
@@ -56,9 +59,9 @@ public sealed class FrameDecoder
             MaxPaletteDistance = maxDistance,
         };
 
-        bool unstable = lowConfidence > FrameFormat.DataTileCount * MaxLowConfidenceFraction;
+        bool unstable = lowConfidence > layout.DataTileCount * MaxLowConfidenceFraction;
 
-        if (!TryRecoverHeader(samples, out var header, out int copiesAgreeing))
+        if (!TryRecoverHeader(samples, layout, out var header, out int copiesAgreeing))
         {
             return Undecodable(
                 unstable ? DecodeFailureReason.CaptureUnstable : DecodeFailureReason.HeaderUnreadable,
@@ -87,7 +90,7 @@ public sealed class FrameDecoder
             };
         }
 
-        if (!TryDecodePayloadTiles(classifications, header.EccLevel, bitsPerTile, out var payload, out int correctedErrors))
+        if (!TryDecodePayloadTiles(classifications, header.EccLevel, bitsPerTile, out var payload, out int correctedErrors, layout))
         {
             return Undecodable(
                 unstable ? DecodeFailureReason.CaptureUnstable : DecodeFailureReason.EccFailure,
@@ -95,6 +98,10 @@ public sealed class FrameDecoder
         }
 
         diagnostics = With(diagnostics, correctedErrors: correctedErrors);
+
+        // PayloadLength is bounded here (against the grid's capacity), not in the grid-agnostic header.
+        if (header.PayloadLength > payload.Length)
+            return Undecodable(DecodeFailureReason.HeaderUnreadable, diagnostics);
 
         var realPayload = payload[..header.PayloadLength];
         if (!Crc32Helper.Verify(realPayload, header.PayloadCrc32))
@@ -122,7 +129,8 @@ public sealed class FrameDecoder
     {
         ArgumentNullException.ThrowIfNull(capture);
 
-        if (!TryRegister(capture, out var registration))
+        // Frame 0 is always the canonical layout — the bootstrap anchor before the grid is known.
+        if (!TryRegister(capture, FrameLayout.Default, out var registration))
             return registration.FailureResult!;
 
         var sampler = registration.Sampler!;
@@ -179,25 +187,27 @@ public sealed class FrameDecoder
     /// Cheap poll: registration, beacon parity, and header only. No payload sampling or ECC.
     /// </summary>
     /// <param name="capture">Captured image.</param>
-    public ProbeResult TryProbe(SKBitmap capture)
+    /// <param name="layout">Grid layout; defaults to the canonical 160×90.</param>
+    public ProbeResult TryProbe(SKBitmap capture, FrameLayout? layout = null)
     {
         ArgumentNullException.ThrowIfNull(capture);
+        layout ??= FrameLayout.Default;
 
-        if (!TryRegister(capture, out var registration))
+        if (!TryRegister(capture, layout, out var registration))
             return new ProbeResult { Registered = false };
 
         var sampler = registration.Sampler!;
 
         double beaconLuma = 0;
-        foreach (var (x, y) in FrameFormat.BeaconTiles)
+        foreach (var (x, y) in layout.BeaconTiles)
         {
             beaconLuma += sampler.Sample(x, y).Luma;
         }
 
-        bool beaconIsBlack = beaconLuma / FrameFormat.BeaconTiles.Count < registration.Luma!.Threshold;
+        bool beaconIsBlack = beaconLuma / layout.BeaconTiles.Count < registration.Luma!.Threshold;
 
         FrameHeader? header = null;
-        if (TryRecoverHeader(sampler, out var recovered, out _))
+        if (TryRecoverHeader(sampler, layout, out var recovered, out _))
             header = recovered;
 
         return new ProbeResult
@@ -208,7 +218,7 @@ public sealed class FrameDecoder
         };
     }
 
-    private bool TryRegister(SKBitmap capture, out Registration registration)
+    private bool TryRegister(SKBitmap capture, FrameLayout layout, out Registration registration)
     {
         var luma = LumaImage.FromBitmap(capture);
 
@@ -229,10 +239,10 @@ public sealed class FrameDecoder
         double bestRatio = 0;
         foreach (var assignment in assignments)
         {
-            var homography = Homography.FromPoints(FrameFormat.FinderCentersTiles.ToArray(), assignment);
-            var sampler = new TileSampler(capture, homography);
+            var homography = Homography.FromPoints(layout.FinderCentersTiles.ToArray(), assignment);
+            var sampler = new TileSampler(capture, homography, layout);
 
-            double ratio = MeasureTimingMatch(sampler, luma.Threshold);
+            double ratio = MeasureTimingMatch(sampler, luma.Threshold, layout);
             bestRatio = Math.Max(bestRatio, ratio);
 
             if (ratio >= MinTimingMatchRatio)
@@ -254,19 +264,19 @@ public sealed class FrameDecoder
         return false;
     }
 
-    private static double MeasureTimingMatch(TileSampler sampler, byte threshold)
+    private static double MeasureTimingMatch(TileSampler sampler, byte threshold, FrameLayout layout)
     {
         int matches = 0;
         int total = 0;
 
-        for (int y = 0; y < FrameFormat.GridHeightTiles; y++)
+        for (int y = 0; y < layout.GridHeightTiles; y++)
         {
-            for (int x = 0; x < FrameFormat.GridWidthTiles; x++)
+            for (int x = 0; x < layout.GridWidthTiles; x++)
             {
-                if (FrameFormat.GetRole(x, y) != TileRole.Timing)
+                if (layout.GetRole(x, y) != TileRole.Timing)
                     continue;
 
-                bool expectedBlack = FrameFormat.IsStructuralBlack(x, y);
+                bool expectedBlack = layout.IsStructuralBlack(x, y);
                 bool sampledBlack = sampler.Sample(x, y).Luma < threshold;
                 if (expectedBlack == sampledBlack)
                     matches++;
@@ -278,17 +288,17 @@ public sealed class FrameDecoder
     }
 
     private (byte[] Values, int LowConfidence, double MeanDistance, double MaxDistance) ClassifyDataTiles(
-        TileSample[] samples)
+        TileSample[] samples, FrameLayout layout)
     {
-        var values = new byte[FrameFormat.DataTileCount];
+        var values = new byte[layout.DataTileCount];
         int lowConfidence = 0;
         double totalDistance = 0;
         double maxDistance = 0;
 
-        for (int t = 0; t < FrameFormat.DataTileCount; t++)
+        for (int t = 0; t < layout.DataTileCount; t++)
         {
-            var (x, y) = FrameFormat.DataTiles[t];
-            var sample = samples[y * FrameFormat.GridWidthTiles + x];
+            var (x, y) = layout.DataTiles[t];
+            var sample = samples[y * layout.GridWidthTiles + x];
             var classification = _classifier.Classify(sample.R, sample.G, sample.B);
 
             values[t] = classification.PaletteIndex;
@@ -298,7 +308,7 @@ public sealed class FrameDecoder
                 lowConfidence++;
         }
 
-        return (values, lowConfidence, totalDistance / FrameFormat.DataTileCount, maxDistance);
+        return (values, lowConfidence, totalDistance / layout.DataTileCount, maxDistance);
     }
 
     /// <summary>
@@ -334,20 +344,20 @@ public sealed class FrameDecoder
         return ReedSolomonBlockCodec.TryDecodePayload(codewords, eccLevel, payload, out correctedErrors, codewordCount);
     }
 
-    private bool TryRecoverHeader(TileSample[] samples, out FrameHeader header, out int copiesAgreeing) =>
-        TryRecoverHeader((x, y) => samples[y * FrameFormat.GridWidthTiles + x], out header, out copiesAgreeing);
+    private bool TryRecoverHeader(TileSample[] samples, FrameLayout layout, out FrameHeader header, out int copiesAgreeing) =>
+        TryRecoverHeader((x, y) => samples[y * layout.GridWidthTiles + x], layout, out header, out copiesAgreeing);
 
-    private bool TryRecoverHeader(TileSampler sampler, out FrameHeader header, out int copiesAgreeing) =>
-        TryRecoverHeader(sampler.Sample, out header, out copiesAgreeing);
+    private bool TryRecoverHeader(TileSampler sampler, FrameLayout layout, out FrameHeader header, out int copiesAgreeing) =>
+        TryRecoverHeader(sampler.Sample, layout, out header, out copiesAgreeing);
 
-    private bool TryRecoverHeader(Func<int, int, TileSample> sampleAt, out FrameHeader header, out int copiesAgreeing)
+    private bool TryRecoverHeader(Func<int, int, TileSample> sampleAt, FrameLayout layout, out FrameHeader header, out int copiesAgreeing)
     {
         var candidates = new List<FrameHeader>();
 
         for (int copy = 0; copy < FrameFormat.HeaderCopyCount; copy++)
         {
             var symbols = new byte[FrameFormat.HeaderCopyLength];
-            var positions = FrameFormat.GetHeaderCopyTiles(copy);
+            var positions = layout.GetHeaderCopyTiles(copy);
             for (int i = 0; i < symbols.Length; i++)
             {
                 var (x, y) = positions[i];
