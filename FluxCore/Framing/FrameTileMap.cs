@@ -24,6 +24,9 @@ public sealed class FrameTileMap
     /// <summary>Gets the header this frame was built from.</summary>
     public FrameHeader Header { get; }
 
+    /// <summary>Gets the grid layout this frame was built for.</summary>
+    public FrameLayout Layout { get; }
+
     /// <summary>Gets the color scheme for this frame's data and header tiles.</summary>
     public TileColorScheme ColorScheme { get; }
 
@@ -31,12 +34,17 @@ public sealed class FrameTileMap
     public bool BeaconIsBlack => Header.FrameId % 2 == 0;
 
     /// <summary>Tile values are row-major: palette indices for Palette256, 0-7 cube-corner indices for CubeCorner8.</summary>
-    public FrameTileMap(FrameHeader header, byte[] tileValues, TileColorScheme colorScheme = TileColorScheme.Palette256)
+    public FrameTileMap(
+        FrameHeader header,
+        byte[] tileValues,
+        TileColorScheme colorScheme = TileColorScheme.Palette256,
+        FrameLayout? layout = null)
     {
         ArgumentNullException.ThrowIfNull(tileValues);
-        if (tileValues.Length != FrameFormat.TotalTiles)
+        Layout = layout ?? FrameLayout.Default;
+        if (tileValues.Length != Layout.TotalTiles)
             throw new ArgumentException(
-                $"Tile values must have {FrameFormat.TotalTiles} entries.", nameof(tileValues));
+                $"Tile values must have {Layout.TotalTiles} entries.", nameof(tileValues));
 
         Header = header;
         _tileValues = tileValues;
@@ -47,7 +55,7 @@ public sealed class FrameTileMap
     /// Gets the encoded value of the tile at the given grid coordinates.
     /// Only meaningful for tiles whose role is Data or Header.
     /// </summary>
-    /// <param name="x">Tile column (0-159).</param>
-    /// <param name="y">Tile row (0-89).</param>
-    public byte GetTileValue(int x, int y) => _tileValues[y * FrameFormat.GridWidthTiles + x];
+    /// <param name="x">Tile column.</param>
+    /// <param name="y">Tile row.</param>
+    public byte GetTileValue(int x, int y) => _tileValues[y * Layout.GridWidthTiles + x];
 }

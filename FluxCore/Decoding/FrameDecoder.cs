@@ -310,11 +310,13 @@ public sealed class FrameDecoder
     /// <param name="bitsPerTile">Colour depth the payload was packed at.</param>
     /// <param name="payload">Recovered payload bytes (frame capacity at this level/depth).</param>
     /// <param name="correctedErrors">Total symbols corrected across all codewords.</param>
+    /// <param name="layout">Grid layout; defaults to the canonical 160×90.</param>
     public static bool TryDecodePayloadTiles(
         ReadOnlySpan<byte> dataTileValues, EccLevel eccLevel, int bitsPerTile,
-        out byte[] payload, out int correctedErrors)
+        out byte[] payload, out int correctedErrors, FrameLayout? layout = null)
     {
-        int codewordCount = FrameFormat.CodewordsForBits(bitsPerTile);
+        layout ??= FrameLayout.Default;
+        int codewordCount = layout.CodewordsForBits(bitsPerTile);
         int encodedLength = codewordCount * FrameFormat.CodewordLength;
         int tilesUsed = TileBitPacker.TileCount(encodedLength, bitsPerTile);
 

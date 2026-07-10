@@ -21,14 +21,17 @@ public static class FrameEncoder
     /// <param name="payload">This frame's payload; at most the level's per-frame capacity at this depth.</param>
     /// <param name="eccLevel">ECC level for the payload codewords.</param>
     /// <param name="bitsPerTile">Colour depth (bits per tile); 8 is one palette byte per tile.</param>
+    /// <param name="layout">Grid layout; defaults to the canonical 160×90.</param>
     public static FrameTileMap BuildFrame(
         uint frameId,
         uint totalFrames,
         ReadOnlySpan<byte> payload,
         EccLevel eccLevel,
-        int bitsPerTile = 8)
+        int bitsPerTile = 8,
+        FrameLayout? layout = null)
     {
-        int codewordCount = FrameFormat.CodewordsForBits(bitsPerTile);
+        layout ??= FrameLayout.Default;
+        int codewordCount = layout.CodewordsForBits(bitsPerTile);
         int capacity = eccLevel.PayloadBytesPerFrame(codewordCount);
         if (payload.Length > capacity)
             throw new ArgumentException(
@@ -42,12 +45,12 @@ public static class FrameEncoder
             Crc32Helper.ComputeChecksum(payload),
             eccLevel);
 
-        var tiles = new byte[FrameFormat.TotalTiles];
+        var tiles = new byte[layout.TotalTiles];
 
-        WriteHeaderCopies(header, tiles);
-        WritePayloadCodewords(payload, eccLevel, tiles, bitsPerTile);
+        WriteHeaderCopies(header, tiles, layout);
+        WritePayloadCodewords(payload, eccLevel, tiles, bitsPerTile, layout);
 
-        return new FrameTileMap(header, tiles);
+        return new FrameTileMap(header, tiles, TileColorScheme.Palette256, layout);
     }
 
     /// <summary>
@@ -93,25 +96,26 @@ public static class FrameEncoder
         return new FrameTileMap(header, tiles, TileColorScheme.CubeCorner8);
     }
 
-    private static void WriteHeaderCopies(in FrameHeader header, byte[] tiles)
+    private static void WriteHeaderCopies(in FrameHeader header, byte[] tiles, FrameLayout layout)
     {
         Span<byte> symbols = stackalloc byte[ReedSolomonBlockCodec.EncodedHeaderLength];
         ReedSolomonBlockCodec.EncodeHeader(header, symbols);
 
         for (int copy = 0; copy < FrameFormat.HeaderCopyCount; copy++)
         {
-            var positions = FrameFormat.GetHeaderCopyTiles(copy);
+            var positions = layout.GetHeaderCopyTiles(copy);
             for (int i = 0; i < FrameFormat.HeaderCopyLength; i++)
             {
                 var (x, y) = positions[i];
-                tiles[y * FrameFormat.GridWidthTiles + x] = symbols[i];
+                tiles[y * layout.GridWidthTiles + x] = symbols[i];
             }
         }
     }
 
-    private static void WritePayloadCodewords(ReadOnlySpan<byte> payload, EccLevel eccLevel, byte[] tiles, int bitsPerTile)
+    private static void WritePayloadCodewords(
+        ReadOnlySpan<byte> payload, EccLevel eccLevel, byte[] tiles, int bitsPerTile, FrameLayout layout)
     {
-        int codewordCount = FrameFormat.CodewordsForBits(bitsPerTile);
+        int codewordCount = layout.CodewordsForBits(bitsPerTile);
         int encodedLength = codewordCount * FrameFormat.CodewordLength;
 
         var codewords = new byte[encodedLength];
@@ -126,8 +130,8 @@ public static class FrameEncoder
         var packed = TileBitPacker.Pack(stream, bitsPerTile);
         for (int t = 0; t < packed.Length; t++)
         {
-            var (x, y) = FrameFormat.DataTiles[t];
-            tiles[y * FrameFormat.GridWidthTiles + x] = packed[t];
+            var (x, y) = layout.DataTiles[t];
+            tiles[y * layout.GridWidthTiles + x] = packed[t];
         }
     }
 }
