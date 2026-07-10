@@ -1,5 +1,6 @@
 using FluxCore.Ecc;
 using FluxCore.Hashing;
+using FluxCore.Imaging;
 
 namespace FluxCore.Framing;
 
@@ -77,28 +78,15 @@ public static class FrameEncoder
 
         var tiles = new byte[FrameFormat.TotalTiles];
         var positions = FrameFormat.MetadataFrameTiles;
+        var packed = TileBitPacker.Pack(stream, CubeCornerColors.BitsPerTile);
         for (int t = 0; t < FrameFormat.MetadataTilesUsed; t++)
         {
             var (x, y) = positions[t];
-            tiles[y * FrameFormat.GridWidthTiles + x] = ReadCubeCornerValue(stream, t);
+            tiles[y * FrameFormat.GridWidthTiles + x] = packed[t];
         }
 
         var header = new FrameHeader(0, totalFrames, (ushort)content.Length, 0, EccLevel.Max, isMetadataFrame: true);
         return new FrameTileMap(header, tiles, TileColorScheme.CubeCorner8);
-    }
-
-    private static byte ReadCubeCornerValue(byte[] stream, int tileIndex)
-    {
-        int value = 0;
-        int baseBit = tileIndex * 3;
-        for (int k = 0; k < 3; k++)
-        {
-            int globalBit = baseBit + k;
-            int bit = (stream[globalBit >> 3] >> (7 - (globalBit & 7))) & 1;
-            value |= bit << (2 - k);
-        }
-
-        return (byte)value;
     }
 
     private static void WriteHeaderCopies(in FrameHeader header, byte[] tiles)

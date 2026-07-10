@@ -138,15 +138,16 @@ public sealed class FrameDecoder
             TimingMatchRatio = registration.TimingMatchRatio,
         };
 
-        var stream = new byte[FrameFormat.MetadataEncodedBytes];
         var positions = FrameFormat.MetadataFrameTiles;
+        var tileValues = new byte[FrameFormat.MetadataTilesUsed];
         for (int t = 0; t < FrameFormat.MetadataTilesUsed; t++)
         {
             var (x, y) = positions[t];
             var sample = sampler.Sample(x, y);
-            int value = CubeCornerColors.Classify(sample.R, sample.G, sample.B);
-            WriteCubeCornerBits(stream, t, value);
+            tileValues[t] = (byte)CubeCornerColors.Classify(sample.R, sample.G, sample.B);
         }
+
+        var stream = TileBitPacker.Unpack(tileValues, CubeCornerColors.BitsPerTile, FrameFormat.MetadataEncodedBytes);
 
         var content = new byte[FrameFormat.MetadataContentBytes];
         int correctedErrors = 0;
@@ -178,18 +179,6 @@ public sealed class FrameDecoder
             Payload = content,
             Diagnostics = With(diagnostics, correctedErrors: correctedErrors),
         };
-    }
-
-    private static void WriteCubeCornerBits(byte[] stream, int tileIndex, int value)
-    {
-        int baseBit = tileIndex * 3;
-        for (int k = 0; k < 3; k++)
-        {
-            int bit = (value >> (2 - k)) & 1;
-            int globalBit = baseBit + k;
-            if (bit != 0)
-                stream[globalBit >> 3] |= (byte)(1 << (7 - (globalBit & 7)));
-        }
     }
 
     /// <summary>
