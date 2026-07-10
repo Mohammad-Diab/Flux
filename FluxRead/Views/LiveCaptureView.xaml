@@ -34,7 +34,7 @@
                         <TextBlock Text="SETUP" FontSize="11" FontWeight="SemiBold"
                                    Foreground="{StaticResource TextSecondaryBrush}" Margin="2,0,0,10"/>
 
-                        <Button Content="1 · Detect frame…" HorizontalAlignment="Stretch"
+                        <Button Content="Auto-detect frame &amp; Next" HorizontalAlignment="Stretch"
                                 Style="{StaticResource PrimaryButton}"
                                 Click="OnDetectRegion" IsEnabled="{Binding CanConfigure}"/>
                         <!-- Negative left margin offsets the wider padding so the label still aligns with the caption below. -->
@@ -52,10 +52,7 @@
                             <Image Source="{Binding RegionPreview}" MaxHeight="140" Stretch="Uniform"/>
                         </Border>
 
-                        <Button Content="2 · Detect Next" HorizontalAlignment="Stretch" Margin="0,18,0,0"
-                                Style="{StaticResource PrimaryButton}"
-                                Click="OnDetectNext" IsEnabled="{Binding CanConfigure}"/>
-                        <Button Content="Calibrate manually (F8)" HorizontalAlignment="Left" Margin="-10,12,0,4"
+                        <Button Content="Calibrate Next (F8)" HorizontalAlignment="Left" Margin="-10,18,0,4"
                                 Padding="12,6" Background="Transparent" BorderThickness="0" MinHeight="0"
                                 FontSize="13" FontWeight="Normal" Foreground="{StaticResource TextSecondaryBrush}"
                                 Click="OnCalibrate" IsEnabled="{Binding CanConfigure}"/>

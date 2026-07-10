@@ -125,28 +125,6 @@ public partial class LiveCaptureView : UserControl
             _vm.CalibrationText = "Next button not found — calibrate it with F8.";
     }
 
-    private async void OnDetectNext(object sender, RoutedEventArgs e)
-    {
-        var owner = Window.GetWindow(this);
-        if (owner is null)
-            return;
-
-        _vm.CalibrationText = "Looking for the Next button…";
-        owner.WindowState = WindowState.Minimized;
-        await Task.Delay(350);
-
-        var virtualScreen = DpiUtil.GetVirtualScreenPhysical();
-        using var shot = _previewCapture.Capture(virtualScreen);
-        owner.WindowState = WindowState.Normal;
-
-        bool found = _vm.HasRegion
-            ? await TryAutoNextAsync(shot, virtualScreen, ToShotRegion(virtualScreen))
-            : await OcrNextLocator.FindNextAsync(shot, virtualScreen.X, virtualScreen.Y) is { } p && ApplyNextPoint(p);
-
-        if (!found)
-            _vm.CalibrationText = "Next button not found — calibrate it with F8.";
-    }
-
     private FrameRegion ToShotRegion(Int32Rect virtualScreen) =>
         new(_region.X - virtualScreen.X, _region.Y - virtualScreen.Y, _region.Width, _region.Height, null);
 
