@@ -42,7 +42,13 @@ public static class EccLevelExtensions
     /// <summary>Gets the maximum number of correctable symbol errors per codeword.</summary>
     public static int CorrectableErrorsPerCodeword(this EccLevel level) => level.ParitySymbols() / 2;
 
-    /// <summary>Gets the payload capacity of one frame at this level (53 x k bytes).</summary>
+    /// <summary>Gets the payload capacity of one frame at this level and the default depth (53 x k bytes).</summary>
     public static int PayloadBytesPerFrame(this EccLevel level) =>
-        FrameFormat.CodewordCount * level.DataBytesPerCodeword();
+        level.PayloadBytesPerFrame(FrameFormat.CodewordCount);
+
+    /// <summary>Gets the payload capacity of one frame carrying <paramref name="codewordCount"/> codewords.</summary>
+    /// <param name="level">ECC level determining k.</param>
+    /// <param name="codewordCount">Codewords per frame (depends on the colour depth).</param>
+    public static int PayloadBytesPerFrame(this EccLevel level, int codewordCount) =>
+        codewordCount * level.DataBytesPerCodeword();
 }

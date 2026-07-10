@@ -18,17 +18,21 @@ public static class FrameEncoder
     /// </summary>
     /// <param name="frameId">Frame ID (>= 1).</param>
     /// <param name="totalFrames">Total frames in the transfer, including frame 0.</param>
-    /// <param name="payload">This frame's payload; at most the level's per-frame capacity.</param>
+    /// <param name="payload">This frame's payload; at most the level's per-frame capacity at this depth.</param>
     /// <param name="eccLevel">ECC level for the payload codewords.</param>
+    /// <param name="bitsPerTile">Colour depth (bits per tile); 8 is one palette byte per tile.</param>
     public static FrameTileMap BuildFrame(
         uint frameId,
         uint totalFrames,
         ReadOnlySpan<byte> payload,
-        EccLevel eccLevel)
+        EccLevel eccLevel,
+        int bitsPerTile = 8)
     {
-        if (payload.Length > eccLevel.PayloadBytesPerFrame())
+        int codewordCount = FrameFormat.CodewordsForBits(bitsPerTile);
+        int capacity = eccLevel.PayloadBytesPerFrame(codewordCount);
+        if (payload.Length > capacity)
             throw new ArgumentException(
-                $"Payload of {payload.Length} bytes exceeds the {eccLevel.PayloadBytesPerFrame()}-byte frame capacity at level {eccLevel}.",
+                $"Payload of {payload.Length} bytes exceeds the {capacity}-byte frame capacity at level {eccLevel}, {bitsPerTile} bits/tile.",
                 nameof(payload));
 
         var header = new FrameHeader(
@@ -41,7 +45,7 @@ public static class FrameEncoder
         var tiles = new byte[FrameFormat.TotalTiles];
 
         WriteHeaderCopies(header, tiles);
-        WritePayloadCodewords(payload, eccLevel, tiles);
+        WritePayloadCodewords(payload, eccLevel, tiles, bitsPerTile);
 
         return new FrameTileMap(header, tiles);
     }
@@ -105,16 +109,25 @@ public static class FrameEncoder
         }
     }
 
-    private static void WritePayloadCodewords(ReadOnlySpan<byte> payload, EccLevel eccLevel, byte[] tiles)
+    private static void WritePayloadCodewords(ReadOnlySpan<byte> payload, EccLevel eccLevel, byte[] tiles, int bitsPerTile)
     {
-        var codewords = new byte[ReedSolomonBlockCodec.EncodedFrameLength];
-        ReedSolomonBlockCodec.EncodePayload(payload, eccLevel, codewords);
+        int codewordCount = FrameFormat.CodewordsForBits(bitsPerTile);
+        int encodedLength = codewordCount * FrameFormat.CodewordLength;
 
-        for (int t = 0; t < FrameFormat.DataTileCount; t++)
+        var codewords = new byte[encodedLength];
+        ReedSolomonBlockCodec.EncodePayload(payload, eccLevel, codewords, codewordCount);
+
+        // Stride-interleave so a contiguous tile smear spreads across all codewords, then pack at the depth.
+        var stream = new byte[encodedLength];
+        for (int c = 0; c < codewordCount; c++)
+            for (int s = 0; s < FrameFormat.CodewordLength; s++)
+                stream[s * codewordCount + c] = codewords[c * FrameFormat.CodewordLength + s];
+
+        var packed = TileBitPacker.Pack(stream, bitsPerTile);
+        for (int t = 0; t < packed.Length; t++)
         {
-            var (codeword, symbol) = FrameFormat.ToCodewordSymbol(t);
             var (x, y) = FrameFormat.DataTiles[t];
-            tiles[y * FrameFormat.GridWidthTiles + x] = codewords[codeword * FrameFormat.CodewordLength + symbol];
+            tiles[y * FrameFormat.GridWidthTiles + x] = packed[t];
         }
     }
 }

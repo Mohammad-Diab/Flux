@@ -34,7 +34,7 @@ public static class FrameFormat
     /// <summary>Canonical rendered frame height in pixels.</summary>
     public const int FrameHeightPx = GridHeightTiles * TilePixelSize + 2 * QuietZonePx;
 
-    /// <summary>Number of Reed-Solomon codewords per frame.</summary>
+    /// <summary>Number of Reed-Solomon codewords per frame at the default 8-bit colour depth.</summary>
     public const int CodewordCount = 53;
 
     /// <summary>Symbols per Reed-Solomon codeword (GF(256) maximum).</summary>
@@ -153,6 +153,19 @@ public static class FrameFormat
         if (dataTileIndex < 0 || dataTileIndex >= DataTileCount)
             throw new ArgumentOutOfRangeException(nameof(dataTileIndex));
         return (dataTileIndex % CodewordCount, dataTileIndex / CodewordCount);
+    }
+
+    /// <summary>
+    /// Number of RS(255,k) codewords a payload frame carries at a given colour depth. Fewer bits
+    /// per tile fit fewer whole codewords into the fixed data-tile budget (8 bits → 53). The tiles
+    /// left over past the packed codewords render as pad.
+    /// </summary>
+    /// <param name="bitsPerTile">Colour depth in bits per tile (1–8).</param>
+    public static int CodewordsForBits(int bitsPerTile)
+    {
+        if (bitsPerTile is < 1 or > 8)
+            throw new ArgumentOutOfRangeException(nameof(bitsPerTile));
+        return DataTileCount * bitsPerTile / (CodewordLength * 8);
     }
 
     /// <summary>Maps a codeword and symbol index back to the data tile index in scan order.</summary>

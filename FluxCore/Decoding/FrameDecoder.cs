@@ -34,7 +34,9 @@ public sealed class FrameDecoder
     /// <param name="capture">Captured image containing the frame (any scale/offset).</param>
     /// <param name="previousFrameId">Frame id of the last successful decode; a matching id short-circuits to SameFrameAsBefore.</param>
     /// <param name="expectedFrameId">Frame id the caller expects; any other decoded id returns WrongFrame.</param>
-    public FrameDecodeResult Decode(SKBitmap capture, uint? previousFrameId = null, uint? expectedFrameId = null)
+    /// <param name="bitsPerTile">Colour depth the payload was packed at; 8 is one palette byte per tile.</param>
+    public FrameDecodeResult Decode(
+        SKBitmap capture, uint? previousFrameId = null, uint? expectedFrameId = null, int bitsPerTile = 8)
     {
         ArgumentNullException.ThrowIfNull(capture);
 
@@ -85,15 +87,7 @@ public sealed class FrameDecoder
             };
         }
 
-        var codewords = new byte[ReedSolomonBlockCodec.EncodedFrameLength];
-        for (int t = 0; t < FrameFormat.DataTileCount; t++)
-        {
-            var (codeword, symbol) = FrameFormat.ToCodewordSymbol(t);
-            codewords[codeword * FrameFormat.CodewordLength + symbol] = classifications[t];
-        }
-
-        var payload = new byte[header.EccLevel.PayloadBytesPerFrame()];
-        if (!ReedSolomonBlockCodec.TryDecodePayload(codewords, header.EccLevel, payload, out int correctedErrors))
+        if (!TryDecodePayloadTiles(classifications, header.EccLevel, bitsPerTile, out var payload, out int correctedErrors))
         {
             return Undecodable(
                 unstable ? DecodeFailureReason.CaptureUnstable : DecodeFailureReason.EccFailure,
@@ -305,6 +299,37 @@ public sealed class FrameDecoder
         }
 
         return (values, lowConfidence, totalDistance / FrameFormat.DataTileCount, maxDistance);
+    }
+
+    /// <summary>
+    /// Recovers a payload frame from its classified data-tile values: unpacks the tiles at the
+    /// colour depth, de-interleaves, and RS-decodes. The inverse of the encoder's payload packing.
+    /// </summary>
+    /// <param name="dataTileValues">Classified data-tile values in scan order (at least the tiles used at this depth).</param>
+    /// <param name="eccLevel">ECC level the payload was encoded at.</param>
+    /// <param name="bitsPerTile">Colour depth the payload was packed at.</param>
+    /// <param name="payload">Recovered payload bytes (frame capacity at this level/depth).</param>
+    /// <param name="correctedErrors">Total symbols corrected across all codewords.</param>
+    public static bool TryDecodePayloadTiles(
+        ReadOnlySpan<byte> dataTileValues, EccLevel eccLevel, int bitsPerTile,
+        out byte[] payload, out int correctedErrors)
+    {
+        int codewordCount = FrameFormat.CodewordsForBits(bitsPerTile);
+        int encodedLength = codewordCount * FrameFormat.CodewordLength;
+        int tilesUsed = TileBitPacker.TileCount(encodedLength, bitsPerTile);
+
+        if (dataTileValues.Length < tilesUsed)
+            throw new ArgumentException($"Need at least {tilesUsed} tile values, got {dataTileValues.Length}.", nameof(dataTileValues));
+
+        var stream = TileBitPacker.Unpack(dataTileValues[..tilesUsed], bitsPerTile, encodedLength);
+
+        var codewords = new byte[encodedLength];
+        for (int c = 0; c < codewordCount; c++)
+            for (int s = 0; s < FrameFormat.CodewordLength; s++)
+                codewords[c * FrameFormat.CodewordLength + s] = stream[s * codewordCount + c];
+
+        payload = new byte[eccLevel.PayloadBytesPerFrame(codewordCount)];
+        return ReedSolomonBlockCodec.TryDecodePayload(codewords, eccLevel, payload, out correctedErrors, codewordCount);
     }
 
     private bool TryRecoverHeader(TileSample[] samples, out FrameHeader header, out int copiesAgreeing) =>

@@ -33,25 +33,28 @@ public static class ReedSolomonBlockCodec
     /// codeword c occupies destination[c*255 .. (c+1)*255). Payload bytes are distributed
     /// contiguously: codeword c carries payload[c*k .. (c+1)*k), zero-padded past the end.
     /// </summary>
-    /// <param name="payload">Frame payload, at most 53 x k bytes for the level.</param>
+    /// <param name="payload">Frame payload, at most codewordCount x k bytes for the level.</param>
     /// <param name="level">ECC level determining k.</param>
-    /// <param name="destination">Destination for the encoded symbols, at least <see cref="EncodedFrameLength"/> bytes.</param>
-    public static void EncodePayload(ReadOnlySpan<byte> payload, EccLevel level, Span<byte> destination)
+    /// <param name="destination">Destination for the encoded symbols, at least codewordCount x 255 bytes.</param>
+    /// <param name="codewordCount">Codewords per frame (default 53); fewer at a lower colour depth.</param>
+    public static void EncodePayload(
+        ReadOnlySpan<byte> payload, EccLevel level, Span<byte> destination, int codewordCount = FrameFormat.CodewordCount)
     {
         int k = level.DataBytesPerCodeword();
+        int encodedLength = codewordCount * FrameFormat.CodewordLength;
 
-        if (payload.Length > FrameFormat.CodewordCount * k)
+        if (payload.Length > codewordCount * k)
             throw new ArgumentException(
-                $"Payload of {payload.Length} bytes exceeds frame capacity {FrameFormat.CodewordCount * k} at level {level}.",
+                $"Payload of {payload.Length} bytes exceeds frame capacity {codewordCount * k} at level {level}.",
                 nameof(payload));
-        if (destination.Length < EncodedFrameLength)
+        if (destination.Length < encodedLength)
             throw new ArgumentException(
-                $"Destination must be at least {EncodedFrameLength} bytes.", nameof(destination));
+                $"Destination must be at least {encodedLength} bytes.", nameof(destination));
 
         int parity = level.ParitySymbols();
         var codeword = new int[FrameFormat.CodewordLength];
 
-        for (int c = 0; c < FrameFormat.CodewordCount; c++)
+        for (int c = 0; c < codewordCount; c++)
         {
             Array.Clear(codeword);
 
@@ -80,23 +83,27 @@ public static class ReedSolomonBlockCodec
     /// <param name="level">ECC level determining k.</param>
     /// <param name="payload">Destination for decoded data bytes, at least 53 x k bytes.</param>
     /// <param name="correctedErrors">Total symbols corrected across all codewords.</param>
+    /// <param name="codewordCount">Codewords per frame (default 53); fewer at a lower colour depth.</param>
     /// <returns>True if every codeword decoded; false if any codeword is damaged beyond repair.</returns>
-    public static bool TryDecodePayload(Span<byte> codewords, EccLevel level, Span<byte> payload, out int correctedErrors)
+    public static bool TryDecodePayload(
+        Span<byte> codewords, EccLevel level, Span<byte> payload, out int correctedErrors,
+        int codewordCount = FrameFormat.CodewordCount)
     {
         int k = level.DataBytesPerCodeword();
+        int encodedLength = codewordCount * FrameFormat.CodewordLength;
 
-        if (codewords.Length < EncodedFrameLength)
+        if (codewords.Length < encodedLength)
             throw new ArgumentException(
-                $"Codewords must be at least {EncodedFrameLength} bytes.", nameof(codewords));
-        if (payload.Length < FrameFormat.CodewordCount * k)
+                $"Codewords must be at least {encodedLength} bytes.", nameof(codewords));
+        if (payload.Length < codewordCount * k)
             throw new ArgumentException(
-                $"Payload destination must be at least {FrameFormat.CodewordCount * k} bytes.", nameof(payload));
+                $"Payload destination must be at least {codewordCount * k} bytes.", nameof(payload));
 
         correctedErrors = 0;
         int parity = level.ParitySymbols();
         var work = new int[FrameFormat.CodewordLength];
 
-        for (int c = 0; c < FrameFormat.CodewordCount; c++)
+        for (int c = 0; c < codewordCount; c++)
         {
             var source = codewords.Slice(c * FrameFormat.CodewordLength, FrameFormat.CodewordLength);
             for (int i = 0; i < FrameFormat.CodewordLength; i++)
