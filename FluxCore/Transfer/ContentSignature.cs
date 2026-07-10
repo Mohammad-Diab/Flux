@@ -41,6 +41,9 @@ public static class ContentSignature
         }
 
         hash.AppendData([(byte)options.EccLevel, (byte)(options.Compress ? 1 : 0), FrameFormat.Version]);
+        AppendInt64(hash, options.GridWidthTiles);
+        AppendInt64(hash, options.GridHeightTiles);
+        AppendInt64(hash, options.TilePixelSize);
 
         return hash.GetHashAndReset();
     }

@@ -53,6 +53,8 @@ public sealed class FluxEncodeService
         ArgumentNullException.ThrowIfNull(sessionRoot);
         ArgumentNullException.ThrowIfNull(options);
 
+        var layout = BuildPayloadLayout(options);
+
         var signature = await ContentSignature.ComputeAsync(sourcePath, options, cancellationToken);
         var sessionDirectory = Path.Combine(sessionRoot, ContentSignature.ToSessionName(signature));
         var framesDirectory = Path.Combine(sessionDirectory, SessionLayout.FramesFolderName);
@@ -63,7 +65,7 @@ public sealed class FluxEncodeService
         var (payload, payloadType, payloadReused) = await LoadOrCompressPayloadAsync(
             sourcePath, options, signature, payloadPath, manifestPath, framesDirectory, progress, cancellationToken);
 
-        int bytesPerFrame = options.EccLevel.PayloadBytesPerFrame();
+        int bytesPerFrame = options.EccLevel.PayloadBytesPerFrame(layout.CodewordCount);
         uint payloadFrames = (uint)Math.Max(1, (payload.Length + bytesPerFrame - 1) / bytesPerFrame);
         uint totalFrames = payloadFrames + 1;
 
@@ -77,10 +79,15 @@ public sealed class FluxEncodeService
             originalName: SourceName(sourcePath),
             originalLength: PathSize.GetTotalBytes(sourcePath),
             contentSignature: signature,
-            colorCount: 256);
+            colorCount: 256)
+        {
+            GridWidthTiles = (ushort)layout.GridWidthTiles,
+            GridHeightTiles = (ushort)layout.GridHeightTiles,
+            TilePixelSize = (byte)layout.TilePixelSize,
+        };
 
         int rendered = await RenderMissingFramesAsync(
-            metadata, payload, framesDirectory, progress, cancellationToken);
+            metadata, payload, layout, framesDirectory, progress, cancellationToken);
 
         await WriteManifestAsync(
             manifestPath, signature, payloadType, payloadSha, payload.Length, sourcePath, totalFrames, cancellationToken);
@@ -186,11 +193,12 @@ public sealed class FluxEncodeService
     private static async Task<int> RenderMissingFramesAsync(
         MetadataPayload metadata,
         byte[] payload,
+        FrameLayout layout,
         string framesDirectory,
         IProgress<EncodeProgress>? progress,
         CancellationToken cancellationToken)
     {
-        int bytesPerFrame = metadata.EccLevel.PayloadBytesPerFrame();
+        int bytesPerFrame = metadata.EccLevel.PayloadBytesPerFrame(layout.CodewordCount);
         uint totalFrames = metadata.TotalFrames;
         int rendered = 0;
         int completed = 0;
@@ -203,7 +211,7 @@ public sealed class FluxEncodeService
                 var framePath = Path.Combine(framesDirectory, FrameFileName((uint)id));
                 if (!File.Exists(framePath))
                 {
-                    var png = RenderFrame(metadata, payload, bytesPerFrame, (uint)id, totalFrames);
+                    var png = RenderFrame(metadata, payload, bytesPerFrame, layout, (uint)id, totalFrames);
                     var tempPath = framePath + ".tmp";
                     await File.WriteAllBytesAsync(tempPath, png, token);
                     File.Move(tempPath, framePath, overwrite: true);
@@ -218,7 +226,7 @@ public sealed class FluxEncodeService
     }
 
     private static byte[] RenderFrame(
-        MetadataPayload metadata, byte[] payload, int bytesPerFrame, uint frameId, uint totalFrames)
+        MetadataPayload metadata, byte[] payload, int bytesPerFrame, FrameLayout layout, uint frameId, uint totalFrames)
     {
         FrameTileMap map;
         if (frameId == 0)
@@ -229,10 +237,21 @@ public sealed class FluxEncodeService
         {
             int offset = (int)(frameId - 1) * bytesPerFrame;
             int length = Math.Clamp(payload.Length - offset, 0, bytesPerFrame);
-            map = FrameEncoder.BuildFrame(frameId, totalFrames, payload.AsSpan(offset, length), metadata.EccLevel);
+            map = FrameEncoder.BuildFrame(frameId, totalFrames, payload.AsSpan(offset, length), metadata.EccLevel, layout: layout);
         }
 
         return FrameRenderer.RenderPng(map, ColorMap.Default);
+    }
+
+    private static FrameLayout BuildPayloadLayout(EncodeOptions options)
+    {
+        var layout = new FrameLayout(options.GridWidthTiles, options.GridHeightTiles, options.TilePixelSize);
+        int bytesPerFrame = options.EccLevel.PayloadBytesPerFrame(layout.CodewordCount);
+        if (bytesPerFrame > ushort.MaxValue)
+            throw new ArgumentException(
+                $"Grid {options.GridWidthTiles}×{options.GridHeightTiles} at {options.EccLevel} ECC needs {bytesPerFrame} bytes per frame, over the {ushort.MaxValue}-byte per-frame limit.",
+                nameof(options));
+        return layout;
     }
 
     private static string SourceName(string sourcePath) =>

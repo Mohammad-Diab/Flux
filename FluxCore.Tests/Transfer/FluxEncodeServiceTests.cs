@@ -165,6 +165,57 @@ public class FluxEncodeServiceTests : IDisposable
         Assert.Equal(new byte[5000], await File.ReadAllBytesAsync(Path.Combine(root, "nested", "data.bin")));
     }
 
+    [Fact]
+    public async Task Encode_NonDefaultGrid_RoundTripsThroughAdoptedLayout()
+    {
+        var source = await CreateSourceFileAsync(40_000);
+        var options = new EncodeOptions(Compress: false, GridWidthTiles: 240, GridHeightTiles: 135);
+
+        var result = await _service.EncodeAsync(source, SessionRoot, options);
+        Assert.True(result.TotalFrames >= 3);
+
+        var decoder = new FrameDecoder(ColorMap.Default);
+
+        using var frame0 = SKBitmap.Decode(
+            Path.Combine(result.FramesDirectory, FluxEncodeService.FrameFileName(0)));
+        var metaDecode = decoder.DecodeMetadataFrame(frame0);
+        Assert.Equal(DecodeStatus.Success, metaDecode.Status);
+
+        var metadata = MetadataPayload.Deserialize(metaDecode.Payload!);
+        Assert.Equal(240, metadata.GridWidthTiles);
+        Assert.Equal(135, metadata.GridHeightTiles);
+        Assert.True(metadata.TryBuildLayout(out var layout));
+
+        var assembler = new PayloadAssembler(metadata);
+        for (uint id = 1; id < result.TotalFrames; id++)
+        {
+            using var bitmap = SKBitmap.Decode(
+                Path.Combine(result.FramesDirectory, FluxEncodeService.FrameFileName(id)));
+            if (id == 1)
+            {
+                Assert.Equal(layout.FrameWidthPx, bitmap.Width);
+                Assert.Equal(layout.FrameHeightPx, bitmap.Height);
+            }
+
+            var decode = decoder.Decode(bitmap, layout: layout);
+            Assert.Equal(DecodeStatus.Success, decode.Status);
+            Assert.True(assembler.AddFrame(decode.Header!.Value, decode.Payload!));
+        }
+
+        var restored = assembler.AssembleAndVerify();
+        Assert.Equal(await File.ReadAllBytesAsync(source), restored);
+    }
+
+    [Fact]
+    public async Task Encode_GridExceedingPerFrameCap_Throws()
+    {
+        var source = await CreateSourceFileAsync(1000);
+
+        await Assert.ThrowsAsync<ArgumentException>(() =>
+            _service.EncodeAsync(source, SessionRoot,
+                new EncodeOptions(EccLevel.Low, Compress: false, GridWidthTiles: 400, GridHeightTiles: 200)));
+    }
+
     private sealed class InlineProgress(Action<EncodeProgress> handler) : IProgress<EncodeProgress>
     {
         public void Report(EncodeProgress value) => handler(value);

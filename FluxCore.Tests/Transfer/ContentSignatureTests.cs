@@ -76,6 +76,19 @@ public class ContentSignatureTests : IDisposable
     }
 
     [Fact]
+    public async Task Signature_ChangesWithGrid()
+    {
+        var path = Path.Combine(_root, "a.txt");
+        await File.WriteAllTextAsync(path, "content");
+
+        var defaultGrid = await ContentSignature.ComputeAsync(path, new EncodeOptions());
+        var bigGrid = await ContentSignature.ComputeAsync(
+            path, new EncodeOptions(GridWidthTiles: 240, GridHeightTiles: 135));
+
+        Assert.NotEqual(defaultGrid, bigGrid);
+    }
+
+    [Fact]
     public async Task Folder_SignatureIsStable_AndChangesWithFileTimestamp()
     {
         var folder = Path.Combine(_root, "data");
