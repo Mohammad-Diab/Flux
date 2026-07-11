@@ -48,7 +48,8 @@ public class FluxEncodeServiceTests : IDisposable
         Assert.Equal((int)result.TotalFrames, result.FramesRendered);
         Assert.Equal(30_000, result.PayloadLength);
         Assert.True(File.Exists(Path.Combine(result.SessionDirectory, "manifest.json")));
-        Assert.True(File.Exists(Path.Combine(result.SessionDirectory, "payload.dat")));
+        Assert.True(File.Exists(Path.Combine(result.PayloadDirectory, "payload.dat")));
+        Assert.True(File.Exists(Path.Combine(result.PayloadDirectory, "payload.json")));
 
         for (uint id = 0; id < result.TotalFrames; id++)
         {
@@ -204,6 +205,23 @@ public class FluxEncodeServiceTests : IDisposable
 
         var restored = assembler.AssembleAndVerify();
         Assert.Equal(await File.ReadAllBytesAsync(source), restored);
+    }
+
+    [Fact]
+    public async Task Encode_SameContentDifferentGrid_ReusesPayload_NewRenderVariant()
+    {
+        var source = await CreateSourceFileAsync(30_000);
+        var a = await _service.EncodeAsync(source, SessionRoot, new EncodeOptions(Compress: false));
+        var b = await _service.EncodeAsync(source, SessionRoot,
+            new EncodeOptions(Compress: false, GridWidthTiles: 240, GridHeightTiles: 135));
+
+        Assert.Equal(a.PayloadDirectory, b.PayloadDirectory);    // one shared payload
+        Assert.NotEqual(a.SessionDirectory, b.SessionDirectory); // two render variants
+        Assert.False(a.PayloadReused);
+        Assert.True(b.PayloadReused);                            // the second run reused payload.dat
+
+        var rendersRoot = Path.Combine(a.PayloadDirectory, "renders");
+        Assert.Equal(2, Directory.GetDirectories(rendersRoot).Length);
     }
 
     [Fact]

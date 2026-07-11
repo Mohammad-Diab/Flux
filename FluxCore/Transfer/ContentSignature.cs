@@ -6,24 +6,26 @@ using FluxCore.Framing;
 namespace FluxCore.Transfer;
 
 /// <summary>
-/// Computes a deterministic 32-byte signature identifying a source and its encode options,
-/// used to name session folders so re-encoding the same source resumes the existing session.
-/// Files are signed by name, length, and streamed content; folders by their sorted file
-/// metadata (relative path, length, last-write time) without reading contents.
+/// Computes the deterministic 32-byte signatures that key an encode session. The <b>payload</b>
+/// signature covers only the source content and compression, so it is shared by every render
+/// variant; the <b>render</b> signature covers the format spec (ECC, grid, tile size, colour); the
+/// <b>combined</b> signature (painted into frame 0) identifies one content+spec transfer. Files are
+/// signed by name, length, and streamed content; folders by their sorted file metadata (relative
+/// path, length, last-write time) without reading contents.
 /// </summary>
 public static class ContentSignature
 {
     /// <summary>
-    /// Computes the signature of a file or folder combined with the encode options.
+    /// Computes the payload signature of a source: content plus whether it will be 7z-compressed.
+    /// Independent of tile/colour/ECC, so re-rendering the same source reuses the same payload.
     /// </summary>
     /// <param name="sourcePath">Path to a file or folder.</param>
-    /// <param name="options">Encode options that affect frame output.</param>
+    /// <param name="compress">Whether the source will be 7z-compressed.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
-    public static async Task<byte[]> ComputeAsync(
-        string sourcePath, EncodeOptions options, CancellationToken cancellationToken = default)
+    public static async Task<byte[]> ComputePayloadSignatureAsync(
+        string sourcePath, bool compress, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(sourcePath);
-        ArgumentNullException.ThrowIfNull(options);
 
         using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
 
@@ -40,11 +42,36 @@ public static class ContentSignature
             throw new FileNotFoundException($"Source not found: {sourcePath}");
         }
 
-        hash.AppendData([(byte)options.EccLevel, (byte)(options.Compress ? 1 : 0), FrameFormat.Version]);
+        hash.AppendData([(byte)(compress ? 1 : 0)]);
+        return hash.GetHashAndReset();
+    }
+
+    /// <summary>Computes the render signature from the format spec (ECC, grid, tile size, colour, version).</summary>
+    /// <param name="options">Encode options whose render-affecting fields are hashed.</param>
+    public static byte[] ComputeRenderSignature(EncodeOptions options)
+    {
+        ArgumentNullException.ThrowIfNull(options);
+
+        using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
+        hash.AppendData([(byte)options.EccLevel, FrameFormat.Version]);
         AppendInt64(hash, options.GridWidthTiles);
         AppendInt64(hash, options.GridHeightTiles);
         AppendInt64(hash, options.TilePixelSize);
+        AppendInt64(hash, options.ColorCount);
+        return hash.GetHashAndReset();
+    }
 
+    /// <summary>Combines a payload and render signature into the transfer signature painted into frame 0.</summary>
+    /// <param name="payloadSignature">Payload signature (content + compression).</param>
+    /// <param name="renderSignature">Render signature (format spec).</param>
+    public static byte[] Combine(byte[] payloadSignature, byte[] renderSignature)
+    {
+        ArgumentNullException.ThrowIfNull(payloadSignature);
+        ArgumentNullException.ThrowIfNull(renderSignature);
+
+        using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
+        hash.AppendData(payloadSignature);
+        hash.AppendData(renderSignature);
         return hash.GetHashAndReset();
     }
 

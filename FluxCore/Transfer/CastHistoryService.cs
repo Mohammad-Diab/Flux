@@ -6,61 +6,93 @@ namespace FluxCore.Transfer;
 /// <summary>Lists, opens, and removes past encode sessions for FluxCast's history.</summary>
 public sealed class CastHistoryService
 {
-    /// <summary>Lists past casts under the session root, newest first.</summary>
-    /// <param name="sessionRoot">Directory holding per-cast session folders.</param>
+    /// <summary>Lists past casts (one per render variant) under the session root, newest first.</summary>
+    /// <param name="sessionRoot">Directory holding per-payload session folders.</param>
     public IReadOnlyList<CastHistoryEntry> List(string sessionRoot)
     {
         if (!Directory.Exists(sessionRoot))
             return [];
 
         var entries = new List<CastHistoryEntry>();
-        foreach (var dir in Directory.EnumerateDirectories(sessionRoot))
+        foreach (var payloadDir in Directory.EnumerateDirectories(sessionRoot))
         {
-            var manifest = SessionManifest.TryRead(Path.Combine(dir, SessionLayout.ManifestFileName));
-            if (manifest is null)
+            var payload = PayloadManifest.TryRead(Path.Combine(payloadDir, SessionLayout.PayloadManifestFileName));
+            if (payload is null)
                 continue;
 
-            var framesDir = Path.Combine(dir, SessionLayout.FramesFolderName);
-            int onDisk = Directory.Exists(framesDir)
-                ? Directory.EnumerateFiles(framesDir, SessionLayout.FrameSearchPattern).Count()
-                : 0;
-            uint total = manifest.TotalFrames != 0 ? manifest.TotalFrames : (uint)onDisk;
-            bool complete = onDisk > 0 && onDisk >= total;
-            var created = manifest.CreatedUtc
-                ?? new DateTimeOffset(Directory.GetCreationTimeUtc(dir), TimeSpan.Zero);
-            var name = !string.IsNullOrEmpty(manifest.DisplayName)
-                ? manifest.DisplayName!
-                : Path.GetFileName(dir);
+            var rendersRoot = Path.Combine(payloadDir, SessionLayout.RendersFolderName);
+            if (!Directory.Exists(rendersRoot))
+                continue;
 
-            entries.Add(new CastHistoryEntry(
-                dir, framesDir, name, manifest.SourcePath, manifest.SourceKind,
-                total, manifest.PayloadLength, created, complete));
+            var name = !string.IsNullOrEmpty(payload.DisplayName)
+                ? payload.DisplayName!
+                : Path.GetFileName(payloadDir);
+
+            foreach (var renderDir in Directory.EnumerateDirectories(rendersRoot))
+            {
+                var render = RenderManifest.TryRead(Path.Combine(renderDir, SessionLayout.RenderManifestFileName));
+                if (render is null)
+                    continue;
+
+                var framesDir = Path.Combine(renderDir, SessionLayout.FramesFolderName);
+                int onDisk = Directory.Exists(framesDir)
+                    ? Directory.EnumerateFiles(framesDir, SessionLayout.FrameSearchPattern).Count()
+                    : 0;
+                uint total = render.TotalFrames != 0 ? render.TotalFrames : (uint)onDisk;
+                bool complete = onDisk > 0 && onDisk >= total;
+                var created = render.CreatedUtc
+                    ?? payload.CreatedUtc
+                    ?? new DateTimeOffset(Directory.GetCreationTimeUtc(renderDir), TimeSpan.Zero);
+
+                entries.Add(new CastHistoryEntry(
+                    renderDir, framesDir, name, payload.SourcePath, payload.SourceKind,
+                    total, payload.PayloadLength, created, complete,
+                    render.EccLevel, render.GridWidthTiles, render.GridHeightTiles, render.ColorCount));
+            }
         }
 
         return entries.OrderByDescending(e => e.CreatedUtc).ToList();
     }
 
-    /// <summary>Deletes a session folder and everything in it.</summary>
-    /// <param name="sessionDirectory">The session folder to remove.</param>
-    public void Delete(string sessionDirectory)
+    /// <summary>
+    /// Deletes a render variant. When it was the payload's last variant, the shared payload folder
+    /// is removed too so no orphaned payload.dat is left behind.
+    /// </summary>
+    /// <param name="renderDirectory">The render-variant folder to remove.</param>
+    public void Delete(string renderDirectory)
     {
-        if (Directory.Exists(sessionDirectory))
-            Directory.Delete(sessionDirectory, recursive: true);
+        if (!Directory.Exists(renderDirectory))
+            return;
+
+        var rendersRoot = Path.GetDirectoryName(renderDirectory);
+        Directory.Delete(renderDirectory, recursive: true);
+
+        if (rendersRoot is not null && Directory.Exists(rendersRoot) &&
+            !Directory.EnumerateFileSystemEntries(rendersRoot).Any())
+        {
+            var payloadDir = Path.GetDirectoryName(rendersRoot);
+            if (payloadDir is not null && Directory.Exists(payloadDir))
+                Directory.Delete(payloadDir, recursive: true);
+        }
     }
 
-    /// <summary>Builds a session result for re-presenting an existing cast from its frames on disk.</summary>
-    /// <param name="sessionDirectory">The session folder to open.</param>
-    public EncodeSessionResult OpenForPresenting(string sessionDirectory)
+    /// <summary>Builds a session result for re-presenting an existing render variant from its frames on disk.</summary>
+    /// <param name="renderDirectory">The render-variant folder to open.</param>
+    public EncodeSessionResult OpenForPresenting(string renderDirectory)
     {
-        var manifest = SessionManifest.TryRead(Path.Combine(sessionDirectory, SessionLayout.ManifestFileName))
-            ?? throw new InvalidOperationException($"No session manifest in '{sessionDirectory}'.");
-        var framesDir = Path.Combine(sessionDirectory, SessionLayout.FramesFolderName);
-        uint total = manifest.TotalFrames != 0
-            ? manifest.TotalFrames
+        var render = RenderManifest.TryRead(Path.Combine(renderDirectory, SessionLayout.RenderManifestFileName))
+            ?? throw new InvalidOperationException($"No render manifest in '{renderDirectory}'.");
+        var payloadDirectory = Path.GetDirectoryName(Path.GetDirectoryName(renderDirectory))!;
+        var payload = PayloadManifest.TryRead(Path.Combine(payloadDirectory, SessionLayout.PayloadManifestFileName));
+        var framesDir = Path.Combine(renderDirectory, SessionLayout.FramesFolderName);
+        uint total = render.TotalFrames != 0
+            ? render.TotalFrames
             : (uint)Directory.EnumerateFiles(framesDir, SessionLayout.FrameSearchPattern).Count();
 
         return new EncodeSessionResult(
-            sessionDirectory, framesDir, total, manifest.PayloadLength,
-            Sha256Helper.FromHexString(manifest.SignatureHex), PayloadReused: true, FramesRendered: 0);
+            renderDirectory, payloadDirectory, framesDir, total,
+            payload?.PayloadLength ?? 0,
+            Sha256Helper.FromHexString(render.CombinedSignatureHex),
+            PayloadReused: true, FramesRendered: 0);
     }
 }

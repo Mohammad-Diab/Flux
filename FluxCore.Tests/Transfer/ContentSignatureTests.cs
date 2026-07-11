@@ -19,89 +19,106 @@ public class ContentSignatureTests : IDisposable
         try { Directory.Delete(_root, recursive: true); } catch { }
     }
 
-    private static readonly EncodeOptions DefaultOptions = new();
+    private async Task<string> WriteFileAsync(string name, string content)
+    {
+        var path = Path.Combine(_root, name);
+        await File.WriteAllTextAsync(path, content);
+        return path;
+    }
 
     [Fact]
-    public async Task File_SignatureIsStableAcrossRuns()
+    public async Task PayloadSignature_IsStableAcrossRuns()
     {
-        var path = Path.Combine(_root, "a.txt");
-        await File.WriteAllTextAsync(path, "stable content");
+        var path = await WriteFileAsync("a.txt", "stable content");
 
-        var first = await ContentSignature.ComputeAsync(path, DefaultOptions);
-        var second = await ContentSignature.ComputeAsync(path, DefaultOptions);
+        var first = await ContentSignature.ComputePayloadSignatureAsync(path, compress: true);
+        var second = await ContentSignature.ComputePayloadSignatureAsync(path, compress: true);
 
         Assert.Equal(first, second);
         Assert.Equal(32, first.Length);
     }
 
     [Fact]
-    public async Task File_SignatureChangesWithContent()
+    public async Task PayloadSignature_ChangesWithContent()
     {
-        var path = Path.Combine(_root, "a.txt");
-        await File.WriteAllTextAsync(path, "version one");
-        var first = await ContentSignature.ComputeAsync(path, DefaultOptions);
+        var path = await WriteFileAsync("a.txt", "version one");
+        var first = await ContentSignature.ComputePayloadSignatureAsync(path, compress: true);
 
         await File.WriteAllTextAsync(path, "version two");
-        var second = await ContentSignature.ComputeAsync(path, DefaultOptions);
+        var second = await ContentSignature.ComputePayloadSignatureAsync(path, compress: true);
 
         Assert.NotEqual(first, second);
     }
 
     [Fact]
-    public async Task File_SignatureChangesWithName()
+    public async Task PayloadSignature_ChangesWithName()
     {
-        var pathA = Path.Combine(_root, "a.txt");
-        var pathB = Path.Combine(_root, "b.txt");
-        await File.WriteAllTextAsync(pathA, "same content");
-        await File.WriteAllTextAsync(pathB, "same content");
+        var pathA = await WriteFileAsync("a.txt", "same content");
+        var pathB = await WriteFileAsync("b.txt", "same content");
 
-        var first = await ContentSignature.ComputeAsync(pathA, DefaultOptions);
-        var second = await ContentSignature.ComputeAsync(pathB, DefaultOptions);
+        var first = await ContentSignature.ComputePayloadSignatureAsync(pathA, compress: true);
+        var second = await ContentSignature.ComputePayloadSignatureAsync(pathB, compress: true);
 
         Assert.NotEqual(first, second);
     }
 
     [Fact]
-    public async Task Signature_ChangesWithEncodeOptions()
+    public async Task PayloadSignature_ChangesWithCompress()
     {
-        var path = Path.Combine(_root, "a.txt");
-        await File.WriteAllTextAsync(path, "content");
+        var path = await WriteFileAsync("a.txt", "content");
 
-        var medium = await ContentSignature.ComputeAsync(path, new EncodeOptions(EccLevel.Medium));
-        var high = await ContentSignature.ComputeAsync(path, new EncodeOptions(EccLevel.High));
-        var raw = await ContentSignature.ComputeAsync(path, new EncodeOptions(EccLevel.Medium, Compress: false));
+        var compressed = await ContentSignature.ComputePayloadSignatureAsync(path, compress: true);
+        var raw = await ContentSignature.ComputePayloadSignatureAsync(path, compress: false);
 
-        Assert.NotEqual(medium, high);
-        Assert.NotEqual(medium, raw);
+        Assert.NotEqual(compressed, raw);
     }
 
     [Fact]
-    public async Task Signature_ChangesWithGrid()
+    public void RenderSignature_ChangesWithEccGridTileColour_StableForSameSpec()
     {
-        var path = Path.Combine(_root, "a.txt");
-        await File.WriteAllTextAsync(path, "content");
+        var baseline = ContentSignature.ComputeRenderSignature(new EncodeOptions());
 
-        var defaultGrid = await ContentSignature.ComputeAsync(path, new EncodeOptions());
-        var bigGrid = await ContentSignature.ComputeAsync(
-            path, new EncodeOptions(GridWidthTiles: 240, GridHeightTiles: 135));
-
-        Assert.NotEqual(defaultGrid, bigGrid);
+        Assert.Equal(baseline, ContentSignature.ComputeRenderSignature(new EncodeOptions()));
+        Assert.NotEqual(baseline, ContentSignature.ComputeRenderSignature(new EncodeOptions(EccLevel.High)));
+        Assert.NotEqual(baseline, ContentSignature.ComputeRenderSignature(new EncodeOptions(GridWidthTiles: 240, GridHeightTiles: 135)));
+        Assert.NotEqual(baseline, ContentSignature.ComputeRenderSignature(new EncodeOptions(TilePixelSize: 10)));
+        Assert.NotEqual(baseline, ContentSignature.ComputeRenderSignature(new EncodeOptions(ColorCount: 512)));
     }
 
     [Fact]
-    public async Task Folder_SignatureIsStable_AndChangesWithFileTimestamp()
+    public async Task Combined_ChangesWithRender_ButPayloadStaysStable()
+    {
+        var path = await WriteFileAsync("a.txt", "content");
+        var payloadA = await ContentSignature.ComputePayloadSignatureAsync(path, compress: true);
+        var payloadB = await ContentSignature.ComputePayloadSignatureAsync(path, compress: true);
+
+        // The payload signature is identical across two render specs of the same source.
+        Assert.Equal(payloadA, payloadB);
+
+        var renderA = ContentSignature.ComputeRenderSignature(new EncodeOptions());
+        var renderB = ContentSignature.ComputeRenderSignature(new EncodeOptions(GridWidthTiles: 240, GridHeightTiles: 135));
+        Assert.NotEqual(renderA, renderB);
+
+        // The combined (wire) signature differs because the render differs.
+        Assert.NotEqual(
+            ContentSignature.Combine(payloadA, renderA),
+            ContentSignature.Combine(payloadB, renderB));
+    }
+
+    [Fact]
+    public async Task Folder_PayloadSignatureIsStable_AndChangesWithFileTimestamp()
     {
         var folder = Path.Combine(_root, "data");
         Directory.CreateDirectory(Path.Combine(folder, "sub"));
         var filePath = Path.Combine(folder, "sub", "x.bin");
         await File.WriteAllBytesAsync(filePath, new byte[100]);
 
-        var first = await ContentSignature.ComputeAsync(folder, DefaultOptions);
-        var repeat = await ContentSignature.ComputeAsync(folder, DefaultOptions);
+        var first = await ContentSignature.ComputePayloadSignatureAsync(folder, compress: true);
+        var repeat = await ContentSignature.ComputePayloadSignatureAsync(folder, compress: true);
         Assert.Equal(first, repeat);
 
         File.SetLastWriteTimeUtc(filePath, DateTime.UtcNow.AddDays(-1));
-        var afterTouch = await ContentSignature.ComputeAsync(folder, DefaultOptions);
+        var afterTouch = await ContentSignature.ComputePayloadSignatureAsync(folder, compress: true);
         Assert.NotEqual(first, afterTouch);
     }
 
@@ -109,7 +126,7 @@ public class ContentSignatureTests : IDisposable
     public async Task MissingSource_Throws()
     {
         await Assert.ThrowsAsync<FileNotFoundException>(() =>
-            ContentSignature.ComputeAsync(Path.Combine(_root, "nope"), DefaultOptions));
+            ContentSignature.ComputePayloadSignatureAsync(Path.Combine(_root, "nope"), compress: true));
     }
 
     [Fact]

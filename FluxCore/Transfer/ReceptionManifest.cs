@@ -20,7 +20,7 @@ internal enum ReceptionStatus
 /// Persisted description of a FluxRead reception: enough to resume an interrupted transfer and to
 /// list it in the receiver's history. Keyed on disk by the transfer's content signature, so a
 /// returning transfer resolves to the same folder and resumes. Mirrors the sender's
-/// <see cref="SessionManifest"/>.
+/// <see cref="PayloadManifest"/> / <see cref="RenderManifest"/>.
 /// </summary>
 internal sealed record ReceptionManifest(
     byte FormatVersion,
