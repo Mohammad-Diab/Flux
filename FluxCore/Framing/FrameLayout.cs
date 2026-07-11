@@ -90,6 +90,42 @@ public sealed class FrameLayout
         FinderCentersTiles = [(3.5, 3.5), (w - 3.5, 3.5), (3.5, h - 3.5), (w - 3.5, h - 3.5)];
     }
 
+    /// <summary>
+    /// Derives the largest grid that fills a display of the given pixel size at the given tile
+    /// size, preserving the display's aspect ratio (square tiles, so the rendered frame fills the
+    /// screen without stretch or letterboxing). The result is clamped to the minimum decodable grid
+    /// and, if <paramref name="maxCodewords"/> is positive, shrunk (keeping the aspect ratio) until
+    /// its codeword count fits — the caller derives that budget from the per-frame byte cap and ECC.
+    /// </summary>
+    /// <param name="displayWidthPx">Usable display width in physical pixels.</param>
+    /// <param name="displayHeightPx">Usable display height in physical pixels.</param>
+    /// <param name="tilePixelSize">Tile edge length in pixels.</param>
+    /// <param name="maxCodewords">Upper bound on codewords per frame, or 0 for no cap.</param>
+    public static FrameLayout FitToDisplay(int displayWidthPx, int displayHeightPx, int tilePixelSize, int maxCodewords = 0)
+    {
+        if (tilePixelSize < 1)
+            throw new ArgumentOutOfRangeException(nameof(tilePixelSize));
+
+        int minEdge = 2 * FrameFormat.CornerBlockSizeTiles + FrameFormat.HeaderCopyLength;
+        // FrameWidthPx = (grid + 4) * tilePx (a two-tile quiet zone each side), so subtract 4 tiles per axis.
+        int gw = Math.Max(minEdge, displayWidthPx / tilePixelSize - 4);
+        int gh = Math.Max(minEdge, displayHeightPx / tilePixelSize - 4);
+
+        var layout = new FrameLayout(gw, gh, tilePixelSize);
+        if (maxCodewords > 0 && layout.CodewordCount > maxCodewords)
+        {
+            double scale = Math.Sqrt((double)maxCodewords / layout.CodewordCount);
+            gw = Math.Max(minEdge, (int)(gw * scale));
+            gh = Math.Max(minEdge, (int)(gh * scale));
+            layout = new FrameLayout(gw, gh, tilePixelSize);
+
+            while (layout.CodewordCount > maxCodewords && gw > minEdge && gh > minEdge)
+                layout = new FrameLayout(--gw, --gh, tilePixelSize);
+        }
+
+        return layout;
+    }
+
     /// <summary>Gets the role of the tile at the given grid coordinates.</summary>
     /// <param name="x">Tile column.</param>
     /// <param name="y">Tile row.</param>

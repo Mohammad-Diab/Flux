@@ -106,4 +106,39 @@ public class FrameLayoutTests
     {
         Assert.Throws<ArgumentException>(() => new FrameLayout(40, 40, 8));
     }
+
+    [Fact]
+    public void FitToDisplay_FillsDisplayWithSquareTiles()
+    {
+        var layout = FrameLayout.FitToDisplay(2560, 1440, tilePixelSize: 8);
+
+        // Largest grid that fits: (grid + 4) * tilePx must not exceed the display.
+        Assert.Equal(2560 / 8 - 4, layout.GridWidthTiles);
+        Assert.Equal(1440 / 8 - 4, layout.GridHeightTiles);
+        Assert.True(layout.FrameWidthPx <= 2560);
+        Assert.True(layout.FrameHeightPx <= 1440);
+        // One more tile per axis would overflow — proving it is maximal.
+        Assert.True((layout.GridWidthTiles + 5) * 8 > 2560);
+    }
+
+    [Fact]
+    public void FitToDisplay_ClampsToCodewordCap_PreservingAspect()
+    {
+        int maxCodewords = ushort.MaxValue / 223; // Low ECC per-frame byte cap.
+
+        var layout = FrameLayout.FitToDisplay(3840, 2160, tilePixelSize: 6, maxCodewords: maxCodewords);
+
+        Assert.True(layout.CodewordCount <= maxCodewords);
+        double gridAspect = (double)layout.GridWidthTiles / layout.GridHeightTiles;
+        Assert.True(Math.Abs(gridAspect - 3840.0 / 2160.0) < 0.15, $"Aspect {gridAspect:F3} drifted from the display.");
+    }
+
+    [Fact]
+    public void FitToDisplay_ClampsToMinimumGridOnTinyDisplay()
+    {
+        var layout = FrameLayout.FitToDisplay(300, 300, tilePixelSize: 8);
+
+        Assert.Equal(layout.GridWidthTiles, layout.GridHeightTiles);
+        Assert.True(layout.CodewordCount >= 1);
+    }
 }
