@@ -78,6 +78,7 @@
                     <TextBlock Text="TRANSFER SPEED" FontSize="11" FontWeight="SemiBold"
                                Foreground="{StaticResource TextSecondaryBrush}" Margin="2,24,0,10"/>
                     <ComboBox ItemsSource="{Binding TileSizes}" SelectedItem="{Binding SelectedTileSize}"/>
+                    <ComboBox ItemsSource="{Binding Colors}" SelectedItem="{Binding SelectedColor}" Margin="0,8,0,0"/>
                     <TextBlock Text="{Binding GridSummary}" FontSize="12" Foreground="{StaticResource AccentBrush}"
                                Margin="2,8,0,0" TextWrapping="Wrap"/>
                     <TextBlock Text="{Binding GridCaution}" FontSize="12" Foreground="{StaticResource DangerBrush}"

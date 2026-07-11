@@ -6,6 +6,7 @@ using Flux.Ui.Services;
 using FluxCast.Services;
 using FluxCore.Ecc;
 using FluxCore.Framing;
+using FluxCore.Imaging;
 using FluxCore.Transfer;
 
 namespace FluxCast.ViewModels;
@@ -18,6 +19,12 @@ public sealed record EccChoice(EccLevel Level, string Label)
 
 /// <summary>A tile-size choice; smaller tiles fit more per screen (faster) but need a cleaner channel.</summary>
 public sealed record TileSizeChoice(int TilePx, string Label)
+{
+    public override string ToString() => Label;
+}
+
+/// <summary>A colour-count choice; more colours carry more per tile (faster) but need a cleaner channel.</summary>
+public sealed record ColorChoice(int ColorCount, string Label)
 {
     public override string ToString() => Label;
 }
@@ -49,6 +56,9 @@ public partial class EncodeSetupViewModel : ObservableObject
     private TileSizeChoice _selectedTileSize;
 
     [ObservableProperty]
+    private ColorChoice _selectedColor;
+
+    [ObservableProperty]
     private bool _compress = true;
 
     [ObservableProperty]
@@ -57,6 +67,7 @@ public partial class EncodeSetupViewModel : ObservableObject
     private readonly int _displayWidthPx;
     private readonly int _displayHeightPx;
     private FrameLayout _layout;
+    private int _bitsPerTile = 8;
 
     /// <summary>Gets the selectable ECC levels.</summary>
     public IReadOnlyList<EccChoice> EccLevels { get; } =
@@ -74,6 +85,14 @@ public partial class EncodeSetupViewModel : ObservableObject
         new(10, "Medium tiles"),
         new(8, "Standard tiles — recommended"),
         new(6, "Small tiles — fastest, clean channel only"),
+    ];
+
+    /// <summary>Gets the selectable colour counts; more colours pack more bits per tile.</summary>
+    public IReadOnlyList<ColorChoice> Colors { get; } =
+    [
+        new(256, "256 colours — standard, any channel"),
+        new(512, "512 colours — +12.5%, clean channel"),
+        new(1024, "1024 colours — +25%, pixel-perfect only"),
     ];
 
     /// <summary>Gets a summary of the selected source for display.</summary>
@@ -110,6 +129,7 @@ public partial class EncodeSetupViewModel : ObservableObject
         _displayHeightPx = displayPixels.Height;
         _selectedEccLevel = EccLevels[1];
         _selectedTileSize = TileSizes[2];
+        _selectedColor = Colors[0];
         _layout = FrameLayout.Default;
         RecomputeLayout();
     }
@@ -143,7 +163,8 @@ public partial class EncodeSetupViewModel : ObservableObject
     [RelayCommand(CanExecute = nameof(CanStart))]
     private void Start() =>
         _onStart(SelectedPath!, new EncodeOptions(
-            SelectedEccLevel.Level, Compress, _layout.GridWidthTiles, _layout.GridHeightTiles, _layout.TilePixelSize));
+            SelectedEccLevel.Level, Compress, _layout.GridWidthTiles, _layout.GridHeightTiles,
+            _layout.TilePixelSize, SelectedColor.ColorCount));
 
     private bool CanStart() => SelectedPath is not null && SourceInfo is { IsValid: true } && !IsValidating;
 
@@ -173,26 +194,40 @@ public partial class EncodeSetupViewModel : ObservableObject
 
     partial void OnSelectedTileSizeChanged(TileSizeChoice value) => RecomputeLayout();
 
+    partial void OnSelectedColorChanged(ColorChoice value) => RecomputeLayout();
+
     partial void OnCompressChanged(bool value) => UpdateDetails();
 
     private void RecomputeLayout()
     {
-        int maxCodewords = ushort.MaxValue / SelectedEccLevel.Level.DataBytesPerCodeword();
+        _bitsPerTile = PaletteGenerator.BitsForCount(SelectedColor.ColorCount);
+        // Cap the grid so a frame's payload fits the ushort length field at the chosen depth.
+        int dataBytes = SelectedEccLevel.Level.DataBytesPerCodeword();
+        int maxCodewords = (int)((long)ushort.MaxValue * 8 / ((long)dataBytes * _bitsPerTile));
         _layout = FrameLayout.FitToDisplay(_displayWidthPx, _displayHeightPx, SelectedTileSize.TilePx, maxCodewords);
 
-        int bytesPerFrame = SelectedEccLevel.Level.PayloadBytesPerFrame(_layout.CodewordCount);
-        double throughput = (double)_layout.CodewordCount / FrameFormat.CodewordCount;
+        int codewords = _layout.CodewordsForBits(_bitsPerTile);
+        int bytesPerFrame = SelectedEccLevel.Level.PayloadBytesPerFrame(codewords);
+        double throughput = (double)codewords / FrameFormat.CodewordCount;
+        string colours = SelectedColor.ColorCount == 256 ? "" : $"{SelectedColor.ColorCount} colours · ";
         GridSummary =
-            $"{_layout.GridWidthTiles}×{_layout.GridHeightTiles} tiles · {ByteFormat.Bytes(bytesPerFrame)}/frame · ≈{throughput:0.0}× throughput";
+            $"{_layout.GridWidthTiles}×{_layout.GridHeightTiles} tiles · {colours}{ByteFormat.Bytes(bytesPerFrame)}/frame · ≈{throughput:0.0}× throughput";
 
-        GridCaution = SelectedTileSize.TilePx <= 6
-            ? "Small tiles — use only on a clean, near-pixel-perfect channel (local capture or exact PNGs)."
-            : "";
+        GridCaution = BuildCaution();
 
         OnPropertyChanged(nameof(GridSummary));
         OnPropertyChanged(nameof(GridCaution));
         UpdateDetails();
     }
+
+    private string BuildCaution() => SelectedColor.ColorCount switch
+    {
+        1024 => "1024 colours decodes only on a near-pixel-perfect channel (local capture or exact PNG folders) — it will fail over RDP or any compression.",
+        512 => "512 colours needs a clean channel; run a test frame before committing to a long transfer.",
+        _ => SelectedTileSize.TilePx <= 6
+            ? "Small tiles — use only on a clean, near-pixel-perfect channel (local capture or exact PNGs)."
+            : "",
+    };
 
     private void UpdateDetails()
     {
@@ -223,7 +258,7 @@ public partial class EncodeSetupViewModel : ObservableObject
 
     private long FrameEstimate(long payloadBytes)
     {
-        int perFrame = SelectedEccLevel.Level.PayloadBytesPerFrame(_layout.CodewordCount);
+        int perFrame = SelectedEccLevel.Level.PayloadBytesPerFrame(_layout.CodewordsForBits(_bitsPerTile));
         return (payloadBytes + perFrame - 1) / perFrame + 1;
     }
 
