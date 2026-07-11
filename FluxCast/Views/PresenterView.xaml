@@ -66,7 +66,8 @@
 
         <Grid>
             <Grid x:Name="FrameArea" Margin="10">
-                <Image x:Name="FrameImage" Source="{Binding CurrentFrame}"
+                <Image x:Name="FrameImage" Source="{Binding CurrentFrame, NotifyOnTargetUpdated=True}"
+                       TargetUpdated="OnFrameChanged"
                        RenderOptions.BitmapScalingMode="NearestNeighbor"
                        SnapsToDevicePixels="True" UseLayoutRounding="True"
                        Stretch="Uniform"/>

@@ -76,7 +76,7 @@ public partial class ShellViewModel : ObservableObject
     /// <summary>Navigates the Cast tab to the setup screen.</summary>
     public void ShowSetup()
     {
-        _castScreen = new EncodeSetupViewModel(_validator, _dialogs, StartEncode);
+        _castScreen = new EncodeSetupViewModel(_validator, _dialogs, StartEncode, DisplayMetrics.PrimaryScreenPixels());
         UpdateCurrent();
     }
 

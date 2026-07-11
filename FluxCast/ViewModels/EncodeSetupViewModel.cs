@@ -5,12 +5,19 @@ using Flux.Ui;
 using Flux.Ui.Services;
 using FluxCast.Services;
 using FluxCore.Ecc;
+using FluxCore.Framing;
 using FluxCore.Transfer;
 
 namespace FluxCast.ViewModels;
 
 /// <summary>An ECC level choice presented in the setup screen.</summary>
 public sealed record EccChoice(EccLevel Level, string Label)
+{
+    public override string ToString() => Label;
+}
+
+/// <summary>A tile-size choice; smaller tiles fit more per screen (faster) but need a cleaner channel.</summary>
+public sealed record TileSizeChoice(int TilePx, string Label)
 {
     public override string ToString() => Label;
 }
@@ -39,18 +46,34 @@ public partial class EncodeSetupViewModel : ObservableObject
     private EccChoice _selectedEccLevel;
 
     [ObservableProperty]
+    private TileSizeChoice _selectedTileSize;
+
+    [ObservableProperty]
     private bool _compress = true;
 
     [ObservableProperty]
     private bool _compressLocked;
 
+    private readonly int _displayWidthPx;
+    private readonly int _displayHeightPx;
+    private FrameLayout _layout;
+
     /// <summary>Gets the selectable ECC levels.</summary>
     public IReadOnlyList<EccChoice> EccLevels { get; } =
     [
-        new(EccLevel.Low, "Low — 11.8 KB/frame, clean captures only"),
-        new(EccLevel.Medium, "Medium — 10.1 KB/frame (recommended)"),
-        new(EccLevel.High, "High — 8.4 KB/frame, lossy channels"),
-        new(EccLevel.Max, "Max — 6.7 KB/frame, worst channels"),
+        new(EccLevel.Low, "Low — fastest, clean captures only"),
+        new(EccLevel.Medium, "Medium — recommended"),
+        new(EccLevel.High, "High — for lossy channels"),
+        new(EccLevel.Max, "Max — for the worst channels"),
+    ];
+
+    /// <summary>Gets the selectable tile sizes; the grid is auto-fitted to the screen at the chosen size.</summary>
+    public IReadOnlyList<TileSizeChoice> TileSizes { get; } =
+    [
+        new(12, "Large tiles — most robust, fewer per frame"),
+        new(10, "Medium tiles"),
+        new(8, "Standard tiles — recommended"),
+        new(6, "Small tiles — fastest, clean channel only"),
     ];
 
     /// <summary>Gets a summary of the selected source for display.</summary>
@@ -68,12 +91,27 @@ public partial class EncodeSetupViewModel : ObservableObject
     /// <summary>Gets the estimated frame count / Next-click count for the details panel.</summary>
     public string EstimatedFrames { get; private set; } = "";
 
-    public EncodeSetupViewModel(SourceValidator validator, DialogService dialogs, Action<string, EncodeOptions> onStart)
+    /// <summary>Gets the fitted grid, capacity, and throughput readout for the chosen tile/ECC settings.</summary>
+    public string GridSummary { get; private set; } = "";
+
+    /// <summary>Gets the clear-channel caution shown when the tiles are small enough to be fragile.</summary>
+    public string GridCaution { get; private set; } = "";
+
+    public EncodeSetupViewModel(
+        SourceValidator validator,
+        DialogService dialogs,
+        Action<string, EncodeOptions> onStart,
+        (int Width, int Height) displayPixels)
     {
         _validator = validator;
         _dialogs = dialogs;
         _onStart = onStart;
+        _displayWidthPx = displayPixels.Width;
+        _displayHeightPx = displayPixels.Height;
         _selectedEccLevel = EccLevels[1];
+        _selectedTileSize = TileSizes[2];
+        _layout = FrameLayout.Default;
+        RecomputeLayout();
     }
 
     [RelayCommand]
@@ -104,7 +142,8 @@ public partial class EncodeSetupViewModel : ObservableObject
 
     [RelayCommand(CanExecute = nameof(CanStart))]
     private void Start() =>
-        _onStart(SelectedPath!, new EncodeOptions(SelectedEccLevel.Level, Compress));
+        _onStart(SelectedPath!, new EncodeOptions(
+            SelectedEccLevel.Level, Compress, _layout.GridWidthTiles, _layout.GridHeightTiles, _layout.TilePixelSize));
 
     private bool CanStart() => SelectedPath is not null && SourceInfo is { IsValid: true } && !IsValidating;
 
@@ -130,9 +169,30 @@ public partial class EncodeSetupViewModel : ObservableObject
         }
     }
 
-    partial void OnSelectedEccLevelChanged(EccChoice value) => UpdateDetails();
+    partial void OnSelectedEccLevelChanged(EccChoice value) => RecomputeLayout();
+
+    partial void OnSelectedTileSizeChanged(TileSizeChoice value) => RecomputeLayout();
 
     partial void OnCompressChanged(bool value) => UpdateDetails();
+
+    private void RecomputeLayout()
+    {
+        int maxCodewords = ushort.MaxValue / SelectedEccLevel.Level.DataBytesPerCodeword();
+        _layout = FrameLayout.FitToDisplay(_displayWidthPx, _displayHeightPx, SelectedTileSize.TilePx, maxCodewords);
+
+        int bytesPerFrame = SelectedEccLevel.Level.PayloadBytesPerFrame(_layout.CodewordCount);
+        double throughput = (double)_layout.CodewordCount / FrameFormat.CodewordCount;
+        GridSummary =
+            $"{_layout.GridWidthTiles}×{_layout.GridHeightTiles} tiles · {ByteFormat.Bytes(bytesPerFrame)}/frame · ≈{throughput:0.0}× throughput";
+
+        GridCaution = SelectedTileSize.TilePx <= 6
+            ? "Small tiles — use only on a clean, near-pixel-perfect channel (local capture or exact PNGs)."
+            : "";
+
+        OnPropertyChanged(nameof(GridSummary));
+        OnPropertyChanged(nameof(GridCaution));
+        UpdateDetails();
+    }
 
     private void UpdateDetails()
     {
@@ -163,7 +223,7 @@ public partial class EncodeSetupViewModel : ObservableObject
 
     private long FrameEstimate(long payloadBytes)
     {
-        int perFrame = SelectedEccLevel.Level.PayloadBytesPerFrame();
+        int perFrame = SelectedEccLevel.Level.PayloadBytesPerFrame(_layout.CodewordCount);
         return (payloadBytes + perFrame - 1) / perFrame + 1;
     }
 

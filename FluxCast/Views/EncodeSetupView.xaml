@@ -75,6 +75,15 @@
                                Foreground="{StaticResource TextSecondaryBrush}" Margin="2,24,0,10"/>
                     <ComboBox ItemsSource="{Binding EccLevels}" SelectedItem="{Binding SelectedEccLevel}"/>
 
+                    <TextBlock Text="TRANSFER SPEED" FontSize="11" FontWeight="SemiBold"
+                               Foreground="{StaticResource TextSecondaryBrush}" Margin="2,24,0,10"/>
+                    <ComboBox ItemsSource="{Binding TileSizes}" SelectedItem="{Binding SelectedTileSize}"/>
+                    <TextBlock Text="{Binding GridSummary}" FontSize="12" Foreground="{StaticResource AccentBrush}"
+                               Margin="2,8,0,0" TextWrapping="Wrap"/>
+                    <TextBlock Text="{Binding GridCaution}" FontSize="12" Foreground="{StaticResource DangerBrush}"
+                               Margin="2,4,0,0" TextWrapping="Wrap"
+                               Visibility="{Binding GridCaution, Converter={StaticResource NullToCollapsed}}"/>
+
                     <CheckBox Content="Compress with 7-Zip (folders are always compressed)"
                               IsChecked="{Binding Compress}" Margin="2,16,0,0" FontSize="13">
                         <CheckBox.Style>

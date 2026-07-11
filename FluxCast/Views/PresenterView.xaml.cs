@@ -1,7 +1,8 @@
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Data;
 using System.Windows.Input;
-using FluxCore.Framing;
+using System.Windows.Media.Imaging;
 
 namespace FluxCast.Views;
 
@@ -19,13 +20,21 @@ public partial class PresenterView : UserControl
         FrameArea.SizeChanged += (_, _) => UpdateSizeWarning();
     }
 
+    private void OnFrameChanged(object sender, DataTransferEventArgs e) => UpdateSizeWarning();
+
     private void UpdateSizeWarning()
     {
-        double scale = Math.Min(
-            FrameArea.ActualWidth / FrameFormat.FrameWidthPx,
-            FrameArea.ActualHeight / FrameFormat.FrameHeightPx);
+        if (FrameImage.Source is not BitmapSource frame)
+        {
+            SizeWarning.Visibility = Visibility.Collapsed;
+            return;
+        }
 
-        // Below ~0.6x the 8px tiles fall under ~5px and get fragile once a capture recompresses.
+        double scale = Math.Min(
+            FrameArea.ActualWidth / frame.PixelWidth,
+            FrameArea.ActualHeight / frame.PixelHeight);
+
+        // Below ~0.6x the rendered tiles fall under ~5px and get fragile once a capture recompresses.
         SizeWarning.Visibility = scale is > 0 and < 0.6 ? Visibility.Visible : Visibility.Collapsed;
     }
 }
