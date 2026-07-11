@@ -50,6 +50,11 @@
                                     <TextBlock Text="{Binding DisplayName}" FontSize="15" FontWeight="SemiBold"
                                                Foreground="{StaticResource TextPrimaryBrush}"
                                                TextTrimming="CharacterEllipsis"/>
+                                    <Border HorizontalAlignment="Left" Background="{StaticResource SurfaceAltBrush}"
+                                            CornerRadius="5" Padding="7,2" Margin="0,4,0,0">
+                                        <TextBlock Text="{Binding SpecText}" FontSize="11"
+                                                   Foreground="{StaticResource TextSecondaryBrush}"/>
+                                    </Border>
                                     <TextBlock Text="{Binding LocationText}" Style="{StaticResource SubtleText}"
                                                FontSize="12" Opacity="0.75" TextTrimming="CharacterEllipsis"
                                                Margin="0,3,0,0" ToolTip="{Binding LocationText}"/>

@@ -33,10 +33,18 @@ public partial class RecentCastsViewModel : ObservableObject
     public void Refresh()
     {
         Casts.Clear();
-        foreach (var entry in _history.List(_sessionRoot))
+        foreach (var entry in Cluster(_history.List(_sessionRoot)))
             Casts.Add(new CastHistoryItemViewModel(entry, Resume, Delete, OpenLocation, OpenFrames));
         IsEmpty = Casts.Count == 0;
     }
+
+    // Keep render variants of one payload adjacent (payload dir = the render folder's grandparent),
+    // with the most recently touched payload first.
+    private static IEnumerable<CastHistoryEntry> Cluster(IReadOnlyList<CastHistoryEntry> entries) =>
+        entries
+            .GroupBy(e => Path.GetDirectoryName(Path.GetDirectoryName(e.SessionDirectory)))
+            .OrderByDescending(g => g.Max(e => e.CreatedUtc))
+            .SelectMany(g => g.OrderByDescending(e => e.CreatedUtc));
 
     private void Resume(CastHistoryItemViewModel item) => _onResume(item.Entry);
 
@@ -44,7 +52,7 @@ public partial class RecentCastsViewModel : ObservableObject
     {
         if (!_dialogs.Confirm(
                 "Delete cast",
-                $"Delete “{item.DisplayName}” and its frames from disk? This frees space and can't be undone."))
+                $"Delete this rendering of “{item.DisplayName}” ({item.SpecText}) and its frames from disk? This frees space and can't be undone."))
             return;
 
         try
