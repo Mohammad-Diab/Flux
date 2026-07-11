@@ -160,10 +160,10 @@ public static class FrameFormat
     /// per tile fit fewer whole codewords into the fixed data-tile budget (8 bits → 53). The tiles
     /// left over past the packed codewords render as pad.
     /// </summary>
-    /// <param name="bitsPerTile">Colour depth in bits per tile (1–8).</param>
+    /// <param name="bitsPerTile">Colour depth in bits per tile (1–10).</param>
     public static int CodewordsForBits(int bitsPerTile)
     {
-        if (bitsPerTile is < 1 or > 8)
+        if (bitsPerTile is < 1 or > 10)
             throw new ArgumentOutOfRangeException(nameof(bitsPerTile));
         return DataTileCount * bitsPerTile / (CodewordLength * 8);
     }

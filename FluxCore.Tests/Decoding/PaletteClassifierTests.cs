@@ -39,7 +39,7 @@ public class PaletteClassifierTests
         var result = Classifier.Classify(255, 255, 255);
 
         Assert.True(result.IsLowConfidence);
-        Assert.True(result.NearestDistance > TileClassification.MaxTrustedDistance);
+        Assert.True(result.NearestDistance > Classifier.MaxTrustedDistance);
     }
 
     [Fact]
@@ -52,8 +52,35 @@ public class PaletteClassifierTests
 
         var midpoint = cramped.Classify(101, 100, 100);
 
-        Assert.True(midpoint.AmbiguityRatio > TileClassification.MaxTrustedAmbiguity);
+        Assert.True(midpoint.AmbiguityRatio > PaletteClassifier.MaxTrustedAmbiguity);
         Assert.True(midpoint.IsLowConfidence);
+    }
+
+    [Theory]
+    [InlineData(256, 24.0)]  // 36 × 2/3 — exactly today's constant
+    [InlineData(512, 17.6)]  // ~26 × 2/3 (reserved-white fill lands nearer a neighbour in the finer grid)
+    [InlineData(1024, 11.3)] // ~17 × 2/3, denser palette judged more strictly
+    public void MaxTrustedDistance_ScalesWithPaletteDensity(int count, double expected)
+    {
+        var classifier = new PaletteClassifier(ColorMap.FromCount(count));
+        Assert.Equal(expected, classifier.MaxTrustedDistance, precision: 1);
+    }
+
+    [Theory]
+    [InlineData(512)]
+    [InlineData(1024)]
+    public void Classify_ExactColors_AcrossCounts_ReturnIndexWithZeroDistance(int count)
+    {
+        var colorMap = ColorMap.FromCount(count);
+        var classifier = new PaletteClassifier(colorMap);
+
+        for (int i = 0; i < count; i++)
+        {
+            var color = colorMap.GetColor(i);
+            var result = classifier.Classify(color.R, color.G, color.B);
+            Assert.Equal(i, result.PaletteIndex);
+            Assert.Equal(0, result.NearestDistance, precision: 9);
+        }
     }
 
     [Fact]

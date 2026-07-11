@@ -145,10 +145,10 @@ public sealed class FrameLayout
     }
 
     /// <summary>Number of codewords carried at a given colour depth (bits per tile).</summary>
-    /// <param name="bitsPerTile">Colour depth (1-8).</param>
+    /// <param name="bitsPerTile">Colour depth (1-10).</param>
     public int CodewordsForBits(int bitsPerTile)
     {
-        if (bitsPerTile is < 1 or > 8)
+        if (bitsPerTile is < 1 or > 10)
             throw new ArgumentOutOfRangeException(nameof(bitsPerTile));
         return DataTileCount * bitsPerTile / (FrameFormat.CodewordLength * 8);
     }

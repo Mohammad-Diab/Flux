@@ -22,15 +22,24 @@ public static class PaletteGenerator
     /// <summary>Smallest supported colour count.</summary>
     public const int MinColorCount = 8;
 
-    /// <summary>Largest supported colour count.</summary>
-    public const int MaxColorCount = 256;
+    /// <summary>Largest supported colour count (10 bits per tile).</summary>
+    public const int MaxColorCount = 1024;
 
     private static readonly Rgb24 WhiteReplacement = new(18, 18, 43);
 
-    /// <summary>Determines whether a colour count is supported (a power of two in [8, 256]).</summary>
+    /// <summary>Determines whether a colour count is supported (a power of two in [8, 1024]).</summary>
     /// <param name="colorCount">Number of colours.</param>
     public static bool IsSupportedCount(int colorCount) =>
         colorCount is >= MinColorCount and <= MaxColorCount && (colorCount & (colorCount - 1)) == 0;
+
+    /// <summary>Bits per tile carried by a colour count (its base-2 log; 256→8, 512→9, 1024→10).</summary>
+    /// <param name="colorCount">A supported colour count.</param>
+    public static int BitsForCount(int colorCount)
+    {
+        if (!IsSupportedCount(colorCount))
+            throw new ArgumentOutOfRangeException(nameof(colorCount));
+        return BitOperations.Log2((uint)colorCount);
+    }
 
     /// <summary>Generates the palette for a colour count (a power of two in [8, 256]).</summary>
     /// <param name="colorCount">Number of colours.</param>
@@ -77,7 +86,9 @@ public static class PaletteGenerator
         return levels;
     }
 
-    private static double MinimumPairwiseDistance(Rgb24[] colors)
+    /// <summary>Smallest Euclidean RGB distance between any two colours in a palette.</summary>
+    /// <param name="colors">Palette colours.</param>
+    internal static double MinimumPairwiseDistance(Rgb24[] colors)
     {
         double minSquared = double.MaxValue;
         for (int a = 0; a < colors.Length; a++)

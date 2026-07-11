@@ -11,7 +11,7 @@ public class PaletteGeneratorTests
     [InlineData(7)]
     [InlineData(0)]
     [InlineData(3)]
-    [InlineData(512)]
+    [InlineData(2048)]
     [InlineData(255)]
     public void Generate_InvalidCount_Throws(int count)
     {
@@ -25,6 +25,8 @@ public class PaletteGeneratorTests
     [InlineData(64)]
     [InlineData(128)]
     [InlineData(256)]
+    [InlineData(512)]
+    [InlineData(1024)]
     public void Generate_ProducesExactCount_UniqueNonWhiteColors(int count)
     {
         var palette = PaletteGenerator.Generate(count);

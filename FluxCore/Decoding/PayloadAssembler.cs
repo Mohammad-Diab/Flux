@@ -64,7 +64,7 @@ public sealed class PayloadAssembler : IDisposable
             throw new ArgumentException("Metadata describes an undecodable frame format.", nameof(metadata));
 
         _metadata = metadata;
-        _bytesPerFrame = metadata.EccLevel.PayloadBytesPerFrame(layout.CodewordCount);
+        _bytesPerFrame = metadata.EccLevel.PayloadBytesPerFrame(layout.CodewordsForBits(metadata.BitsPerTile));
         _useDisk = metadata.PayloadLength >= diskThresholdBytes;
 
         if (_useDisk)
@@ -101,7 +101,7 @@ public sealed class PayloadAssembler : IDisposable
             throw new ArgumentException("Metadata describes an undecodable frame format.", nameof(metadata));
 
         _metadata = metadata;
-        _bytesPerFrame = metadata.EccLevel.PayloadBytesPerFrame(layout.CodewordCount);
+        _bytesPerFrame = metadata.EccLevel.PayloadBytesPerFrame(layout.CodewordsForBits(metadata.BitsPerTile));
         _useDisk = true;
         _persistent = true;
         _diskFrameIds = new HashSet<uint>();

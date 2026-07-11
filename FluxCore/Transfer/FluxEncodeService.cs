@@ -77,7 +77,8 @@ public sealed class FluxEncodeService
         // After a possible recompress (which wipes stale renders) create the render's frames folder.
         Directory.CreateDirectory(framesDirectory);
 
-        int bytesPerFrame = options.EccLevel.PayloadBytesPerFrame(layout.CodewordCount);
+        int bitsPerTile = PaletteGenerator.BitsForCount(options.ColorCount);
+        int bytesPerFrame = options.EccLevel.PayloadBytesPerFrame(layout.CodewordsForBits(bitsPerTile));
         uint payloadFrames = (uint)Math.Max(1, (payload.Length + bytesPerFrame - 1) / bytesPerFrame);
         uint totalFrames = payloadFrames + 1;
 
@@ -234,7 +235,9 @@ public sealed class FluxEncodeService
         IProgress<EncodeProgress>? progress,
         CancellationToken cancellationToken)
     {
-        int bytesPerFrame = metadata.EccLevel.PayloadBytesPerFrame(layout.CodewordCount);
+        int bitsPerTile = PaletteGenerator.BitsForCount(metadata.ColorCount);
+        int bytesPerFrame = metadata.EccLevel.PayloadBytesPerFrame(layout.CodewordsForBits(bitsPerTile));
+        var colorMap = metadata.ColorCount == 256 ? ColorMap.Default : ColorMap.FromCount(metadata.ColorCount);
         uint totalFrames = metadata.TotalFrames;
         int rendered = 0;
         int completed = 0;
@@ -247,7 +250,7 @@ public sealed class FluxEncodeService
                 var framePath = Path.Combine(framesDirectory, FrameFileName((uint)id));
                 if (!File.Exists(framePath))
                 {
-                    var png = RenderFrame(metadata, payload, bytesPerFrame, layout, (uint)id, totalFrames);
+                    var png = RenderFrame(metadata, payload, bytesPerFrame, layout, colorMap, bitsPerTile, (uint)id, totalFrames);
                     var tempPath = framePath + ".tmp";
                     await File.WriteAllBytesAsync(tempPath, png, token);
                     File.Move(tempPath, framePath, overwrite: true);
@@ -262,7 +265,8 @@ public sealed class FluxEncodeService
     }
 
     private static byte[] RenderFrame(
-        MetadataPayload metadata, byte[] payload, int bytesPerFrame, FrameLayout layout, uint frameId, uint totalFrames)
+        MetadataPayload metadata, byte[] payload, int bytesPerFrame, FrameLayout layout,
+        ColorMap colorMap, int bitsPerTile, uint frameId, uint totalFrames)
     {
         FrameTileMap map;
         if (frameId == 0)
@@ -273,16 +277,17 @@ public sealed class FluxEncodeService
         {
             int offset = (int)(frameId - 1) * bytesPerFrame;
             int length = Math.Clamp(payload.Length - offset, 0, bytesPerFrame);
-            map = FrameEncoder.BuildFrame(frameId, totalFrames, payload.AsSpan(offset, length), metadata.EccLevel, layout: layout);
+            map = FrameEncoder.BuildFrame(frameId, totalFrames, payload.AsSpan(offset, length), metadata.EccLevel, bitsPerTile, layout);
         }
 
-        return FrameRenderer.RenderPng(map, ColorMap.Default);
+        return FrameRenderer.RenderPng(map, colorMap);
     }
 
     private static FrameLayout BuildPayloadLayout(EncodeOptions options)
     {
         var layout = new FrameLayout(options.GridWidthTiles, options.GridHeightTiles, options.TilePixelSize);
-        int bytesPerFrame = options.EccLevel.PayloadBytesPerFrame(layout.CodewordCount);
+        int codewords = layout.CodewordsForBits(PaletteGenerator.BitsForCount(options.ColorCount));
+        int bytesPerFrame = options.EccLevel.PayloadBytesPerFrame(codewords);
         if (bytesPerFrame > ushort.MaxValue)
             throw new ArgumentException(
                 $"Grid {options.GridWidthTiles}×{options.GridHeightTiles} at {options.EccLevel} ECC needs {bytesPerFrame} bytes per frame, over the {ushort.MaxValue}-byte per-frame limit.",

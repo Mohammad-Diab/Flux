@@ -58,6 +58,9 @@ public sealed class MetadataPayload
     /// <summary>Gets the data-tile colour count; the palette is regenerated from it via <see cref="PaletteGenerator"/>.</summary>
     public int ColorCount { get; }
 
+    /// <summary>Gets the colour depth in bits per tile (the base-2 log of <see cref="ColorCount"/>).</summary>
+    public int BitsPerTile => PaletteGenerator.BitsForCount(ColorCount);
+
     /// <summary>Creates and validates the transfer metadata.</summary>
     public MetadataPayload(
         byte[] sha256,

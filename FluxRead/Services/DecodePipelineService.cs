@@ -149,22 +149,27 @@ public sealed class DecodePipelineService
             $"{metadata.OriginalName} · {metadata.TotalFrames} frames · {metadata.PayloadType}", true));
         progress?.Report(new DecodeProgress(1, files.Length));
 
+        // Payload frames adopt the transfer's palette; frame 0 stayed on the palette-independent cube path.
+        var payloadDecoder = metadata.ColorCount == 256 ? decoder : new FrameDecoder(ColorMap.FromCount(metadata.ColorCount));
+        int bitsPerTile = metadata.BitsPerTile;
+
         var assembler = new PayloadAssembler(metadata);
         for (int i = 1; i < files.Length; i++)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            rows.Add(DecodePayloadFrame(decoder, assembler, files[i], layout));
+            rows.Add(DecodePayloadFrame(payloadDecoder, assembler, files[i], layout, bitsPerTile));
             progress?.Report(new DecodeProgress(i + 1, files.Length));
         }
 
         return new FolderDecodeResult(metadata, assembler, rows, assembler.IsComplete, null);
     }
 
-    private static FrameRow DecodePayloadFrame(FrameDecoder decoder, PayloadAssembler assembler, string file, FrameLayout layout)
+    private static FrameRow DecodePayloadFrame(
+        FrameDecoder decoder, PayloadAssembler assembler, string file, FrameLayout layout, int bitsPerTile)
     {
         var name = Path.GetFileName(file);
         using var bitmap = SKBitmap.Decode(file);
-        var result = decoder.Decode(bitmap, layout: layout);
+        var result = decoder.Decode(bitmap, bitsPerTile: bitsPerTile, layout: layout);
 
         if (result.Status != DecodeStatus.Success)
         {

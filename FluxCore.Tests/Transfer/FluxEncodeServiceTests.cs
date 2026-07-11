@@ -225,6 +225,40 @@ public class FluxEncodeServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task Encode_HigherColorDepth_RoundTripsThroughAdoptedPalette()
+    {
+        var source = await CreateSourceFileAsync(40_000);
+        var options = new EncodeOptions(Compress: false, ColorCount: 512);
+
+        var result = await _service.EncodeAsync(source, SessionRoot, options);
+        Assert.True(result.TotalFrames >= 2);
+
+        using var frame0 = SKBitmap.Decode(
+            Path.Combine(result.FramesDirectory, FluxEncodeService.FrameFileName(0)));
+        var metaDecode = new FrameDecoder(ColorMap.Default).DecodeMetadataFrame(frame0);
+        Assert.Equal(DecodeStatus.Success, metaDecode.Status);
+
+        var metadata = MetadataPayload.Deserialize(metaDecode.Payload!);
+        Assert.Equal(512, metadata.ColorCount);
+        Assert.True(metadata.TryBuildLayout(out var layout));
+
+        int bits = PaletteGenerator.BitsForCount(metadata.ColorCount);
+        var payloadDecoder = new FrameDecoder(ColorMap.FromCount(metadata.ColorCount));
+
+        var assembler = new PayloadAssembler(metadata);
+        for (uint id = 1; id < result.TotalFrames; id++)
+        {
+            using var bitmap = SKBitmap.Decode(
+                Path.Combine(result.FramesDirectory, FluxEncodeService.FrameFileName(id)));
+            var decode = payloadDecoder.Decode(bitmap, bitsPerTile: bits, layout: layout);
+            Assert.Equal(DecodeStatus.Success, decode.Status);
+            Assert.True(assembler.AddFrame(decode.Header!.Value, decode.Payload!));
+        }
+
+        Assert.Equal(await File.ReadAllBytesAsync(source), assembler.AssembleAndVerify());
+    }
+
+    [Fact]
     public async Task Encode_GridExceedingPerFrameCap_Throws()
     {
         var source = await CreateSourceFileAsync(1000);

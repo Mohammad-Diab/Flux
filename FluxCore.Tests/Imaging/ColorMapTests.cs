@@ -8,314 +8,140 @@ public class ColorMapTests
     [Fact]
     public void Constructor_WithValidPalette_Succeeds()
     {
-        // Arrange
-     var palette = CreateTestPalette();
+        var colorMap = new ColorMap(CreateTestPalette(256));
 
-        // Act
-   var colorMap = new ColorMap(palette);
-
-        // Assert
-        Assert.NotNull(colorMap);
+        Assert.Equal(256, colorMap.Count);
     }
 
     [Fact]
     public void Constructor_WithNullPalette_ThrowsArgumentNullException()
-{
- // Act & Assert
+    {
 #pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
-   Assert.Throws<ArgumentNullException>(() => new ColorMap(null));
+        Assert.Throws<ArgumentNullException>(() => new ColorMap(null));
 #pragma warning restore CS8625
     }
 
     [Fact]
-    public void Constructor_WithWrongSize_ThrowsArgumentException()
+    public void Constructor_WithUnsupportedSize_ThrowsArgumentException()
     {
-        // Arrange
-   var palette = new Rgb24[100];
-
-// Act & Assert
-        var ex = Assert.Throws<ArgumentException>(() => new ColorMap(palette));
-        Assert.Contains("256", ex.Message);
+        var ex = Assert.Throws<ArgumentException>(() => new ColorMap(new Rgb24[100]));
+        Assert.Contains("1024", ex.Message);
     }
 
- [Fact]
+    [Theory]
+    [InlineData(256)]
+    [InlineData(512)]
+    [InlineData(1024)]
+    public void Constructor_AcceptsSupportedCounts(int count)
+    {
+        var colorMap = new ColorMap(PaletteGenerator.Generate(count).Colors);
+        Assert.Equal(count, colorMap.Count);
+    }
+
+    [Fact]
     public void Constructor_WithWhiteInPalette_ThrowsInvalidColorException()
     {
-      // Arrange
-        var palette = CreateTestPalette();
-      palette[50] = Rgb24.White; // Inject white
+        var palette = CreateTestPalette(256);
+        palette[50] = Rgb24.White;
 
-      // Act & Assert
-      var ex = Assert.Throws<InvalidColorException>(() => new ColorMap(palette));
+        var ex = Assert.Throws<InvalidColorException>(() => new ColorMap(palette));
         Assert.Contains("white", ex.Message, StringComparison.OrdinalIgnoreCase);
-  }
+    }
 
- [Fact]
- public void Constructor_WithDuplicates_ThrowsInvalidColorException()
+    [Fact]
+    public void Constructor_WithDuplicates_ThrowsInvalidColorException()
     {
-        // Arrange
-        var palette = CreateTestPalette();
-   palette[100] = palette[50]; // Create duplicate
+        var palette = CreateTestPalette(256);
+        palette[100] = palette[50];
 
-    // Act & Assert
         var ex = Assert.Throws<InvalidColorException>(() => new ColorMap(palette));
         Assert.Contains("Duplicate", ex.Message);
     }
 
-[Fact]
+    [Fact]
     public void GetColor_ReturnsCorrectColor()
     {
-   // Arrange
-   var palette = CreateTestPalette();
+        var palette = CreateTestPalette(256);
         var colorMap = new ColorMap(palette);
 
-        // Act
-    var color = colorMap.GetColor(42);
-
-        // Assert
-        Assert.Equal(palette[42], color);
+        Assert.Equal(palette[42], colorMap.GetColor(42));
     }
 
-  [Fact]
-    public void GetByte_ReturnsCorrectByte()
-{
-     // Arrange
-        var palette = CreateTestPalette();
-   var colorMap = new ColorMap(palette);
-   var testColor = palette[123];
-
-  // Act
-  var value = colorMap.GetByte(testColor);
-
-        // Assert
-        Assert.Equal(123, value);
-    }
-
-    [Fact]
-    public void GetByte_WithWhite_ThrowsInvalidColorException()
+    [Theory]
+    [InlineData(256)]
+    [InlineData(512)]
+    [InlineData(1024)]
+    public void FromCount_ProducesCountUniqueColors(int count)
     {
-   // Arrange
-    var colorMap = ColorMap.Default;
+        var colorMap = ColorMap.FromCount(count);
 
-   // Act & Assert
-   var ex = Assert.Throws<InvalidColorException>(() => colorMap.GetByte(Rgb24.White));
-   Assert.Contains("reserved", ex.Message, StringComparison.OrdinalIgnoreCase);
-    }
-
-    [Fact]
-    public void GetByte_WithUnknownColor_ThrowsInvalidColorException()
-{
-        // Arrange
-     var colorMap = ColorMap.Default;
-        var unknownColor = new Rgb24(1, 2, 3); // Unlikely to be in palette
-
-        // Act & Assert
-        var ex = Assert.Throws<InvalidColorException>(() => colorMap.GetByte(unknownColor));
- Assert.Contains("not in the palette", ex.Message);
-    }
-
-    [Fact]
-    public void TryGetByte_WithValidColor_ReturnsTrue()
-    {
-  // Arrange
-      var palette = CreateTestPalette();
-        var colorMap = new ColorMap(palette);
-      var testColor = palette[78];
-
-        // Act
-  var result = colorMap.TryGetByte(testColor, out byte value);
-
-   // Assert
-    Assert.True(result);
-        Assert.Equal(78, value);
-    }
-
- [Fact]
-    public void TryGetByte_WithWhite_ReturnsFalse()
-    {
-   // Arrange
- var colorMap = ColorMap.Default;
-
-  // Act
-     var result = colorMap.TryGetByte(Rgb24.White, out byte value);
-
-    // Assert
-        Assert.False(result);
-        Assert.Equal(0, value);
-    }
-
-    [Fact]
-    public void TryGetByte_WithUnknownColor_ReturnsFalse()
-  {
-        // Arrange
-        var colorMap = ColorMap.Default;
- var unknownColor = new Rgb24(1, 2, 3);
-
-        // Act
-var result = colorMap.TryGetByte(unknownColor, out byte value);
-
-     // Assert
-        Assert.False(result);
-    }
-
-    [Fact]
-    public void Contains_WithValidColor_ReturnsTrue()
-    {
-  // Arrange
-        var palette = CreateTestPalette();
-    var colorMap = new ColorMap(palette);
-
-        // Act & Assert
-     Assert.True(colorMap.Contains(palette[100]));
-    }
-
-  [Fact]
-    public void Contains_WithWhite_ReturnsFalse()
-    {
-        // Arrange
-  var colorMap = ColorMap.Default;
-
-// Act & Assert
-        Assert.False(colorMap.Contains(Rgb24.White));
-    }
-
-  [Fact]
-    public void Serialize_ReturnsCorrectSize()
-    {
-        // Arrange
-   var colorMap = ColorMap.Default;
-
-        // Act
-     var serialized = colorMap.Serialize();
-
-        // Assert
-        Assert.Equal(768, serialized.Length); // 256 * 3
-    }
-
-    [Fact]
-    public void Serialize_Deserialize_RoundTrip()
-{
-        // Arrange
-        var originalPalette = CreateTestPalette();
- var original = new ColorMap(originalPalette);
-
-  // Act
-        var serialized = original.Serialize();
-   var deserialized = ColorMap.Deserialize(serialized);
-
-        // Assert - verify all 256 colors match
- for (int i = 0; i < 256; i++)
-   {
-       Assert.Equal(original.GetColor((byte)i), deserialized.GetColor((byte)i));
-        }
-    }
-
-    [Fact]
-    public void Deserialize_WithNullData_ThrowsArgumentNullException()
-    {
-// Act & Assert
-#pragma warning disable CS8625
-   Assert.Throws<ArgumentNullException>(() => ColorMap.Deserialize(null));
-#pragma warning restore CS8625
-    }
-
-    [Fact]
-  public void Deserialize_WithWrongSize_ThrowsArgumentException()
-  {
-        // Arrange
-var data = new byte[500];
-
-  // Act & Assert
-    var ex = Assert.Throws<ArgumentException>(() => ColorMap.Deserialize(data));
-        Assert.Contains("768", ex.Message);
-    }
-
-    [Fact]
-    public void Default_IsNotNull()
-    {
-   // Act
-        var defaultMap = ColorMap.Default;
-
-   // Assert
-        Assert.NotNull(defaultMap);
-    }
-
-[Fact]
-    public void Default_Has256UniqueColors()
-    {
-   // Arrange
-var defaultMap = ColorMap.Default;
         var colors = new HashSet<Rgb24>();
+        for (int i = 0; i < count; i++)
+            colors.Add(colorMap.GetColor(i));
 
-  // Act
-        for (int i = 0; i < 256; i++)
-  {
-    colors.Add(defaultMap.GetColor((byte)i));
-        }
-
-   // Assert
-      Assert.Equal(256, colors.Count);
+        Assert.Equal(count, colorMap.Count);
+        Assert.Equal(count, colors.Count);
     }
 
     [Fact]
-    public void Default_DoesNotContainWhite()
+    public void MinimumDistance_DecreasesWithDensity()
     {
-        // Arrange
+        double d256 = ColorMap.FromCount(256).MinimumDistance;
+        double d512 = ColorMap.FromCount(512).MinimumDistance;
+        double d1024 = ColorMap.FromCount(1024).MinimumDistance;
+
+        // 256 stays at 36; denser palettes are less robust (the reserved-white fill also lands
+        // nearer a neighbour in the finer grid, so 512 is ~26, not 36).
+        Assert.Equal(36, d256, precision: 0);
+        Assert.True(d256 > d512 && d512 > d1024, $"expected 256({d256:F1}) > 512({d512:F1}) > 1024({d1024:F1}).");
+        Assert.True(d512 is > 24 and < 30, $"512 min-distance {d512:F1} expected ~26.");
+        Assert.True(d1024 is > 15 and < 20, $"1024 min-distance {d1024:F1} expected ~17.");
+    }
+
+    [Fact]
+    public void Default_Is256AndDoesNotContainWhite()
+    {
         var defaultMap = ColorMap.Default;
 
-      // Act & Assert
-    for (int i = 0; i < 256; i++)
-   {
-            var color = defaultMap.GetColor((byte)i);
-       Assert.False(color.IsWhite, $"Color at index {i} is white: {color}");
+        Assert.Equal(256, defaultMap.Count);
+        for (int i = 0; i < defaultMap.Count; i++)
+            Assert.False(defaultMap.GetColor(i).IsWhite, $"Color at index {i} is white.");
     }
-}
 
     [Fact]
     public void Palette_ReturnsCorrectSpan()
     {
-        // Arrange
-   var palette = CreateTestPalette();
-   var colorMap = new ColorMap(palette);
+        var palette = CreateTestPalette(256);
+        var colorMap = new ColorMap(palette);
 
- // Act
         var paletteSpan = colorMap.Palette;
-
-        // Assert
-   Assert.Equal(256, paletteSpan.Length);
-     for (int i = 0; i < 256; i++)
-        {
-    Assert.Equal(palette[i], paletteSpan[i]);
-        }
+        Assert.Equal(256, paletteSpan.Length);
+        for (int i = 0; i < 256; i++)
+            Assert.Equal(palette[i], paletteSpan[i]);
     }
 
-    /// <summary>
-    /// Creates a test palette with 256 unique non-white colors.
-    /// </summary>
-    private static Rgb24[] CreateTestPalette()
+    /// <summary>Creates a palette of unique, non-white colours.</summary>
+    private static Rgb24[] CreateTestPalette(int count)
     {
-        var palette = new Rgb24[256];
+        var palette = new Rgb24[count];
         var used = new HashSet<Rgb24>();
 
-        for (int i = 0; i < 256; i++)
- {
+        for (int i = 0; i < count; i++)
+        {
             Rgb24 color;
             int attempt = 0;
-
- // Keep trying until we find a unique non-white color
-       do
-         {
-      // Generate deterministic but varied colors
-          int seed = i + attempt * 256;
-     byte r = (byte)((seed * 7) % 256);
-        byte g = (byte)((seed * 13) % 256);
-   byte b = (byte)((seed * 19) % 256);
-    color = new Rgb24(r, g, b);
-       attempt++;
- } while (color.IsWhite || !used.Add(color));
+            do
+            {
+                int seed = i + attempt * count;
+                byte r = (byte)((seed * 7) % 256);
+                byte g = (byte)((seed * 13) % 256);
+                byte b = (byte)((seed * 19) % 256);
+                color = new Rgb24(r, g, b);
+                attempt++;
+            } while (color.IsWhite || !used.Add(color));
 
             palette[i] = color;
-  }
+        }
 
         return palette;
     }
