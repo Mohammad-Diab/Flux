@@ -45,7 +45,7 @@ public static class FrameEncoder
             Crc32Helper.ComputeChecksum(payload),
             eccLevel);
 
-        var tiles = new byte[layout.TotalTiles];
+        var tiles = new ushort[layout.TotalTiles];
 
         WriteHeaderCopies(header, tiles, layout);
         WritePayloadCodewords(payload, eccLevel, tiles, bitsPerTile, layout);
@@ -83,7 +83,7 @@ public static class FrameEncoder
             }
         }
 
-        var tiles = new byte[FrameFormat.TotalTiles];
+        var tiles = new ushort[FrameFormat.TotalTiles];
         var positions = FrameFormat.MetadataFrameTiles;
         var packed = TileBitPacker.Pack(stream, CubeCornerColors.BitsPerTile);
         for (int t = 0; t < FrameFormat.MetadataTilesUsed; t++)
@@ -96,7 +96,7 @@ public static class FrameEncoder
         return new FrameTileMap(header, tiles, TileColorScheme.CubeCorner8);
     }
 
-    private static void WriteHeaderCopies(in FrameHeader header, byte[] tiles, FrameLayout layout)
+    private static void WriteHeaderCopies(in FrameHeader header, ushort[] tiles, FrameLayout layout)
     {
         Span<byte> symbols = stackalloc byte[ReedSolomonBlockCodec.EncodedHeaderLength];
         ReedSolomonBlockCodec.EncodeHeader(header, symbols);
@@ -113,7 +113,7 @@ public static class FrameEncoder
     }
 
     private static void WritePayloadCodewords(
-        ReadOnlySpan<byte> payload, EccLevel eccLevel, byte[] tiles, int bitsPerTile, FrameLayout layout)
+        ReadOnlySpan<byte> payload, EccLevel eccLevel, ushort[] tiles, int bitsPerTile, FrameLayout layout)
     {
         int codewordCount = layout.CodewordsForBits(bitsPerTile);
         int encodedLength = codewordCount * FrameFormat.CodewordLength;

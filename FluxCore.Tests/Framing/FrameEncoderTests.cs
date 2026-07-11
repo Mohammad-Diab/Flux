@@ -43,7 +43,7 @@ public class FrameEncoderTests
             var positions = FrameFormat.GetHeaderCopyTiles(copy);
             for (int i = 0; i < symbols.Length; i++)
             {
-                symbols[i] = map.GetTileValue(positions[i].X, positions[i].Y);
+                symbols[i] = (byte)map.GetTileValue(positions[i].X, positions[i].Y);
             }
 
             Assert.True(ReedSolomonBlockCodec.TryDecodeHeader(symbols, out var decoded));
@@ -65,7 +65,7 @@ public class FrameEncoderTests
         {
             var (c, s) = FrameFormat.ToCodewordSymbol(t);
             var (x, y) = FrameFormat.DataTiles[t];
-            codewords[c * FrameFormat.CodewordLength + s] = map.GetTileValue(x, y);
+            codewords[c * FrameFormat.CodewordLength + s] = (byte)map.GetTileValue(x, y);
         }
 
         var decoded = new byte[level.PayloadBytesPerFrame()];
@@ -86,7 +86,7 @@ public class FrameEncoderTests
         {
             var (c, s) = FrameFormat.ToCodewordSymbol(t);
             var (x, y) = FrameFormat.DataTiles[t];
-            codewords[c * FrameFormat.CodewordLength + s] = map.GetTileValue(x, y);
+            codewords[c * FrameFormat.CodewordLength + s] = (byte)map.GetTileValue(x, y);
         }
 
         var decoded = new byte[EccLevel.Medium.PayloadBytesPerFrame()];

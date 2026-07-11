@@ -19,7 +19,7 @@ public enum TileColorScheme
 /// </summary>
 public sealed class FrameTileMap
 {
-    private readonly byte[] _tileValues;
+    private readonly ushort[] _tileValues;
 
     /// <summary>Gets the header this frame was built from.</summary>
     public FrameHeader Header { get; }
@@ -36,7 +36,7 @@ public sealed class FrameTileMap
     /// <summary>Tile values are row-major: palette indices for Palette256, 0-7 cube-corner indices for CubeCorner8.</summary>
     public FrameTileMap(
         FrameHeader header,
-        byte[] tileValues,
+        ushort[] tileValues,
         TileColorScheme colorScheme = TileColorScheme.Palette256,
         FrameLayout? layout = null)
     {
@@ -57,5 +57,5 @@ public sealed class FrameTileMap
     /// </summary>
     /// <param name="x">Tile column.</param>
     /// <param name="y">Tile row.</param>
-    public byte GetTileValue(int x, int y) => _tileValues[y * Layout.GridWidthTiles + x];
+    public ushort GetTileValue(int x, int y) => _tileValues[y * Layout.GridWidthTiles + x];
 }

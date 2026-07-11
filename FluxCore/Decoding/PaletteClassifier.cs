@@ -8,7 +8,7 @@ namespace FluxCore.Decoding;
 /// <param name="PaletteIndex">Index of the nearest palette color.</param>
 /// <param name="NearestDistance">Euclidean RGB distance to the nearest palette color.</param>
 /// <param name="AmbiguityRatio">Ratio of nearest to second-nearest distance (near 1 = ambiguous).</param>
-public readonly record struct TileClassification(byte PaletteIndex, double NearestDistance, double AmbiguityRatio)
+public readonly record struct TileClassification(ushort PaletteIndex, double NearestDistance, double AmbiguityRatio)
 {
     /// <summary>Maximum trusted distance to the nearest palette color.</summary>
     public const double MaxTrustedDistance = 24;
@@ -80,6 +80,6 @@ public sealed class PaletteClassifier
         double second = Math.Sqrt(secondBest);
         double ambiguity = second < 1e-9 ? 1 : nearest / second;
 
-        return new TileClassification((byte)bestIndex, nearest, ambiguity);
+        return new TileClassification((ushort)bestIndex, nearest, ambiguity);
     }
 }

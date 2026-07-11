@@ -46,8 +46,8 @@ public sealed class ColorMap
         }
     }
 
-    /// <summary>Converts a byte value to its palette color.</summary>
-    public Rgb24 GetColor(byte value) => _byteToColor[value];
+    /// <summary>Converts a tile value to its palette color.</summary>
+    public Rgb24 GetColor(int value) => _byteToColor[value];
 
     /// <summary>Converts a palette color back to its byte value.</summary>
     public byte GetByte(Rgb24 color)

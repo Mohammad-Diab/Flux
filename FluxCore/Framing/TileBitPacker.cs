@@ -4,8 +4,8 @@ namespace FluxCore.Framing;
 /// Packs a byte stream into fixed-width tile values and back, MSB-first: the first bit of the
 /// stream becomes the most-significant bit of the first tile value. This lets a frame carry data
 /// at a chosen colour depth — 8 bits per tile is one byte per tile; fewer bits pack several tiles
-/// per byte (a denser palette carries more bits, a sparser one fewer). The metadata frame uses
-/// this at 3 bits per tile.
+/// per byte and more bits (up to 10, for a 1024-colour palette) carry more per tile. Tile values
+/// are <see cref="ushort"/> so depths above 8 fit. The metadata frame uses this at 3 bits per tile.
 /// </summary>
 public static class TileBitPacker
 {
@@ -18,13 +18,13 @@ public static class TileBitPacker
 
     /// <summary>Packs a byte stream into tile values of <paramref name="bitsPerTile"/> bits each (MSB-first).</summary>
     /// <param name="data">Bytes to pack.</param>
-    /// <param name="bitsPerTile">Bits carried per tile (1–8).</param>
-    public static byte[] Pack(ReadOnlySpan<byte> data, int bitsPerTile)
+    /// <param name="bitsPerTile">Bits carried per tile (1–10).</param>
+    public static ushort[] Pack(ReadOnlySpan<byte> data, int bitsPerTile)
     {
         ValidateDepth(bitsPerTile);
 
         int totalBits = data.Length * 8;
-        var tiles = new byte[TileCount(data.Length, bitsPerTile)];
+        var tiles = new ushort[TileCount(data.Length, bitsPerTile)];
         for (int t = 0; t < tiles.Length; t++)
         {
             int value = 0;
@@ -36,7 +36,7 @@ public static class TileBitPacker
                 value |= bit << (bitsPerTile - 1 - k);
             }
 
-            tiles[t] = (byte)value;
+            tiles[t] = (ushort)value;
         }
 
         return tiles;
@@ -44,9 +44,9 @@ public static class TileBitPacker
 
     /// <summary>Unpacks tile values back into <paramref name="byteCount"/> bytes (inverse of <see cref="Pack"/>).</summary>
     /// <param name="tiles">Tile values to unpack.</param>
-    /// <param name="bitsPerTile">Bits carried per tile (1–8).</param>
+    /// <param name="bitsPerTile">Bits carried per tile (1–10).</param>
     /// <param name="byteCount">Number of bytes to recover.</param>
-    public static byte[] Unpack(ReadOnlySpan<byte> tiles, int bitsPerTile, int byteCount)
+    public static byte[] Unpack(ReadOnlySpan<ushort> tiles, int bitsPerTile, int byteCount)
     {
         ValidateDepth(bitsPerTile);
 
@@ -70,7 +70,7 @@ public static class TileBitPacker
 
     private static void ValidateDepth(int bitsPerTile)
     {
-        if (bitsPerTile is < 1 or > 8)
-            throw new ArgumentOutOfRangeException(nameof(bitsPerTile), "Bits per tile must be between 1 and 8.");
+        if (bitsPerTile is < 1 or > 10)
+            throw new ArgumentOutOfRangeException(nameof(bitsPerTile), "Bits per tile must be between 1 and 10.");
     }
 }

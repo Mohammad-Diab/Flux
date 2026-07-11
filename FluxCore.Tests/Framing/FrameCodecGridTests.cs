@@ -16,10 +16,10 @@ public class FrameCodecGridTests
         return data;
     }
 
-    private static byte[] DataTileValues(FrameTileMap map)
+    private static ushort[] DataTileValues(FrameTileMap map)
     {
         var layout = map.Layout;
-        var values = new byte[layout.DataTiles.Count];
+        var values = new ushort[layout.DataTiles.Count];
         for (int t = 0; t < values.Length; t++)
         {
             var (x, y) = layout.DataTiles[t];

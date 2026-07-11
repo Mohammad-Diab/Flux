@@ -14,9 +14,9 @@ public class FrameCodecDepthTests
         return data;
     }
 
-    private static byte[] DataTileValues(FrameTileMap map)
+    private static ushort[] DataTileValues(FrameTileMap map)
     {
-        var values = new byte[FrameFormat.DataTiles.Count];
+        var values = new ushort[FrameFormat.DataTiles.Count];
         for (int t = 0; t < values.Length; t++)
         {
             var (x, y) = FrameFormat.DataTiles[t];

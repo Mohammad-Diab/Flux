@@ -21,6 +21,8 @@ public class TileBitPackerTests
     [InlineData(6)]
     [InlineData(7)]
     [InlineData(8)]
+    [InlineData(9)]
+    [InlineData(10)]
     public void PackThenUnpack_RoundTrips(int bitsPerTile)
     {
         var data = Deterministic(200);
@@ -35,12 +37,13 @@ public class TileBitPackerTests
     public void Pack_EightBits_IsIdentity()
     {
         var data = Deterministic(64);
-        Assert.Equal(data, TileBitPacker.Pack(data, 8));
+        Assert.Equal(Array.ConvertAll(data, b => (ushort)b), TileBitPacker.Pack(data, 8));
     }
 
     [Theory]
     [InlineData(3)]
     [InlineData(6)]
+    [InlineData(10)]
     public void Pack_TileValuesFitInDepth(int bitsPerTile)
     {
         var tiles = TileBitPacker.Pack(Deterministic(100), bitsPerTile);
@@ -62,7 +65,7 @@ public class TileBitPackerTests
     {
         // 0b1011_0010, MSB-first in 3-bit groups -> 101 | 100 | 1(00 padded) = [5, 4, 4].
         var tiles = TileBitPacker.Pack([0b1011_0010], 3);
-        Assert.Equal(new byte[] { 0b101, 0b100, 0b100 }, tiles);
+        Assert.Equal(new ushort[] { 0b101, 0b100, 0b100 }, tiles);
     }
 
     [Fact]
@@ -74,7 +77,7 @@ public class TileBitPackerTests
 
     [Theory]
     [InlineData(0)]
-    [InlineData(9)]
+    [InlineData(11)]
     public void InvalidDepth_Throws(int bitsPerTile)
     {
         Assert.Throws<ArgumentOutOfRangeException>(() => TileBitPacker.Pack([1, 2, 3], bitsPerTile));

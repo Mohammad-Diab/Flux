@@ -141,12 +141,12 @@ public sealed class FrameDecoder
         };
 
         var positions = FrameFormat.MetadataFrameTiles;
-        var tileValues = new byte[FrameFormat.MetadataTilesUsed];
+        var tileValues = new ushort[FrameFormat.MetadataTilesUsed];
         for (int t = 0; t < FrameFormat.MetadataTilesUsed; t++)
         {
             var (x, y) = positions[t];
             var sample = sampler.Sample(x, y);
-            tileValues[t] = (byte)CubeCornerColors.Classify(sample.R, sample.G, sample.B);
+            tileValues[t] = (ushort)CubeCornerColors.Classify(sample.R, sample.G, sample.B);
         }
 
         var stream = TileBitPacker.Unpack(tileValues, CubeCornerColors.BitsPerTile, FrameFormat.MetadataEncodedBytes);
@@ -287,10 +287,10 @@ public sealed class FrameDecoder
         return total == 0 ? 0 : (double)matches / total;
     }
 
-    private (byte[] Values, int LowConfidence, double MeanDistance, double MaxDistance) ClassifyDataTiles(
+    private (ushort[] Values, int LowConfidence, double MeanDistance, double MaxDistance) ClassifyDataTiles(
         TileSample[] samples, FrameLayout layout)
     {
-        var values = new byte[layout.DataTileCount];
+        var values = new ushort[layout.DataTileCount];
         int lowConfidence = 0;
         double totalDistance = 0;
         double maxDistance = 0;
@@ -322,7 +322,7 @@ public sealed class FrameDecoder
     /// <param name="correctedErrors">Total symbols corrected across all codewords.</param>
     /// <param name="layout">Grid layout; defaults to the canonical 160×90.</param>
     public static bool TryDecodePayloadTiles(
-        ReadOnlySpan<byte> dataTileValues, EccLevel eccLevel, int bitsPerTile,
+        ReadOnlySpan<ushort> dataTileValues, EccLevel eccLevel, int bitsPerTile,
         out byte[] payload, out int correctedErrors, FrameLayout? layout = null)
     {
         layout ??= FrameLayout.Default;
@@ -362,7 +362,8 @@ public sealed class FrameDecoder
             {
                 var (x, y) = positions[i];
                 var sample = sampleAt(x, y);
-                symbols[i] = _classifier.Classify(sample.R, sample.G, sample.B).PaletteIndex;
+                // Header symbols are RS bytes; palettes ≥256 only use indices 0-255 for the header.
+                symbols[i] = (byte)_classifier.Classify(sample.R, sample.G, sample.B).PaletteIndex;
             }
 
             if (ReedSolomonBlockCodec.TryDecodeHeader(symbols, out var candidate))
