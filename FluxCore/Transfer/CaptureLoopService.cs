@@ -301,7 +301,7 @@ public sealed class CaptureLoopService
                     assembler.AddFrame(fullHeader, decoded.Payload!);
                     Report(progress, CaptureLoopState.Resuming, assembler, metadata, fullHeader.FrameId, 0,
                         $"Resumed at frame {fullHeader.FrameId} ({assembler.ReceivedFrames}/{assembler.ExpectedPayloadFrames}).",
-                        EncodeThumbnail(capture));
+                        EncodeThumbnail(capture), quality: QualityOf(decoded.Diagnostics));
                     return true;
                 }
             }
@@ -370,7 +370,7 @@ public sealed class CaptureLoopService
 
             Report(progress, CaptureLoopState.WaitingForAdvance, assembler, metadata, accepted.Header.FrameId, reclicks,
                 $"Received frame {accepted.Header.FrameId} ({assembler.ReceivedFrames}/{assembler.ExpectedPayloadFrames}).",
-                accepted.Png);
+                accepted.Png, quality: accepted.Quality);
             return true;
         }
 
@@ -398,12 +398,12 @@ public sealed class CaptureLoopService
                 ? $"Recovered frame {accepted.Header.FrameId}. All frames received."
                 : $"Recovered frame {accepted.Header.FrameId}. {FormatMissingMessage(stillMissing)}";
             Report(progress, CaptureLoopState.RecoveringGaps, assembler, metadata, accepted.Header.FrameId, 0,
-                message, accepted.Png, stillMissing);
+                message, accepted.Png, stillMissing, quality: accepted.Quality);
         }
     }
 
     /// <summary>One poll tick: capture a stable image, probe, fully decode, and accept a new payload frame.</summary>
-    private async Task<(FrameHeader Header, byte[]? Png)?> TryAcquireAcceptableFrameAsync(
+    private async Task<(FrameHeader Header, byte[]? Png, FrameQuality Quality)?> TryAcquireAcceptableFrameAsync(
         PayloadAssembler assembler,
         MetadataPayload metadata,
         CancellationToken cancellationToken)
@@ -427,8 +427,14 @@ public sealed class CaptureLoopService
             return null;
 
         assembler.AddFrame(fullHeader, decoded.Payload!);
-        return (fullHeader, EncodeThumbnail(capture));
+        return (fullHeader, EncodeThumbnail(capture), QualityOf(decoded.Diagnostics));
     }
+
+    private FrameQuality QualityOf(DecodeDiagnostics diagnostics) => new(
+        diagnostics.TimingMatchRatio,
+        diagnostics.LowConfidenceDataTiles,
+        _payloadLayout.DataTileCount,
+        diagnostics.CorrectedErrors);
 
     private static string FormatMissingMessage(IReadOnlyList<uint> missing)
     {
@@ -532,7 +538,8 @@ public sealed class CaptureLoopService
         int reclicks = 0,
         string message = "",
         byte[]? png = null,
-        IReadOnlyList<uint>? missing = null)
+        IReadOnlyList<uint>? missing = null,
+        FrameQuality? quality = null)
     {
         progress?.Report(new LoopStatus(
             state,
@@ -545,7 +552,8 @@ public sealed class CaptureLoopService
             missing,
             assembler?.ReceivedBytes ?? 0,
             assembler is null ? 0 : (int)assembler.LastAcceptedId - assembler.ReceivedFrames,
-            metadata?.PayloadLength ?? 0));
+            metadata?.PayloadLength ?? 0,
+            quality));
     }
 
     private static TransferReport Cancelled(MetadataPayload? metadata, PayloadAssembler? assembler, int reclicks, int stalls, TimeSpan elapsed) =>

@@ -125,6 +125,24 @@ public class CaptureLoopServiceTests
     }
 
     [Fact]
+    public async Task Run_CleanTransfer_ReportsPassQualityPerAcceptedFrame()
+    {
+        var (frames, _, _) = BuildTransfer(25_000);
+        var screen = new FakeScreen(frames);
+        var loop = CreateLoop(screen);
+        var progress = new CollectingProgress();
+
+        var report = await loop.RunAsync(progress, Abort, CancellationToken.None);
+
+        Assert.Equal(CaptureLoopState.Complete, report.State);
+        var quality = progress.Items.Where(s => s.Quality is not null).Select(s => s.Quality!).ToList();
+        Assert.NotEmpty(quality);
+        // Exact PNG round-trip → every accepted frame decodes cleanly.
+        Assert.All(quality, q => Assert.Equal(FrameQualityVerdict.Pass, q.Verdict));
+        Assert.All(quality, q => Assert.True(q.DataTiles > 0 && q.TimingMatchRatio > 0.9));
+    }
+
+    [Fact]
     public async Task Run_DroppedClicks_RecoversByReclicking()
     {
         var (frames, payload, _) = BuildTransfer(20_000);

@@ -88,6 +88,34 @@ public sealed record CaptureLoopOptions(
     int StabilityIntervalMs = 120,
     int Frame0FailuresBeforeWarning = 10);
 
+/// <summary>How well the last accepted frame decoded on this channel.</summary>
+public enum FrameQualityVerdict
+{
+    /// <summary>Decoded cleanly: no low-confidence tiles and no corrections.</summary>
+    Pass,
+
+    /// <summary>Decoded, but with low-confidence tiles or corrected errors — the channel is close to its margin.</summary>
+    Marginal,
+}
+
+/// <summary>
+/// Decode-quality of one accepted frame, surfaced so the user can judge whether the chosen settings
+/// are safe on this channel (central to the test-frame / channel-check flow).
+/// </summary>
+/// <param name="TimingMatchRatio">Fraction of timing tiles matching the expected alternation (0-1).</param>
+/// <param name="LowConfidenceTiles">Data tiles classified with low confidence.</param>
+/// <param name="DataTiles">Total data tiles in the frame.</param>
+/// <param name="CorrectedErrors">Reed-Solomon symbol errors corrected across all codewords.</param>
+public sealed record FrameQuality(double TimingMatchRatio, int LowConfidenceTiles, int DataTiles, int CorrectedErrors)
+{
+    /// <summary>Gets the fraction of data tiles classified with low confidence (0-1).</summary>
+    public double LowConfidenceFraction => DataTiles > 0 ? (double)LowConfidenceTiles / DataTiles : 0;
+
+    /// <summary>Gets the verdict: clean = Pass, any low-confidence tile or correction = Marginal.</summary>
+    public FrameQualityVerdict Verdict =>
+        LowConfidenceTiles == 0 && CorrectedErrors == 0 ? FrameQualityVerdict.Pass : FrameQualityVerdict.Marginal;
+}
+
 /// <summary>Progress snapshot pushed to the UI as the loop runs.</summary>
 /// <param name="State">Current loop state.</param>
 /// <param name="ReceivedFrames">Distinct payload frames accepted so far.</param>
@@ -100,6 +128,7 @@ public sealed record CaptureLoopOptions(
 /// <param name="ReceivedBytes">Payload bytes received so far.</param>
 /// <param name="MissingFrames">Frames skipped below the highest accepted id (recoverable gaps).</param>
 /// <param name="TotalBytes">Total payload bytes of the transfer (0 until metadata is read).</param>
+/// <param name="Quality">Decode quality of the most recently accepted frame (null on non-accept ticks).</param>
 public sealed record LoopStatus(
     CaptureLoopState State,
     int ReceivedFrames,
@@ -111,7 +140,8 @@ public sealed record LoopStatus(
     IReadOnlyList<uint>? MissingFrameIds = null,
     long ReceivedBytes = 0,
     int MissingFrames = 0,
-    long TotalBytes = 0);
+    long TotalBytes = 0,
+    FrameQuality? Quality = null);
 
 /// <summary>Outcome of an optical transfer.</summary>
 /// <param name="State">Terminal loop state.</param>

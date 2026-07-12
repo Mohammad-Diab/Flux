@@ -91,6 +91,9 @@ public partial class LiveCaptureViewModel : ObservableObject
     [ObservableProperty]
     private string _etaText = "";
 
+    [ObservableProperty]
+    private string _qualityText = "";
+
     /// <summary>Payload frames received so far (for the elapsed/ETA estimate).</summary>
     public int ReceivedCount { get; private set; }
 
@@ -168,6 +171,13 @@ public partial class LiveCaptureViewModel : ObservableObject
 
         if (status.LastFramePng is { } png)
             LastThumbnail = BitmapConverter.FromPng(png);
+
+        if (status.Quality is { } q)
+        {
+            string verdict = q.Verdict == FrameQualityVerdict.Pass ? "clean" : "marginal — needs a cleaner channel";
+            QualityText =
+                $"Last frame: {verdict} · {q.TimingMatchRatio:P0} timing · {q.LowConfidenceFraction:P1} low-confidence tiles · {q.CorrectedErrors} corrected";
+        }
     }
 
     private void UpdateTaskbar(CaptureLoopState state)
