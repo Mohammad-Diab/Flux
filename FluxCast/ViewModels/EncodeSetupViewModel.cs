@@ -37,6 +37,7 @@ public partial class EncodeSetupViewModel : ObservableObject
     private readonly SourceValidator _validator;
     private readonly DialogService _dialogs;
     private readonly Action<string, EncodeOptions> _onStart;
+    private readonly Action<EncodeOptions> _onTest;
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(StartCommand))]
@@ -120,11 +121,13 @@ public partial class EncodeSetupViewModel : ObservableObject
         SourceValidator validator,
         DialogService dialogs,
         Action<string, EncodeOptions> onStart,
+        Action<EncodeOptions> onTest,
         (int Width, int Height) displayPixels)
     {
         _validator = validator;
         _dialogs = dialogs;
         _onStart = onStart;
+        _onTest = onTest;
         _displayWidthPx = displayPixels.Width;
         _displayHeightPx = displayPixels.Height;
         _selectedEccLevel = EccLevels[1];
@@ -161,10 +164,15 @@ public partial class EncodeSetupViewModel : ObservableObject
     }
 
     [RelayCommand(CanExecute = nameof(CanStart))]
-    private void Start() =>
-        _onStart(SelectedPath!, new EncodeOptions(
-            SelectedEccLevel.Level, Compress, _layout.GridWidthTiles, _layout.GridHeightTiles,
-            _layout.TilePixelSize, SelectedColor.ColorCount));
+    private void Start() => _onStart(SelectedPath!, CurrentOptions());
+
+    /// <summary>Renders a throwaway frame at the current settings to check the channel — needs no source.</summary>
+    [RelayCommand]
+    private void TestFrame() => _onTest(CurrentOptions());
+
+    private EncodeOptions CurrentOptions() => new(
+        SelectedEccLevel.Level, Compress, _layout.GridWidthTiles, _layout.GridHeightTiles,
+        _layout.TilePixelSize, SelectedColor.ColorCount);
 
     private bool CanStart() => SelectedPath is not null && SourceInfo is { IsValid: true } && !IsValidating;
 

@@ -4,6 +4,9 @@ using CommunityToolkit.Mvvm.Input;
 using Flux.Ui.Services;
 using Flux.Ui.ViewModels;
 using FluxCast.Services;
+using FluxCore.Ecc;
+using FluxCore.Framing;
+using FluxCore.Imaging;
 using FluxCore.Transfer;
 using Microsoft.Extensions.Logging;
 
@@ -51,6 +54,11 @@ public partial class ShellViewModel : ObservableObject
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
         "Flux", "FluxCast", "sessions");
 
+    // Throwaway location for channel-test frames; kept out of the history session root.
+    private static string ChannelTestRoot { get; } = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+        "Flux", "FluxCast", "channel-test");
+
     public ShellViewModel(
         FluxEncodeService encodeService,
         SourceValidator validator,
@@ -76,7 +84,7 @@ public partial class ShellViewModel : ObservableObject
     /// <summary>Navigates the Cast tab to the setup screen.</summary>
     public void ShowSetup()
     {
-        _castScreen = new EncodeSetupViewModel(_validator, _dialogs, StartEncode, DisplayMetrics.PrimaryScreenPixels());
+        _castScreen = new EncodeSetupViewModel(_validator, _dialogs, StartEncode, ShowTestFrame, DisplayMetrics.PrimaryScreenPixels());
         UpdateCurrent();
     }
 
@@ -132,6 +140,42 @@ public partial class ShellViewModel : ObservableObject
     {
         _castScreen = new PresenterViewModel(session, ShowSetup);
         UpdateCurrent();
+    }
+
+    /// <summary>
+    /// Renders a throwaway 2-frame transfer (frame 0 + one full payload frame at the chosen settings)
+    /// and presents it, so the user can capture it in FluxRead to confirm the channel before a real
+    /// transfer. Uses a synthetic payload and a temp root, so nothing lands in the cast history.
+    /// </summary>
+    private void ShowTestFrame(EncodeOptions options)
+    {
+        var testOptions = options with { Compress = false };
+        var source = PrepareTestSource(testOptions);
+        _castScreen = new EncodeProgressViewModel(
+            _encodeService, source, ChannelTestRoot, testOptions,
+            onCompleted: ShowPresenter, onCancelledOrFailed: ShowSetup,
+            _loggerFactory.CreateLogger<EncodeProgressViewModel>());
+        IsSettingsOpen = false;
+        IsHistoryTab = false;
+        UpdateCurrent();
+    }
+
+    // Writes exactly one frame's worth of deterministic random bytes, so the test frame is fully
+    // populated (exercises the whole palette) and the transfer is frame 0 + a single payload frame.
+    private static string PrepareTestSource(EncodeOptions options)
+    {
+        try { if (Directory.Exists(ChannelTestRoot)) Directory.Delete(ChannelTestRoot, recursive: true); }
+        catch { /* best-effort clean of the previous test */ }
+        Directory.CreateDirectory(ChannelTestRoot);
+
+        var layout = new FrameLayout(options.GridWidthTiles, options.GridHeightTiles, options.TilePixelSize);
+        int codewords = layout.CodewordsForBits(PaletteGenerator.BitsForCount(options.ColorCount));
+        var bytes = new byte[options.EccLevel.PayloadBytesPerFrame(codewords)];
+        new Random(20260712).NextBytes(bytes);
+
+        var path = Path.Combine(ChannelTestRoot, "channel-test.bin");
+        File.WriteAllBytes(path, bytes);
+        return path;
     }
 
     private void UpdateCurrent() =>
