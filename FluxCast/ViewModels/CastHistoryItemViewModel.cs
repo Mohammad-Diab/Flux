@@ -13,19 +13,22 @@ public partial class CastHistoryItemViewModel : ObservableObject
     private readonly Action<CastHistoryItemViewModel> _delete;
     private readonly Action<CastHistoryItemViewModel> _openLocation;
     private readonly Action<CastHistoryItemViewModel> _openFrames;
+    private readonly Action<CastHistoryItemViewModel> _exportFrames;
 
     public CastHistoryItemViewModel(
         CastHistoryEntry entry,
         Action<CastHistoryItemViewModel> resume,
         Action<CastHistoryItemViewModel> delete,
         Action<CastHistoryItemViewModel> openLocation,
-        Action<CastHistoryItemViewModel> openFrames)
+        Action<CastHistoryItemViewModel> openFrames,
+        Action<CastHistoryItemViewModel> exportFrames)
     {
         Entry = entry;
         _resume = resume;
         _delete = delete;
         _openLocation = openLocation;
         _openFrames = openFrames;
+        _exportFrames = exportFrames;
     }
 
     /// <summary>Gets the underlying history entry.</summary>
@@ -82,4 +85,7 @@ public partial class CastHistoryItemViewModel : ObservableObject
 
     [RelayCommand]
     private void OpenFrames() => _openFrames(this);
+
+    [RelayCommand]
+    private void ExportFrames() => _exportFrames(this);
 }

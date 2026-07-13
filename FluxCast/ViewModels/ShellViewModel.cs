@@ -4,6 +4,7 @@ using CommunityToolkit.Mvvm.Input;
 using Flux.Ui.Services;
 using Flux.Ui.ViewModels;
 using FluxCast.Services;
+using FluxCore.Compression;
 using FluxCore.Ecc;
 using FluxCore.Framing;
 using FluxCore.Imaging;
@@ -26,6 +27,7 @@ public partial class ShellViewModel : ObservableObject
     private readonly ThemeService _theme;
     private readonly FluxSettings _settingsModel;
     private readonly CastHistoryService _historyService;
+    private readonly CompressionService _compression;
 
     private object? _castScreen;
     private RecentCastsViewModel? _recentCasts;
@@ -67,7 +69,8 @@ public partial class ShellViewModel : ObservableObject
         SettingsService settings,
         ThemeService theme,
         FluxSettings settingsModel,
-        CastHistoryService historyService)
+        CastHistoryService historyService,
+        CompressionService compression)
     {
         _encodeService = encodeService;
         _validator = validator;
@@ -77,6 +80,7 @@ public partial class ShellViewModel : ObservableObject
         _theme = theme;
         _settingsModel = settingsModel;
         _historyService = historyService;
+        _compression = compression;
 
         ShowSetup();
     }
@@ -92,7 +96,7 @@ public partial class ShellViewModel : ObservableObject
     {
         if (value)
         {
-            _recentCasts ??= new RecentCastsViewModel(_historyService, _dialogs, SessionRoot, ResumeCast);
+            _recentCasts ??= new RecentCastsViewModel(_historyService, _dialogs, _compression, SessionRoot, ResumeCast);
             _recentCasts.Refresh();
         }
 

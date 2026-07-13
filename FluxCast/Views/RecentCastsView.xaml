@@ -77,6 +77,10 @@
                                     <Button Content="Open frames" Style="{StaticResource SecondaryButton}"
                                             MinHeight="0" Padding="14,8" FontSize="12.5" Margin="8,0,0,0"
                                             Command="{Binding OpenFramesCommand}" ToolTip="Open the generated frames folder"/>
+                                    <Button Content="Export frames…" Style="{StaticResource SecondaryButton}"
+                                            MinHeight="0" Padding="14,8" FontSize="12.5" Margin="8,0,0,0"
+                                            Command="{Binding ExportFramesCommand}"
+                                            ToolTip="Copy the frame PNGs to a folder you choose, with per-frame checksums"/>
                                     <Button Content="Delete" Style="{StaticResource DangerGhostButton}"
                                             Margin="8,0,0,0" Command="{Binding DeleteCommand}"/>
                                 </StackPanel>
@@ -86,5 +90,26 @@
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
         </ScrollViewer>
+
+        <Border Grid.Row="0" Grid.RowSpan="2" Background="#99000000"
+                Visibility="{Binding IsExportPromptOpen, Converter={StaticResource BoolToVisibility}}">
+            <Border Style="{StaticResource Card}" Padding="28" MaxWidth="440" Margin="32"
+                    VerticalAlignment="Center" HorizontalAlignment="Center">
+                <StackPanel>
+                    <TextBlock Text="{Binding ExportPromptTitle}" FontSize="16" FontWeight="SemiBold"
+                               Foreground="{StaticResource TextPrimaryBrush}" TextTrimming="CharacterEllipsis"/>
+                    <TextBlock Text="The frame PNGs are copied into a subfolder you choose, alongside a manifest with a per-frame checksum."
+                               Style="{StaticResource SubtleText}" FontSize="13" TextWrapping="Wrap" Margin="0,8,0,0"/>
+                    <CheckBox Content="Compress to a single .7z (maximum compression)"
+                              IsChecked="{Binding CompressExport}" Margin="0,18,0,0" FontSize="13"/>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,24,0,0">
+                        <Button Content="Cancel" Style="{StaticResource SecondaryButton}"
+                                MinWidth="96" Command="{Binding CancelExportCommand}"/>
+                        <Button Content="Export" Style="{StaticResource PrimaryButton}"
+                                MinWidth="112" Margin="10,0,0,0" Command="{Binding ConfirmExportCommand}"/>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </Border>
     </Grid>
 </UserControl>
