@@ -175,13 +175,14 @@ public class ReedSolomonBlockCodecTests
     }
 
     [Fact]
-    public void TryDecodeHeader_Survives16Of48CorruptSymbols()
+    public void TryDecodeHeader_Survives15Of48CorruptSymbols()
     {
         var header = new FrameHeader(7, 100, 5000, 0x1234, EccLevel.High);
         var symbols = new byte[ReedSolomonBlockCodec.EncodedHeaderLength];
         ReedSolomonBlockCodec.EncodeHeader(header, symbols);
 
-        for (int i = 0; i < 16; i++)
+        // RS(48,18) has 30 parity symbols, correcting up to 15 errors.
+        for (int i = 0; i < 15; i++)
         {
             symbols[i * 3] ^= 0xFF;
         }
@@ -193,7 +194,7 @@ public class ReedSolomonBlockCodecTests
     }
 
     [Fact]
-    public void TryDecodeHeader_FailsBeyond16CorruptSymbols()
+    public void TryDecodeHeader_FailsBeyond15CorruptSymbols()
     {
         var header = new FrameHeader(7, 100, 5000, 0x1234, EccLevel.High);
         var symbols = new byte[ReedSolomonBlockCodec.EncodedHeaderLength];

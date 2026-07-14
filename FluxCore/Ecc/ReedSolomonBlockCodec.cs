@@ -5,8 +5,8 @@ namespace FluxCore.Ecc;
 
 /// <summary>
 /// Reed-Solomon codec over GF(256) operating in proper 255-symbol blocks: a frame payload is
-/// split across 53 independent RS(255,k) codewords, and the 16-byte frame header is protected
-/// as a single RS(48,16) codeword. Decoding corrects symbols in place and reports failure via
+/// split across 53 independent RS(255,k) codewords, and the 18-byte frame header is protected
+/// as a single RS(48,18) codeword. Decoding corrects symbols in place and reports failure via
 /// return value (ZXing's decoder does not throw on unrecoverable input).
 /// </summary>
 public static class ReedSolomonBlockCodec

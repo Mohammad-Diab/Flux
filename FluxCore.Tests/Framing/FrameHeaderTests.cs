@@ -14,7 +14,7 @@ public class FrameHeaderTests
         Assert.Equal(FrameFormat.Version, header.FormatVersion);
         Assert.Equal(1u, header.FrameId);
         Assert.Equal(10u, header.TotalFrames);
-        Assert.Equal(5000, header.PayloadLength);
+        Assert.Equal(5000u, header.PayloadLength);
         Assert.Equal(0xDEADBEEF, header.PayloadCrc32);
         Assert.Equal(EccLevel.Medium, header.EccLevel);
         Assert.False(header.IsMetadataFrame);
@@ -30,7 +30,7 @@ public class FrameHeaderTests
         var original = new FrameHeader(
             frameId: isMetadata ? 0u : 42u,
             totalFrames: 317,
-            payloadLength: (ushort)level.PayloadBytesPerFrame(),
+            payloadLength: (uint)level.PayloadBytesPerFrame(),
             payloadCrc32: 0x12345678,
             eccLevel: level,
             isMetadataFrame: isMetadata);
@@ -45,11 +45,13 @@ public class FrameHeaderTests
     [Fact]
     public void SerializeDeserialize_RoundTrips_ExtremeValues()
     {
-        var original = new FrameHeader(uint.MaxValue - 1, uint.MaxValue, ushort.MaxValue, uint.MaxValue, EccLevel.Max);
+        var original = new FrameHeader(uint.MaxValue - 1, uint.MaxValue, uint.MaxValue, uint.MaxValue, EccLevel.Max);
 
         var restored = FrameHeader.Deserialize(original.Serialize());
 
         Assert.Equal(original, restored);
+        // The payload length now exceeds the old 16-bit ceiling.
+        Assert.True(restored.PayloadLength > ushort.MaxValue);
     }
 
     [Fact]

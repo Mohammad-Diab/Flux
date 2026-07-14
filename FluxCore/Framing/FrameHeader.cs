@@ -4,15 +4,15 @@ using FluxCore.Ecc;
 namespace FluxCore.Framing;
 
 /// <summary>
-/// Fixed 16-byte per-frame header, embedded in the image as three redundant RS(48,16)-protected
+/// Fixed 18-byte per-frame header, embedded in the image as three redundant RS(48,18)-protected
 /// copies. Self-describing: carries the ECC level of its own frame, so the decoder needs no
 /// out-of-band configuration. Layout (little-endian):
-/// FormatVersion(1) | Flags(1) | FrameId(4) | TotalFrames(4) | PayloadLength(2) | PayloadCrc32(4).
+/// FormatVersion(1) | Flags(1) | FrameId(4) | TotalFrames(4) | PayloadLength(4) | PayloadCrc32(4).
 /// </summary>
 public readonly struct FrameHeader : IEquatable<FrameHeader>
 {
     /// <summary>Size of the serialized header in bytes.</summary>
-    public const int Size = 16;
+    public const int Size = 18;
 
     private const byte MetadataFrameFlag = 0b0000_0001;
     private const byte EccLevelMask = 0b0000_0110;
@@ -34,13 +34,13 @@ public readonly struct FrameHeader : IEquatable<FrameHeader>
     public uint TotalFrames { get; init; }
 
     /// <summary>Gets the number of real payload bytes in this frame (the rest is zero padding).</summary>
-    public ushort PayloadLength { get; init; }
+    public uint PayloadLength { get; init; }
 
     /// <summary>Gets the CRC-32 checksum over the first <see cref="PayloadLength"/> payload bytes.</summary>
     public uint PayloadCrc32 { get; init; }
 
     /// <summary>Creates a header stamped with the current format version.</summary>
-    public FrameHeader(uint frameId, uint totalFrames, ushort payloadLength, uint payloadCrc32,
+    public FrameHeader(uint frameId, uint totalFrames, uint payloadLength, uint payloadCrc32,
         EccLevel eccLevel, bool isMetadataFrame = false)
     {
         FormatVersion = FrameFormat.Version;
@@ -75,8 +75,8 @@ public readonly struct FrameHeader : IEquatable<FrameHeader>
                                 (((byte)EccLevel << EccLevelShift) & EccLevelMask));
         BinaryPrimitives.WriteUInt32LittleEndian(destination[2..], FrameId);
         BinaryPrimitives.WriteUInt32LittleEndian(destination[6..], TotalFrames);
-        BinaryPrimitives.WriteUInt16LittleEndian(destination[10..], PayloadLength);
-        BinaryPrimitives.WriteUInt32LittleEndian(destination[12..], PayloadCrc32);
+        BinaryPrimitives.WriteUInt32LittleEndian(destination[10..], PayloadLength);
+        BinaryPrimitives.WriteUInt32LittleEndian(destination[14..], PayloadCrc32);
     }
 
     /// <summary>Serializes the header to a new 16-byte array.</summary>
@@ -104,8 +104,8 @@ public readonly struct FrameHeader : IEquatable<FrameHeader>
             EccLevel = (EccLevel)((source[1] & EccLevelMask) >> EccLevelShift),
             FrameId = BinaryPrimitives.ReadUInt32LittleEndian(source[2..]),
             TotalFrames = BinaryPrimitives.ReadUInt32LittleEndian(source[6..]),
-            PayloadLength = BinaryPrimitives.ReadUInt16LittleEndian(source[10..]),
-            PayloadCrc32 = BinaryPrimitives.ReadUInt32LittleEndian(source[12..]),
+            PayloadLength = BinaryPrimitives.ReadUInt32LittleEndian(source[10..]),
+            PayloadCrc32 = BinaryPrimitives.ReadUInt32LittleEndian(source[14..]),
         };
     }
 

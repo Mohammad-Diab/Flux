@@ -125,7 +125,7 @@ public sealed class MetadataPayload
         try
         {
             var candidate = new FrameLayout(GridWidthTiles, GridHeightTiles, TilePixelSize, BitsPerTile);
-            if (EccLevel.PayloadBytesPerFrame(candidate.CodewordsForBits(BitsPerTile)) > ushort.MaxValue)
+            if ((long)EccLevel.PayloadBytesPerFrame(candidate.CodewordsForBits(BitsPerTile)) > uint.MaxValue)
                 return false;
 
             layout = candidate;

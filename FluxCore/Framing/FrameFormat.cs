@@ -11,7 +11,7 @@ namespace FluxCore.Framing;
 public static class FrameFormat
 {
     /// <summary>Frame format version encoded in every frame header.</summary>
-    public const byte Version = 2;
+    public const byte Version = 3;
 
     /// <summary>Grid width in tiles.</summary>
     public const int GridWidthTiles = 160;
@@ -46,7 +46,7 @@ public static class FrameFormat
     /// <summary>Number of redundant header copies per frame.</summary>
     public const int HeaderCopyCount = 3;
 
-    /// <summary>Tiles (symbols) per header copy: RS(48,16).</summary>
+    /// <summary>Tiles (symbols) per header copy: RS(48,18).</summary>
     public const int HeaderCopyLength = 48;
 
     /// <summary>Edge length of the square 7x7 finder pattern in tiles.</summary>

@@ -25,7 +25,7 @@ public class FrameEncoderTests
 
         Assert.Equal(3u, map.Header.FrameId);
         Assert.Equal(10u, map.Header.TotalFrames);
-        Assert.Equal(5000, map.Header.PayloadLength);
+        Assert.Equal(5000u, map.Header.PayloadLength);
         Assert.Equal(Crc32Helper.ComputeChecksum(payload), map.Header.PayloadCrc32);
         Assert.Equal(EccLevel.Medium, map.Header.EccLevel);
         Assert.True(map.Header.IsPlausible());
@@ -79,7 +79,7 @@ public class FrameEncoderTests
         var payload = DeterministicPayload(1234);
         var map = FrameEncoder.BuildFrame(9, 10, payload, EccLevel.Medium);
 
-        Assert.Equal(1234, map.Header.PayloadLength);
+        Assert.Equal(1234u, map.Header.PayloadLength);
 
         var codewords = new byte[ReedSolomonBlockCodec.EncodedFrameLength];
         for (int t = 0; t < FrameFormat.DataTileCount; t++)
@@ -93,7 +93,7 @@ public class FrameEncoderTests
         Assert.True(ReedSolomonBlockCodec.TryDecodePayload(codewords, EccLevel.Medium, decoded, out _));
         Assert.Equal(payload, decoded[..1234]);
         Assert.All(decoded[1234..], b => Assert.Equal(0, b));
-        Assert.True(Crc32Helper.Verify(decoded.AsSpan(0, map.Header.PayloadLength), map.Header.PayloadCrc32));
+        Assert.True(Crc32Helper.Verify(decoded.AsSpan(0, (int)map.Header.PayloadLength), map.Header.PayloadCrc32));
     }
 
     [Theory]

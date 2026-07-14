@@ -41,7 +41,7 @@ public static class FrameEncoder
         var header = new FrameHeader(
             frameId,
             totalFrames,
-            (ushort)payload.Length,
+            (uint)payload.Length,
             Crc32Helper.ComputeChecksum(payload),
             eccLevel);
 
@@ -92,7 +92,7 @@ public static class FrameEncoder
             tiles[y * FrameFormat.GridWidthTiles + x] = packed[t];
         }
 
-        var header = new FrameHeader(0, totalFrames, (ushort)content.Length, 0, EccLevel.Max, isMetadataFrame: true);
+        var header = new FrameHeader(0, totalFrames, (uint)content.Length, 0, EccLevel.Max, isMetadataFrame: true);
         return new FrameTileMap(header, tiles, TileColorScheme.CubeCorner8);
     }
 

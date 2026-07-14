@@ -103,7 +103,7 @@ public sealed class FrameDecoder
         if (header.PayloadLength > payload.Length)
             return Undecodable(DecodeFailureReason.HeaderUnreadable, diagnostics);
 
-        var realPayload = payload[..header.PayloadLength];
+        var realPayload = payload[..(int)header.PayloadLength];
         if (!Crc32Helper.Verify(realPayload, header.PayloadCrc32))
         {
             return Undecodable(DecodeFailureReason.CrcMismatch, diagnostics);

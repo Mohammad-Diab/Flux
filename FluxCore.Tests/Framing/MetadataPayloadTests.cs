@@ -212,9 +212,10 @@ public class MetadataPayloadTests
     }
 
     [Fact]
-    public void TryBuildLayout_RejectsPayloadOverflowingHeaderField()
+    public void TryBuildLayout_AcceptsGridPastOldHeaderLimit()
     {
-        // 400×200 @ Low exceeds the 65,535-byte ushort PayloadLength per frame.
+        // 400×200 @ Low carries >65,535 B/frame — rejected under the old ushort field, allowed now
+        // that FrameHeader.PayloadLength is a uint.
         var payload = new MetadataPayload(
             Filled(0xAA), PayloadType.SevenZip, EccLevel.Low, 42, 400_000, "d.pdf", 1_200_000, Filled(0xBB), 256)
         {
@@ -222,6 +223,8 @@ public class MetadataPayloadTests
             GridHeightTiles = 200,
         };
 
-        Assert.False(payload.TryBuildLayout(out _));
+        Assert.True(payload.TryBuildLayout(out var layout));
+        int bytesPerFrame = payload.EccLevel.PayloadBytesPerFrame(layout!.CodewordsForBits(payload.BitsPerTile));
+        Assert.True(bytesPerFrame > ushort.MaxValue);
     }
 }
