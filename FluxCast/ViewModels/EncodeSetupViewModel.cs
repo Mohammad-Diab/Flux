@@ -60,6 +60,10 @@ public partial class EncodeSetupViewModel : ObservableObject
     private ColorChoice _selectedColor;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ColorSelectionEnabled))]
+    private bool _ruggedMode;
+
+    [ObservableProperty]
     private bool _compress = true;
 
     [ObservableProperty]
@@ -117,6 +121,9 @@ public partial class EncodeSetupViewModel : ObservableObject
     /// <summary>Gets the clear-channel caution shown when the tiles are small enough to be fragile.</summary>
     public string GridCaution { get; private set; } = "";
 
+    /// <summary>Gets whether the colour selector is active (rugged mode fixes the palette, so it's disabled).</summary>
+    public bool ColorSelectionEnabled => !RuggedMode;
+
     public EncodeSetupViewModel(
         SourceValidator validator,
         DialogService dialogs,
@@ -170,9 +177,14 @@ public partial class EncodeSetupViewModel : ObservableObject
     [RelayCommand]
     private void TestFrame() => _onTest(CurrentOptions());
 
+    // Rugged mode fixes the palette to the chroma-hardened grayscale-8 tier regardless of the colour selector.
+    private int EffectiveColorCount => RuggedMode ? PaletteGenerator.RuggedColorCount : SelectedColor.ColorCount;
+
+    private PaletteKind EffectivePaletteKind => RuggedMode ? PaletteKind.Rugged : PaletteKind.Standard;
+
     private EncodeOptions CurrentOptions() => new(
         SelectedEccLevel.Level, Compress, _layout.GridWidthTiles, _layout.GridHeightTiles,
-        _layout.TilePixelSize, SelectedColor.ColorCount);
+        _layout.TilePixelSize, EffectiveColorCount, EffectivePaletteKind);
 
     private bool CanStart() => SelectedPath is not null && SourceInfo is { IsValid: true } && !IsValidating;
 
@@ -204,22 +216,31 @@ public partial class EncodeSetupViewModel : ObservableObject
 
     partial void OnSelectedColorChanged(ColorChoice value) => RecomputeLayout();
 
+    partial void OnRuggedModeChanged(bool value) => RecomputeLayout();
+
     partial void OnCompressChanged(bool value) => UpdateDetails();
 
     private void RecomputeLayout()
     {
-        _bitsPerTile = PaletteGenerator.BitsForCount(SelectedColor.ColorCount);
+        _bitsPerTile = PaletteGenerator.BitsForCount(EffectiveColorCount);
         // Cap the grid so a frame's payload fits the ushort length field at the chosen depth.
         int dataBytes = SelectedEccLevel.Level.DataBytesPerCodeword();
         int maxCodewords = (int)((long)ushort.MaxValue * 8 / ((long)dataBytes * _bitsPerTile));
-        _layout = FrameLayout.FitToDisplay(_displayWidthPx, _displayHeightPx, SelectedTileSize.TilePx, maxCodewords);
+        _layout = FrameLayout.FitToDisplay(
+            _displayWidthPx, _displayHeightPx, SelectedTileSize.TilePx, maxCodewords, _bitsPerTile);
 
         int codewords = _layout.CodewordsForBits(_bitsPerTile);
         int bytesPerFrame = SelectedEccLevel.Level.PayloadBytesPerFrame(codewords);
         double throughput = (double)codewords / FrameFormat.CodewordCount;
-        string colours = SelectedColor.ColorCount == 256 ? "" : $"{SelectedColor.ColorCount} colours · ";
-        GridSummary =
-            $"{_layout.GridWidthTiles}×{_layout.GridHeightTiles} tiles · {colours}{ByteFormat.Bytes(bytesPerFrame)}/frame · ≈{throughput:0.0}× throughput";
+        if (RuggedMode)
+            GridSummary =
+                $"{_layout.GridWidthTiles}×{_layout.GridHeightTiles} tiles · rugged 8-gray · {ByteFormat.Bytes(bytesPerFrame)}/frame · survives chroma-lossy / RDP links";
+        else
+        {
+            string colours = SelectedColor.ColorCount == 256 ? "" : $"{SelectedColor.ColorCount} colours · ";
+            GridSummary =
+                $"{_layout.GridWidthTiles}×{_layout.GridHeightTiles} tiles · {colours}{ByteFormat.Bytes(bytesPerFrame)}/frame · ≈{throughput:0.0}× throughput";
+        }
 
         GridCaution = BuildCaution();
 
@@ -228,7 +249,8 @@ public partial class EncodeSetupViewModel : ObservableObject
         UpdateDetails();
     }
 
-    private string BuildCaution() => SelectedColor.ColorCount switch
+    // Rugged is the robust tier, so it carries no clear-channel caution.
+    private string BuildCaution() => RuggedMode ? "" : SelectedColor.ColorCount switch
     {
         1024 => "1024 colours decodes only on a near-pixel-perfect channel (local capture or exact PNG folders) — it will fail over RDP or any compression.",
         512 => "512 colours needs a clean channel; run a test frame before committing to a long transfer.",
