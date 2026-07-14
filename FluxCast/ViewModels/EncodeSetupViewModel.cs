@@ -1,4 +1,5 @@
 using System.IO;
+using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Flux.Ui;
@@ -23,10 +24,23 @@ public sealed record TileSizeChoice(int TilePx, string Label)
     public override string ToString() => Label;
 }
 
-/// <summary>A colour-count choice; more colours carry more per tile (faster) but need a cleaner channel.</summary>
-public sealed record ColorChoice(int ColorCount, string Label)
+/// <summary>A palette choice; more colours carry more per tile (faster), or the rugged grayscale tier for lossy channels.</summary>
+public sealed record ColorChoice(int ColorCount, string Label, PaletteKind Kind = PaletteKind.Standard)
 {
     public override string ToString() => Label;
+}
+
+/// <summary>The setup screen's preset/customization level. Default and Rugged hide the levers; Advanced reveals them.</summary>
+public enum SetupMode
+{
+    /// <summary>Balanced recommended settings (Medium ECC, Standard tiles, 256 colours), levers hidden.</summary>
+    Default,
+
+    /// <summary>Robust preset for RDP/lossy channels (High ECC, Large tiles, grayscale-8), levers hidden.</summary>
+    Rugged,
+
+    /// <summary>Full manual control — ECC, tile size, palette, and compression are editable.</summary>
+    Advanced,
 }
 
 /// <summary>
@@ -60,8 +74,7 @@ public partial class EncodeSetupViewModel : ObservableObject
     private ColorChoice _selectedColor;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(ColorSelectionEnabled))]
-    private bool _ruggedMode;
+    private SetupMode _mode = SetupMode.Default;
 
     [ObservableProperty]
     private bool _compress = true;
@@ -95,6 +108,7 @@ public partial class EncodeSetupViewModel : ObservableObject
     /// <summary>Gets the selectable colour counts; more colours pack more bits per tile.</summary>
     public IReadOnlyList<ColorChoice> Colors { get; } =
     [
+        new(PaletteGenerator.RuggedColorCount, "Rugged grayscale-8 — survives RDP / lossy", PaletteKind.Rugged),
         new(256, "256 colours — standard, any channel"),
         new(512, "512 colours — +12.5%, clean channel"),
         new(1024, "1024 colours — +25%, pixel-perfect only"),
@@ -121,8 +135,29 @@ public partial class EncodeSetupViewModel : ObservableObject
     /// <summary>Gets the clear-channel caution shown when the tiles are small enough to be fragile.</summary>
     public string GridCaution { get; private set; } = "";
 
-    /// <summary>Gets whether the colour selector is active (rugged mode fixes the palette, so it's disabled).</summary>
-    public bool ColorSelectionEnabled => !RuggedMode;
+    /// <summary>Gets whether the customization levers (ECC, tile size, palette, compress) are shown.</summary>
+    public bool IsAdvanced => Mode == SetupMode.Advanced;
+
+    /// <summary>Selects Default mode; bound to the Default segment.</summary>
+    public bool IsDefaultMode
+    {
+        get => Mode == SetupMode.Default;
+        set { if (value) Mode = SetupMode.Default; }
+    }
+
+    /// <summary>Selects Rugged mode; bound to the Rugged segment.</summary>
+    public bool IsRuggedMode
+    {
+        get => Mode == SetupMode.Rugged;
+        set { if (value) Mode = SetupMode.Rugged; }
+    }
+
+    /// <summary>Selects Advanced mode; bound to the Advanced segment.</summary>
+    public bool IsAdvancedMode
+    {
+        get => Mode == SetupMode.Advanced;
+        set { if (value) Mode = SetupMode.Advanced; }
+    }
 
     public EncodeSetupViewModel(
         SourceValidator validator,
@@ -139,7 +174,7 @@ public partial class EncodeSetupViewModel : ObservableObject
         _displayHeightPx = displayPixels.Height;
         _selectedEccLevel = EccLevels[1];
         _selectedTileSize = TileSizes[2];
-        _selectedColor = Colors[0];
+        _selectedColor = Colors.First(c => c.Kind == PaletteKind.Standard && c.ColorCount == 256);
         _layout = FrameLayout.Default;
         RecomputeLayout();
     }
@@ -177,13 +212,40 @@ public partial class EncodeSetupViewModel : ObservableObject
     [RelayCommand]
     private void TestFrame() => _onTest(CurrentOptions());
 
-    // Rugged mode fixes the palette to the chroma-hardened grayscale-8 tier regardless of the colour selector.
-    private int EffectiveColorCount => RuggedMode ? PaletteGenerator.RuggedColorCount : SelectedColor.ColorCount;
+    // Default and Rugged are complete presets; Advanced reads the selectors. Every derived value routes through these.
+    private EccLevel EffectiveEcc => Mode switch
+    {
+        SetupMode.Default => EccLevel.Medium,
+        SetupMode.Rugged => EccLevel.High,
+        _ => SelectedEccLevel.Level,
+    };
 
-    private PaletteKind EffectivePaletteKind => RuggedMode ? PaletteKind.Rugged : PaletteKind.Standard;
+    private int EffectiveTilePx => Mode switch
+    {
+        SetupMode.Default => 8,
+        SetupMode.Rugged => 12,
+        _ => SelectedTileSize.TilePx,
+    };
+
+    private int EffectiveColorCount => Mode switch
+    {
+        SetupMode.Default => 256,
+        SetupMode.Rugged => PaletteGenerator.RuggedColorCount,
+        _ => SelectedColor.ColorCount,
+    };
+
+    private PaletteKind EffectivePaletteKind => Mode switch
+    {
+        SetupMode.Rugged => PaletteKind.Rugged,
+        SetupMode.Advanced => SelectedColor.Kind,
+        _ => PaletteKind.Standard,
+    };
+
+    // Presets always compress; only Advanced honours the checkbox.
+    private bool EffectiveCompress => Mode == SetupMode.Advanced ? Compress : true;
 
     private EncodeOptions CurrentOptions() => new(
-        SelectedEccLevel.Level, Compress, _layout.GridWidthTiles, _layout.GridHeightTiles,
+        EffectiveEcc, EffectiveCompress, _layout.GridWidthTiles, _layout.GridHeightTiles,
         _layout.TilePixelSize, EffectiveColorCount, EffectivePaletteKind);
 
     private bool CanStart() => SelectedPath is not null && SourceInfo is { IsValid: true } && !IsValidating;
@@ -216,7 +278,14 @@ public partial class EncodeSetupViewModel : ObservableObject
 
     partial void OnSelectedColorChanged(ColorChoice value) => RecomputeLayout();
 
-    partial void OnRuggedModeChanged(bool value) => RecomputeLayout();
+    partial void OnModeChanged(SetupMode value)
+    {
+        OnPropertyChanged(nameof(IsAdvanced));
+        OnPropertyChanged(nameof(IsDefaultMode));
+        OnPropertyChanged(nameof(IsRuggedMode));
+        OnPropertyChanged(nameof(IsAdvancedMode));
+        RecomputeLayout();
+    }
 
     partial void OnCompressChanged(bool value) => UpdateDetails();
 
@@ -224,20 +293,20 @@ public partial class EncodeSetupViewModel : ObservableObject
     {
         _bitsPerTile = PaletteGenerator.BitsForCount(EffectiveColorCount);
         // Cap the grid so a frame's payload fits the ushort length field at the chosen depth.
-        int dataBytes = SelectedEccLevel.Level.DataBytesPerCodeword();
+        int dataBytes = EffectiveEcc.DataBytesPerCodeword();
         int maxCodewords = (int)((long)ushort.MaxValue * 8 / ((long)dataBytes * _bitsPerTile));
         _layout = FrameLayout.FitToDisplay(
-            _displayWidthPx, _displayHeightPx, SelectedTileSize.TilePx, maxCodewords, _bitsPerTile);
+            _displayWidthPx, _displayHeightPx, EffectiveTilePx, maxCodewords, _bitsPerTile);
 
         int codewords = _layout.CodewordsForBits(_bitsPerTile);
-        int bytesPerFrame = SelectedEccLevel.Level.PayloadBytesPerFrame(codewords);
+        int bytesPerFrame = EffectiveEcc.PayloadBytesPerFrame(codewords);
         double throughput = (double)codewords / FrameFormat.CodewordCount;
-        if (RuggedMode)
+        if (EffectivePaletteKind == PaletteKind.Rugged)
             GridSummary =
                 $"{_layout.GridWidthTiles}×{_layout.GridHeightTiles} tiles · rugged 8-gray · {ByteFormat.Bytes(bytesPerFrame)}/frame · survives chroma-lossy / RDP links";
         else
         {
-            string colours = SelectedColor.ColorCount == 256 ? "" : $"{SelectedColor.ColorCount} colours · ";
+            string colours = EffectiveColorCount == 256 ? "" : $"{EffectiveColorCount} colours · ";
             GridSummary =
                 $"{_layout.GridWidthTiles}×{_layout.GridHeightTiles} tiles · {colours}{ByteFormat.Bytes(bytesPerFrame)}/frame · ≈{throughput:0.0}× throughput";
         }
@@ -250,11 +319,11 @@ public partial class EncodeSetupViewModel : ObservableObject
     }
 
     // Rugged is the robust tier, so it carries no clear-channel caution.
-    private string BuildCaution() => RuggedMode ? "" : SelectedColor.ColorCount switch
+    private string BuildCaution() => EffectivePaletteKind == PaletteKind.Rugged ? "" : EffectiveColorCount switch
     {
         1024 => "1024 colours decodes only on a near-pixel-perfect channel (local capture or exact PNG folders) — it will fail over RDP or any compression.",
         512 => "512 colours needs a clean channel; run a test frame before committing to a long transfer.",
-        _ => SelectedTileSize.TilePx <= 6
+        _ => EffectiveTilePx <= 6
             ? "Small tiles — use only on a clean, near-pixel-perfect channel (local capture or exact PNGs)."
             : "",
     };
@@ -277,7 +346,7 @@ public partial class EncodeSetupViewModel : ObservableObject
             var fi = new FileInfo(SelectedPath);
             var kind = string.IsNullOrEmpty(fi.Extension) ? "file" : fi.Extension.TrimStart('.').ToUpperInvariant() + " file";
             SourceDetails = $"“{fi.Name}” · {kind} · {ByteFormat.Bytes(info.TotalBytes)} · modified {fi.LastWriteTime:g}";
-            EstimatedFrames = Compress
+            EstimatedFrames = EffectiveCompress
                 ? $"≈ up to {FrameEstimate(info.TotalBytes)} frames (usually fewer after compression)"
                 : $"{FrameEstimate(info.TotalBytes)} frames to display";
         }
@@ -288,7 +357,7 @@ public partial class EncodeSetupViewModel : ObservableObject
 
     private long FrameEstimate(long payloadBytes)
     {
-        int perFrame = SelectedEccLevel.Level.PayloadBytesPerFrame(_layout.CodewordsForBits(_bitsPerTile));
+        int perFrame = EffectiveEcc.PayloadBytesPerFrame(_layout.CodewordsForBits(_bitsPerTile));
         return (payloadBytes + perFrame - 1) / perFrame + 1;
     }
 
