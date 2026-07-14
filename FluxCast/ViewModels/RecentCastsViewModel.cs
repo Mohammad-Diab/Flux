@@ -68,7 +68,8 @@ public partial class RecentCastsViewModel : ObservableObject
     {
         if (!_dialogs.Confirm(
                 "Delete cast",
-                $"Delete this rendering of “{item.DisplayName}” ({item.SpecText}) and its frames from disk? This frees space and can't be undone."))
+                $"Delete this rendering of “{item.DisplayName}” ({item.SpecText}) and its frames from disk? This frees space and can't be undone.",
+                destructive: true))
             return;
 
         try

@@ -49,7 +49,7 @@ public partial class ReceivedItemsViewModel : ObservableObject
         string message = item.Entry.IsComplete
             ? $"Remove “{item.DisplayName}” from history? The saved output stays; this only clears the record."
             : $"Discard the partial reception “{item.DisplayName}” and free its disk space? This can't be undone.";
-        if (!_dialogs.Confirm("Delete reception", message))
+        if (!_dialogs.Confirm("Delete reception", message, destructive: true))
             return;
 
         try

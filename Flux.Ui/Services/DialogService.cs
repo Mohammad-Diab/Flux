@@ -1,20 +1,37 @@
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Windows;
+using Flux.Ui.Views;
 using Microsoft.Win32;
 
 namespace Flux.Ui.Services;
 
-/// <summary>Thin wrapper over the WPF file/folder pickers, message boxes, and the Explorer reveal.</summary>
+/// <summary>Thin wrapper over the WPF file/folder pickers, themed dialogs, and the Explorer reveal.</summary>
 public sealed class DialogService
 {
-    /// <summary>Shows a yes/no confirmation; returns true only if the user chose Yes.</summary>
-    public bool Confirm(string title, string message) =>
-        MessageBox.Show(message, title, MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes;
+    /// <summary>Shows a yes/no confirmation; returns true only if the user confirmed.</summary>
+    /// <param name="title">Dialog heading.</param>
+    /// <param name="message">Dialog body.</param>
+    /// <param name="destructive">When true the confirm button is styled as a destructive (red) action.</param>
+    public bool Confirm(string title, string message, bool destructive = false) =>
+        Show(new MessageDialog(title, message, "Yes", "No", destructive));
 
     /// <summary>Shows an informational message with an OK button.</summary>
     public void Inform(string title, string message) =>
-        MessageBox.Show(message, title, MessageBoxButton.OK, MessageBoxImage.Information);
+        Show(new MessageDialog(title, message, "OK", cancelText: null, destructive: false));
+
+    private static bool Show(MessageDialog dialog)
+    {
+        var owner = Application.Current?.Windows.OfType<Window>().FirstOrDefault(w => w.IsActive)
+                    ?? Application.Current?.MainWindow;
+        if (owner is not null && owner != dialog)
+            dialog.Owner = owner;
+        else
+            dialog.WindowStartupLocation = WindowStartupLocation.CenterScreen;
+
+        return dialog.ShowDialog() == true;
+    }
 
     public string? PickFile(string title)
     {
