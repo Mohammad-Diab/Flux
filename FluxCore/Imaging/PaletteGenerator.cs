@@ -14,8 +14,8 @@ public readonly record struct GeneratedPalette(Rgb24[] Colors, double MinimumDis
 /// balanced RGB lattice: the count's bit budget is split across axes as evenly as possible (extra
 /// levels to red then green, fewest to the compression-vulnerable blue axis), each axis spread
 /// evenly over 0–255. White is reserved for structural tiles, so a lattice point that lands on
-/// white is replaced by a fixed gap colour. <see cref="Generate"/>(256) reproduces the historical
-/// default palette exactly.
+/// white is replaced by a fixed gap colour. <see cref="Generate(int)"/> at 256 reproduces the
+/// historical default palette exactly. The rugged kind instead lays 8 grays on a luma ladder.
 /// </summary>
 public static class PaletteGenerator
 {
@@ -25,12 +25,23 @@ public static class PaletteGenerator
     /// <summary>Largest supported colour count (10 bits per tile).</summary>
     public const int MaxColorCount = 1024;
 
+    /// <summary>The only colour count the rugged tier supports (3 bits per tile).</summary>
+    public const int RuggedColorCount = 8;
+
     private static readonly Rgb24 WhiteReplacement = new(18, 18, 43);
 
-    /// <summary>Determines whether a colour count is supported (a power of two in [8, 1024]).</summary>
+    /// <summary>Determines whether a colour count is supported for the standard tier (a power of two in [8, 1024]).</summary>
     /// <param name="colorCount">Number of colours.</param>
-    public static bool IsSupportedCount(int colorCount) =>
-        colorCount is >= MinColorCount and <= MaxColorCount && (colorCount & (colorCount - 1)) == 0;
+    public static bool IsSupportedCount(int colorCount) => IsSupportedCount(colorCount, PaletteKind.Standard);
+
+    /// <summary>Determines whether a colour count is supported for a palette kind.</summary>
+    /// <param name="colorCount">Number of colours.</param>
+    /// <param name="kind">Palette family.</param>
+    public static bool IsSupportedCount(int colorCount, PaletteKind kind) => kind switch
+    {
+        PaletteKind.Rugged => colorCount == RuggedColorCount,
+        _ => colorCount is >= MinColorCount and <= MaxColorCount && (colorCount & (colorCount - 1)) == 0,
+    };
 
     /// <summary>Bits per tile carried by a colour count (its base-2 log; 256→8, 512→9, 1024→10).</summary>
     /// <param name="colorCount">A supported colour count.</param>
@@ -41,13 +52,22 @@ public static class PaletteGenerator
         return BitOperations.Log2((uint)colorCount);
     }
 
-    /// <summary>Generates the palette for a colour count (a power of two in [8, 256]).</summary>
+    /// <summary>Generates the standard-tier palette for a colour count (a power of two in [8, 1024]).</summary>
     /// <param name="colorCount">Number of colours.</param>
-    public static GeneratedPalette Generate(int colorCount)
+    public static GeneratedPalette Generate(int colorCount) => Generate(colorCount, PaletteKind.Standard);
+
+    /// <summary>Generates the palette for a colour count and kind.</summary>
+    /// <param name="colorCount">Number of colours.</param>
+    /// <param name="kind">Palette family (standard lattice or rugged grayscale ladder).</param>
+    public static GeneratedPalette Generate(int colorCount, PaletteKind kind)
     {
-        if (!IsSupportedCount(colorCount))
-            throw new ArgumentOutOfRangeException(nameof(colorCount),
-                $"Colour count must be a power of two between {MinColorCount} and {MaxColorCount}.");
+        if (!IsSupportedCount(colorCount, kind))
+            throw new ArgumentOutOfRangeException(nameof(colorCount), kind == PaletteKind.Rugged
+                ? $"The rugged tier supports only {RuggedColorCount} colours."
+                : $"Colour count must be a power of two between {MinColorCount} and {MaxColorCount}.");
+
+        if (kind == PaletteKind.Rugged)
+            return GenerateRugged();
 
         int bits = BitOperations.Log2((uint)colorCount);
         var (levelsR, levelsG, levelsB) = AxisLevelCounts(bits);
@@ -64,6 +84,21 @@ public static class PaletteGenerator
                     var color = new Rgb24(red[r], green[g], blue[b]);
                     colors[i++] = color.IsWhite ? WhiteReplacement : color;
                 }
+
+        return new GeneratedPalette(colors, MinimumPairwiseDistance(colors));
+    }
+
+    // Eight grays on R=G=B — the first 8 of 9 levels evenly spread over 0..255, so the 9th (255,
+    // reserved white) stays a null-tile marker. Entries differ only in luma, which screen codecs
+    // preserve, so chroma loss can't merge them.
+    private static GeneratedPalette GenerateRugged()
+    {
+        var colors = new Rgb24[RuggedColorCount];
+        for (int i = 0; i < RuggedColorCount; i++)
+        {
+            byte v = (byte)((i * 255 + RuggedColorCount / 2) / RuggedColorCount); // round(i·255 / 8)
+            colors[i] = new Rgb24(v, v, v);
+        }
 
         return new GeneratedPalette(colors, MinimumPairwiseDistance(colors));
     }

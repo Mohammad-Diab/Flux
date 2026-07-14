@@ -86,4 +86,70 @@ public class PaletteGeneratorTests
 
         Assert.Equal(expected, PaletteGenerator.Generate(256).Colors);
     }
+
+    [Fact]
+    public void Generate_Rugged_ProducesTheGrayscaleLadder()
+    {
+        byte[] expected = [0, 32, 64, 96, 128, 159, 191, 223];
+
+        var palette = PaletteGenerator.Generate(8, PaletteKind.Rugged);
+
+        Assert.Equal(expected.Length, palette.Colors.Length);
+        for (int i = 0; i < expected.Length; i++)
+            Assert.Equal(new Rgb24(expected[i], expected[i], expected[i]), palette.Colors[i]);
+    }
+
+    [Fact]
+    public void Generate_Rugged_IsGrayscaleNonWhiteAndUnique()
+    {
+        var colors = PaletteGenerator.Generate(8, PaletteKind.Rugged).Colors;
+
+        Assert.Equal(8, colors.Distinct().Count());
+        Assert.DoesNotContain(colors, c => c.IsWhite);
+        Assert.All(colors, c => Assert.True(c.R == c.G && c.G == c.B, $"{c} is not gray"));
+    }
+
+    [Fact]
+    public void Generate_Rugged_LumaGapsStayWideIncludingUpToWhite()
+    {
+        // The rugged guarantee: every entry (and reserved white at 255) is well separated in luma,
+        // unlike the standard 8-colour palette whose gap-colour sits 9 luma from blue.
+        var grays = PaletteGenerator.Generate(8, PaletteKind.Rugged).Colors.Select(c => (int)c.R).ToArray();
+        var levels = grays.Append(255).ToArray(); // reserved white is the 9th level
+
+        for (int i = 1; i < levels.Length; i++)
+            Assert.True(levels[i] - levels[i - 1] >= 31, $"luma gap {levels[i - 1]}→{levels[i]} too narrow");
+    }
+
+    [Fact]
+    public void Generate_Rugged_MinimumDistanceReflectsTheLumaGap()
+    {
+        // Narrowest gray gap is 31 (128→159); as a diagonal RGB step that is 31·√3.
+        Assert.Equal(31 * Math.Sqrt(3), PaletteGenerator.Generate(8, PaletteKind.Rugged).MinimumDistance, precision: 6);
+    }
+
+    [Fact]
+    public void Generate_Standard8_IsUnchangedByTheKindOverload()
+    {
+        Assert.Equal(PaletteGenerator.Generate(8).Colors, PaletteGenerator.Generate(8, PaletteKind.Standard).Colors);
+        Assert.NotEqual(PaletteGenerator.Generate(8).Colors, PaletteGenerator.Generate(8, PaletteKind.Rugged).Colors);
+    }
+
+    [Theory]
+    [InlineData(4)]
+    [InlineData(16)]
+    [InlineData(256)]
+    public void Generate_Rugged_RejectsAnyCountButEight(int count)
+    {
+        Assert.False(PaletteGenerator.IsSupportedCount(count, PaletteKind.Rugged));
+        Assert.Throws<ArgumentOutOfRangeException>(() => PaletteGenerator.Generate(count, PaletteKind.Rugged));
+    }
+
+    [Fact]
+    public void IsSupportedCount_KindAware()
+    {
+        Assert.True(PaletteGenerator.IsSupportedCount(8, PaletteKind.Rugged));
+        Assert.True(PaletteGenerator.IsSupportedCount(8, PaletteKind.Standard));
+        Assert.True(PaletteGenerator.IsSupportedCount(1024, PaletteKind.Standard));
+    }
 }

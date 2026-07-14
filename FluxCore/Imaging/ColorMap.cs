@@ -49,7 +49,12 @@ public sealed class ColorMap
     /// <summary>Converts a tile value to its palette color.</summary>
     public Rgb24 GetColor(int value) => _colors[value];
 
-    /// <summary>Builds the palette for a colour count, regenerated deterministically from the count alone.</summary>
+    /// <summary>Builds the standard-tier palette for a colour count, regenerated deterministically from the count alone.</summary>
     /// <param name="colorCount">A supported colour count (power of two in [8, 1024]).</param>
-    public static ColorMap FromCount(int colorCount) => new(PaletteGenerator.Generate(colorCount).Colors);
+    public static ColorMap FromCount(int colorCount) => FromCount(colorCount, PaletteKind.Standard);
+
+    /// <summary>Builds the palette for a colour count and kind, regenerated deterministically from those alone.</summary>
+    /// <param name="colorCount">A supported colour count.</param>
+    /// <param name="kind">Palette family (standard lattice or rugged grayscale ladder).</param>
+    public static ColorMap FromCount(int colorCount, PaletteKind kind) => new(PaletteGenerator.Generate(colorCount, kind).Colors);
 }
