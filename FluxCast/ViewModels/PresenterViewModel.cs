@@ -1,6 +1,7 @@
 using System.Windows.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Flux.Ui.Services;
 using FluxCast.Services;
 using FluxCore.Transfer;
 
@@ -15,6 +16,7 @@ public partial class PresenterViewModel : ObservableObject
 {
     private readonly CachedFrameProvider _frames;
     private readonly Action _onClose;
+    private readonly DialogService _dialogs;
 
     /// <summary>Gets the total frame count, including frame 0.</summary>
     public uint TotalFrames { get; }
@@ -36,9 +38,10 @@ public partial class PresenterViewModel : ObservableObject
     /// <summary>Gets the progress label.</summary>
     public string ProgressText => $"Frame {CurrentIndex + 1} of {TotalFrames}";
 
-    public PresenterViewModel(EncodeSessionResult session, Action onClose)
+    public PresenterViewModel(EncodeSessionResult session, Action onClose, DialogService dialogs)
     {
         _onClose = onClose;
+        _dialogs = dialogs;
         TotalFrames = session.TotalFrames;
         _frames = new CachedFrameProvider(session.FramesDirectory, session.TotalFrames);
 
@@ -72,7 +75,13 @@ public partial class PresenterViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private void Close() => _onClose();
+    private void Close()
+    {
+        if (_dialogs.Confirm(
+                "End session",
+                "Return to the home screen? This cast stays in Recent casts, so you can resume it later."))
+            _onClose();
+    }
 
     partial void OnCurrentIndexChanged(int value)
     {

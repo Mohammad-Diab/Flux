@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Input;
+using System.Windows.Media;
 using System.Windows.Media.Imaging;
 
 namespace FluxCast.Views;
@@ -30,9 +31,13 @@ public partial class PresenterView : UserControl
             return;
         }
 
+        // FrameArea is measured in DIPs but the frame's PixelWidth/Height are device pixels, so both
+        // sides must be brought into device pixels — otherwise the ratio is off by the DPI scale and
+        // the warning fires on high-DPI screens even when the tiles are large enough.
+        var dpi = VisualTreeHelper.GetDpi(this);
         double scale = Math.Min(
-            FrameArea.ActualWidth / frame.PixelWidth,
-            FrameArea.ActualHeight / frame.PixelHeight);
+            FrameArea.ActualWidth * dpi.DpiScaleX / frame.PixelWidth,
+            FrameArea.ActualHeight * dpi.DpiScaleY / frame.PixelHeight);
 
         // Below ~0.6x the rendered tiles fall under ~5px and get fragile once a capture recompresses.
         SizeWarning.Visibility = scale is > 0 and < 0.6 ? Visibility.Visible : Visibility.Collapsed;

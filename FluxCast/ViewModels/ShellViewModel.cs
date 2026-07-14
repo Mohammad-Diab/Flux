@@ -1,4 +1,5 @@
 using System.IO;
+using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Flux.Ui.Services;
@@ -35,6 +36,9 @@ public partial class ShellViewModel : ObservableObject
 
     /// <summary>Gets the view model shown in the shell's content host.</summary>
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowTabs))]
+    [NotifyPropertyChangedFor(nameof(ShowBackButton))]
+    [NotifyPropertyChangedFor(nameof(CanOpenSettings))]
     private object? _current;
 
     [ObservableProperty]
@@ -43,13 +47,17 @@ public partial class ShellViewModel : ObservableObject
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CanOpenSettings))]
     [NotifyPropertyChangedFor(nameof(ShowTabs))]
+    [NotifyPropertyChangedFor(nameof(ShowBackButton))]
     private bool _isSettingsOpen;
 
-    /// <summary>Gets whether the settings gear should be offered (i.e. not already on Settings).</summary>
-    public bool CanOpenSettings => !IsSettingsOpen;
+    /// <summary>Gets whether the settings gear is offered (hidden on Settings and while presenting).</summary>
+    public bool CanOpenSettings => !IsSettingsOpen && Current is not PresenterViewModel;
 
-    /// <summary>Gets whether the tab strip is shown (hidden while the Settings page is open).</summary>
-    public bool ShowTabs => !IsSettingsOpen;
+    /// <summary>Gets whether the title-bar back button is shown (returns from Settings, or leaves the presenter).</summary>
+    public bool ShowBackButton => IsSettingsOpen || Current is PresenterViewModel;
+
+    /// <summary>Gets whether the tab strip is shown (hidden on Settings and while presenting frames).</summary>
+    public bool ShowTabs => !IsSettingsOpen && Current is not PresenterViewModel;
 
     /// <summary>Gets the root directory for encode sessions.</summary>
     public static string SessionRoot { get; } = Path.Combine(
@@ -88,7 +96,8 @@ public partial class ShellViewModel : ObservableObject
     /// <summary>Navigates the Cast tab to the setup screen.</summary>
     public void ShowSetup()
     {
-        _castScreen = new EncodeSetupViewModel(_validator, _dialogs, StartEncode, ShowTestFrame, DisplayMetrics.PrimaryScreenPixels());
+        _castScreen = new EncodeSetupViewModel(_validator, _dialogs, StartEncode, ShowTestFrame,
+            DisplayMetrics.PresenterCanvasPixels(Application.Current?.MainWindow));
         UpdateCurrent();
     }
 
@@ -121,10 +130,20 @@ public partial class ShellViewModel : ObservableObject
         UpdateCurrent();
     }
 
+    /// <summary>Title-bar back: returns from Settings, or leaves the presenter (with confirmation) to home.</summary>
+    [RelayCommand]
+    private void Back()
+    {
+        if (IsSettingsOpen)
+            CloseSettings();
+        else if (_castScreen is PresenterViewModel presenter)
+            presenter.CloseCommand.Execute(null);
+    }
+
     private void ResumeCast(CastHistoryEntry entry)
     {
         var session = _historyService.OpenForPresenting(entry.SessionDirectory);
-        _castScreen = new PresenterViewModel(session, ShowSetup);
+        _castScreen = new PresenterViewModel(session, ShowSetup, _dialogs);
         IsSettingsOpen = false;
         IsHistoryTab = false;
         UpdateCurrent();
@@ -142,7 +161,7 @@ public partial class ShellViewModel : ObservableObject
 
     private void ShowPresenter(EncodeSessionResult session)
     {
-        _castScreen = new PresenterViewModel(session, ShowSetup);
+        _castScreen = new PresenterViewModel(session, ShowSetup, _dialogs);
         UpdateCurrent();
     }
 

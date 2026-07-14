@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Controls;
+using FluxCast.Services;
 using FluxCast.ViewModels;
 
 namespace FluxCast.Views;
@@ -10,6 +11,17 @@ public partial class EncodeSetupView : UserControl
     public EncodeSetupView()
     {
         InitializeComponent();
+        Loaded += OnLoaded;
+    }
+
+    // Fit the grid to this window's own monitor once its handle exists (multi-monitor correct).
+    private void OnLoaded(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is EncodeSetupViewModel vm)
+        {
+            var (width, height) = DisplayMetrics.PresenterCanvasPixels(Window.GetWindow(this));
+            vm.SetDisplayCanvas(width, height);
+        }
     }
 
     private void OnSourceDragOver(object sender, DragEventArgs e)

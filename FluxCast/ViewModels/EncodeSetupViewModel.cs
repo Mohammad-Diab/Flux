@@ -82,8 +82,8 @@ public partial class EncodeSetupViewModel : ObservableObject
     [ObservableProperty]
     private bool _compressLocked;
 
-    private readonly int _displayWidthPx;
-    private readonly int _displayHeightPx;
+    private int _displayWidthPx;
+    private int _displayHeightPx;
     private FrameLayout _layout;
     private int _bitsPerTile = 8;
 
@@ -212,6 +212,14 @@ public partial class EncodeSetupViewModel : ObservableObject
     [RelayCommand]
     private void TestFrame() => _onTest(CurrentOptions());
 
+    /// <summary>Sets the presenter canvas the grid is fitted to (physical px), then refits.</summary>
+    public void SetDisplayCanvas(int width, int height)
+    {
+        _displayWidthPx = width;
+        _displayHeightPx = height;
+        RecomputeLayout();
+    }
+
     // Default and Rugged are complete presets; Advanced reads the selectors. Every derived value routes through these.
     private EccLevel EffectiveEcc => Mode switch
     {
@@ -292,11 +300,9 @@ public partial class EncodeSetupViewModel : ObservableObject
     private void RecomputeLayout()
     {
         _bitsPerTile = PaletteGenerator.BitsForCount(EffectiveColorCount);
-        // Cap the grid so a frame's payload fits the ushort length field at the chosen depth.
-        int dataBytes = EffectiveEcc.DataBytesPerCodeword();
-        int maxCodewords = (int)((long)ushort.MaxValue * 8 / ((long)dataBytes * _bitsPerTile));
+        // Per-frame payload is a uint, so the grid is bounded only by the display (no codeword cap).
         _layout = FrameLayout.FitToDisplay(
-            _displayWidthPx, _displayHeightPx, EffectiveTilePx, maxCodewords, _bitsPerTile);
+            _displayWidthPx, _displayHeightPx, EffectiveTilePx, maxCodewords: 0, bitsPerTile: _bitsPerTile);
 
         int codewords = _layout.CodewordsForBits(_bitsPerTile);
         int bytesPerFrame = EffectiveEcc.PayloadBytesPerFrame(codewords);

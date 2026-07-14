@@ -7,76 +7,63 @@
         <KeyBinding Key="Left" Command="{Binding BackCommand}"/>
     </UserControl.InputBindings>
     <DockPanel Background="#FF262A30">
-        <Border DockPanel.Dock="Bottom" Height="94" Background="#FF16181D">
-            <Grid>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="*"/>
-                    <RowDefinition Height="Auto"/>
-                </Grid.RowDefinitions>
-
-                <TextBlock Grid.Row="1" Text="Keep this window still during transfer" FontSize="10.5"
-                           Foreground="#FF8A9199" HorizontalAlignment="Center" Margin="0,0,0,8"/>
-
-                <!-- Next keeps its text label: the receiver's OCR locates that button by the word "Next". -->
-                <Grid Grid.Row="0" Margin="14,0">
-                    <Button Content="End session" Command="{Binding CloseCommand}" Focusable="False"
-                            HorizontalAlignment="Left" VerticalAlignment="Center" MinHeight="44"
-                            Style="{StaticResource DangerGhostButton}"/>
-
-                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
-                        <Button ToolTip="First frame" Command="{Binding FirstCommand}" Focusable="False"
-                                Style="{StaticResource SecondaryButton}" MinWidth="50" Padding="0" MinHeight="44">
-                            <TextBlock Text="&#xE892;" FontFamily="Segoe MDL2 Assets" FontSize="15"/>
-                        </Button>
-                        <Button Command="{Binding BackCommand}" Focusable="False" Margin="6,0,0,0"
-                                Style="{StaticResource SecondaryButton}" MinWidth="104" MinHeight="44">
-                            <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="&#xE76B;" FontFamily="Segoe MDL2 Assets" FontSize="13" VerticalAlignment="Center" Margin="0,0,10,0"/>
-                                <TextBlock Text="Back" FontSize="16" VerticalAlignment="Center"/>
-                            </StackPanel>
-                        </Button>
-
-                        <TextBlock Text="Frame" FontSize="15" Foreground="White" VerticalAlignment="Center" Margin="16,0,8,0"/>
-                        <TextBox Text="{Binding GotoText, UpdateSourceTrigger=PropertyChanged}" Width="56" Height="44"
-                                 Padding="4,0" TextAlignment="Center" VerticalContentAlignment="Center" ToolTip="Go to frame number">
-                            <TextBox.InputBindings>
-                                <KeyBinding Key="Enter" Command="{Binding GotoCommand}"/>
-                            </TextBox.InputBindings>
-                        </TextBox>
-                        <TextBlock Text="{Binding TotalFrames, StringFormat=of {0}}" FontSize="15" Foreground="White"
-                                   VerticalAlignment="Center" Margin="8,0,8,0"/>
-                        <Button Content="Go" Command="{Binding GotoCommand}" Focusable="False"
-                                Style="{StaticResource SecondaryButton}" MinHeight="44"/>
-
-                        <Button Command="{Binding NextCommand}" Focusable="False" Margin="16,0,0,0"
-                                Style="{StaticResource PrimaryButton}" MinWidth="104" MinHeight="44">
-                            <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="Next" FontSize="16" VerticalAlignment="Center"/>
-                                <TextBlock Text="&#xE76C;" FontFamily="Segoe MDL2 Assets" FontSize="13" VerticalAlignment="Center" Margin="10,0,0,0"/>
-                            </StackPanel>
-                        </Button>
-                        <Button ToolTip="Last frame" Command="{Binding LastCommand}" Focusable="False" Margin="6,0,0,0"
-                                Style="{StaticResource SecondaryButton}" MinWidth="50" Padding="0" MinHeight="44">
-                            <TextBlock Text="&#xE893;" FontFamily="Segoe MDL2 Assets" FontSize="15"/>
-                        </Button>
+        <Border DockPanel.Dock="Top" Height="72" Background="#FF16181D">
+            <!-- Next keeps its text label: the receiver's OCR locates that button by the word "Next". -->
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
+                <Button ToolTip="First frame" Command="{Binding FirstCommand}" Focusable="False"
+                        Style="{StaticResource SecondaryButton}" MinWidth="50" Padding="0" MinHeight="44">
+                    <TextBlock Text="&#xE892;" FontFamily="Segoe MDL2 Assets" FontSize="15"/>
+                </Button>
+                <Button Command="{Binding BackCommand}" Focusable="False" Margin="6,0,0,0"
+                        Style="{StaticResource SecondaryButton}" MinWidth="104" MinHeight="44">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="&#xE76B;" FontFamily="Segoe MDL2 Assets" FontSize="13" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                        <TextBlock Text="Back" FontSize="16" VerticalAlignment="Center"/>
                     </StackPanel>
-                </Grid>
-            </Grid>
+                </Button>
+
+                <TextBlock Text="Frame" FontSize="15" Foreground="White" VerticalAlignment="Center" Margin="16,0,8,0"/>
+                <TextBox Text="{Binding GotoText, UpdateSourceTrigger=PropertyChanged}" Width="56" Height="44"
+                         Padding="4,0" TextAlignment="Center" VerticalContentAlignment="Center" ToolTip="Go to frame number">
+                    <TextBox.InputBindings>
+                        <KeyBinding Key="Enter" Command="{Binding GotoCommand}"/>
+                    </TextBox.InputBindings>
+                </TextBox>
+                <TextBlock Text="{Binding TotalFrames, StringFormat=of {0}}" FontSize="15" Foreground="White"
+                           VerticalAlignment="Center" Margin="8,0,8,0"/>
+                <Button Content="Go" Command="{Binding GotoCommand}" Focusable="False"
+                        Style="{StaticResource SecondaryButton}" MinHeight="44"/>
+
+                <Button Command="{Binding NextCommand}" Focusable="False" Margin="16,0,0,0"
+                        Style="{StaticResource PrimaryButton}" MinWidth="104" MinHeight="44">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="Next" FontSize="16" VerticalAlignment="Center"/>
+                        <TextBlock Text="&#xE76C;" FontFamily="Segoe MDL2 Assets" FontSize="13" VerticalAlignment="Center" Margin="10,0,0,0"/>
+                    </StackPanel>
+                </Button>
+                <Button ToolTip="Last frame" Command="{Binding LastCommand}" Focusable="False" Margin="6,0,0,0"
+                        Style="{StaticResource SecondaryButton}" MinWidth="50" Padding="0" MinHeight="44">
+                    <TextBlock Text="&#xE893;" FontFamily="Segoe MDL2 Assets" FontSize="15"/>
+                </Button>
+            </StackPanel>
         </Border>
 
-        <Grid>
-            <Grid x:Name="FrameArea" Margin="10">
-                <Image x:Name="FrameImage" Source="{Binding CurrentFrame, NotifyOnTargetUpdated=True}"
-                       TargetUpdated="OnFrameChanged"
-                       RenderOptions.BitmapScalingMode="NearestNeighbor"
-                       SnapsToDevicePixels="True" UseLayoutRounding="True"
-                       Stretch="Uniform"/>
-            </Grid>
-            <Border x:Name="SizeWarning" Background="#CCB91C1C" VerticalAlignment="Top" HorizontalAlignment="Center"
-                    CornerRadius="0,0,6,6" Padding="14,7" Visibility="Collapsed">
-                <TextBlock Text="Window is small — enlarge it so the tiles stay large enough to decode reliably."
-                           Foreground="White" FontSize="12.5"/>
-            </Border>
+        <Border x:Name="SizeWarning" DockPanel.Dock="Top" Background="#CCB91C1C" Padding="14,7" Visibility="Collapsed">
+            <TextBlock Text="Window is small — enlarge it so the tiles stay large enough to decode reliably."
+                       Foreground="White" FontSize="12.5" HorizontalAlignment="Center" TextAlignment="Center"/>
+        </Border>
+
+        <Border DockPanel.Dock="Bottom" Background="#FF16181D" Padding="0,7">
+            <TextBlock Text="Keep this window still during transfer" FontSize="10.5"
+                       Foreground="#FF8A9199" HorizontalAlignment="Center"/>
+        </Border>
+
+        <Grid x:Name="FrameArea" Margin="10">
+            <Image x:Name="FrameImage" Source="{Binding CurrentFrame, NotifyOnTargetUpdated=True}"
+                   TargetUpdated="OnFrameChanged"
+                   RenderOptions.BitmapScalingMode="NearestNeighbor"
+                   SnapsToDevicePixels="True" UseLayoutRounding="True"
+                   Stretch="Uniform"/>
         </Grid>
     </DockPanel>
 </UserControl>
