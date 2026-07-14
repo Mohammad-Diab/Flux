@@ -259,6 +259,54 @@ public class FluxEncodeServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task Encode_RuggedTier_ThreadsPaletteKindThroughMetadataHistoryAndPayload()
+    {
+        var source = await CreateSourceFileAsync(20_000);
+        var options = new EncodeOptions(Compress: false, ColorCount: 8, PaletteKind: PaletteKind.Rugged);
+
+        var result = await _service.EncodeAsync(source, SessionRoot, options);
+
+        using var frame0 = SKBitmap.Decode(
+            Path.Combine(result.FramesDirectory, FluxEncodeService.FrameFileName(0)));
+        var metaDecode = new FrameDecoder(ColorMap.Default).DecodeMetadataFrame(frame0);
+        var metadata = MetadataPayload.Deserialize(metaDecode.Payload!);
+        Assert.Equal(PaletteKind.Rugged, metadata.PaletteKind);
+        Assert.Equal(8, metadata.ColorCount);
+
+        // The history variant reflects the rugged kind (drives the FluxCast spec label).
+        var entry = Assert.Single(new CastHistoryService().List(SessionRoot));
+        Assert.Equal(PaletteKind.Rugged, entry.PaletteKind);
+
+        // Payload round-trips through the adopted rugged grayscale palette.
+        Assert.True(metadata.TryBuildLayout(out var layout));
+        int bits = PaletteGenerator.BitsForCount(metadata.ColorCount);
+        var payloadDecoder = new FrameDecoder(ColorMap.FromCount(metadata.ColorCount, metadata.PaletteKind));
+        var assembler = new PayloadAssembler(metadata);
+        for (uint id = 1; id < result.TotalFrames; id++)
+        {
+            using var bitmap = SKBitmap.Decode(
+                Path.Combine(result.FramesDirectory, FluxEncodeService.FrameFileName(id)));
+            var decode = payloadDecoder.Decode(bitmap, bitsPerTile: bits, layout: layout);
+            Assert.Equal(DecodeStatus.Success, decode.Status);
+            Assert.True(assembler.AddFrame(decode.Header!.Value, decode.Payload!));
+        }
+
+        Assert.Equal(await File.ReadAllBytesAsync(source), assembler.AssembleAndVerify());
+    }
+
+    [Fact]
+    public async Task Encode_RuggedAndStandardEight_AreSeparateRenderVariants()
+    {
+        var source = await CreateSourceFileAsync(20_000);
+        var standard = await _service.EncodeAsync(source, SessionRoot, new EncodeOptions(Compress: false, ColorCount: 8));
+        var rugged = await _service.EncodeAsync(source, SessionRoot,
+            new EncodeOptions(Compress: false, ColorCount: 8, PaletteKind: PaletteKind.Rugged));
+
+        Assert.Equal(standard.PayloadDirectory, rugged.PayloadDirectory);    // one shared payload
+        Assert.NotEqual(standard.SessionDirectory, rugged.SessionDirectory); // distinct render keys
+    }
+
+    [Fact]
     public async Task Encode_GridExceedingPerFrameCap_Throws()
     {
         var source = await CreateSourceFileAsync(1000);

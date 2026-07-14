@@ -24,6 +24,15 @@ public sealed class FrameLayout
     /// <summary>Tile edge length in pixels at canonical scale.</summary>
     public int TilePixelSize { get; }
 
+    /// <summary>Colour depth (bits per tile) this layout is sized for; the header region scales with it.</summary>
+    public int BitsPerTile { get; }
+
+    /// <summary>Bit depth the per-frame header is packed at — capped at 8, so palettes ≥256 keep one byte per header tile.</summary>
+    public int HeaderBitsPerTile => Math.Min(BitsPerTile, 8);
+
+    /// <summary>Number of tiles each header copy occupies at this layout's depth (48 at 8-bit).</summary>
+    public int HeaderTilesPerCopy => TileBitPacker.TileCount(FrameFormat.HeaderCopyLength, HeaderBitsPerTile);
+
     /// <summary>Total tiles in the grid.</summary>
     public int TotalTiles => GridWidthTiles * GridHeightTiles;
 
@@ -60,8 +69,12 @@ public sealed class FrameLayout
     /// <param name="gridWidthTiles">Grid width in tiles.</param>
     /// <param name="gridHeightTiles">Grid height in tiles.</param>
     /// <param name="tilePixelSize">Tile edge length in pixels.</param>
-    public FrameLayout(int gridWidthTiles, int gridHeightTiles, int tilePixelSize)
+    /// <param name="bitsPerTile">Colour depth (bits per tile); the header region scales with it. Default 8.</param>
+    public FrameLayout(int gridWidthTiles, int gridHeightTiles, int tilePixelSize, int bitsPerTile = 8)
     {
+        if (bitsPerTile is < 1 or > 10)
+            throw new ArgumentOutOfRangeException(nameof(bitsPerTile));
+
         int minEdge = 2 * FrameFormat.CornerBlockSizeTiles + FrameFormat.HeaderCopyLength;
         if (gridWidthTiles < minEdge || gridHeightTiles < minEdge)
             throw new ArgumentException(
@@ -72,14 +85,15 @@ public sealed class FrameLayout
         GridWidthTiles = gridWidthTiles;
         GridHeightTiles = gridHeightTiles;
         TilePixelSize = tilePixelSize;
+        BitsPerTile = bitsPerTile;
 
         _roles = new TileRole[TotalTiles];
         Array.Fill(_roles, TileRole.Data);
 
         MarkCornerBlocks();
         MarkTimingPattern();
-        _headerCopies = MarkHeaderCopies();
         BeaconTiles = MarkBeacon();
+        _headerCopies = MarkHeaderCopies();
 
         int reserved = CountNonData();
         CodewordCount = (TotalTiles - reserved) / FrameFormat.CodewordLength;
@@ -101,7 +115,9 @@ public sealed class FrameLayout
     /// <param name="displayHeightPx">Usable display height in physical pixels.</param>
     /// <param name="tilePixelSize">Tile edge length in pixels.</param>
     /// <param name="maxCodewords">Upper bound on codewords per frame, or 0 for no cap.</param>
-    public static FrameLayout FitToDisplay(int displayWidthPx, int displayHeightPx, int tilePixelSize, int maxCodewords = 0)
+    /// <param name="bitsPerTile">Colour depth the frames will use; the header region scales with it. Default 8.</param>
+    public static FrameLayout FitToDisplay(
+        int displayWidthPx, int displayHeightPx, int tilePixelSize, int maxCodewords = 0, int bitsPerTile = 8)
     {
         if (tilePixelSize < 1)
             throw new ArgumentOutOfRangeException(nameof(tilePixelSize));
@@ -111,16 +127,16 @@ public sealed class FrameLayout
         int gw = Math.Max(minEdge, displayWidthPx / tilePixelSize - 4);
         int gh = Math.Max(minEdge, displayHeightPx / tilePixelSize - 4);
 
-        var layout = new FrameLayout(gw, gh, tilePixelSize);
+        var layout = new FrameLayout(gw, gh, tilePixelSize, bitsPerTile);
         if (maxCodewords > 0 && layout.CodewordCount > maxCodewords)
         {
             double scale = Math.Sqrt((double)maxCodewords / layout.CodewordCount);
             gw = Math.Max(minEdge, (int)(gw * scale));
             gh = Math.Max(minEdge, (int)(gh * scale));
-            layout = new FrameLayout(gw, gh, tilePixelSize);
+            layout = new FrameLayout(gw, gh, tilePixelSize, bitsPerTile);
 
             while (layout.CodewordCount > maxCodewords && gw > minEdge && gh > minEdge)
-                layout = new FrameLayout(--gw, --gh, tilePixelSize);
+                layout = new FrameLayout(--gw, --gh, tilePixelSize, bitsPerTile);
         }
 
         return layout;
@@ -209,6 +225,22 @@ public sealed class FrameLayout
 
     private (int X, int Y)[][] MarkHeaderCopies()
     {
+        // At 8-bit (48 tiles) the three straight edge-strips are kept verbatim so the default layout
+        // stays byte-identical. A lower colour depth packs the 48 header symbols into more tiles than
+        // fit along one edge, so the copies become three separated bands filled from spare data tiles.
+        if (HeaderTilesPerCopy == FrameFormat.HeaderCopyLength)
+            return MarkHeaderStrips();
+
+        int need = HeaderTilesPerCopy;
+        var copies = new (int X, int Y)[FrameFormat.HeaderCopyCount][];
+        copies[0] = FillHeaderBand(startRow: 0, rowStep: 1, need);                     // top
+        copies[2] = FillHeaderBand(startRow: GridHeightTiles - 1, rowStep: -1, need);  // bottom
+        copies[1] = FillHeaderBand(startRow: GridHeightTiles / 2, rowStep: 1, need);   // middle
+        return copies;
+    }
+
+    private (int X, int Y)[][] MarkHeaderStrips()
+    {
         int block = FrameFormat.CornerBlockSizeTiles;
         int len = FrameFormat.HeaderCopyLength;
         var copies = new (int X, int Y)[FrameFormat.HeaderCopyCount][];
@@ -230,6 +262,30 @@ public sealed class FrameLayout
         }
 
         return tiles;
+    }
+
+    // Greedily claims `need` spare data tiles scanning row by row from `startRow` in `rowStep`
+    // direction, skipping any reserved tile (finder/timing/beacon/already-header). Starting the three
+    // copies at the top, bottom, and middle keeps them separated so a localized smear can't take out
+    // more than one — the same burst protection the edge-strips give at 8-bit.
+    private (int X, int Y)[] FillHeaderBand(int startRow, int rowStep, int need)
+    {
+        var tiles = new List<(int X, int Y)>(need);
+        for (int y = startRow; tiles.Count < need && y >= 0 && y < GridHeightTiles; y += rowStep)
+            for (int x = 0; x < GridWidthTiles && tiles.Count < need; x++)
+            {
+                int idx = y * GridWidthTiles + x;
+                if (_roles[idx] != TileRole.Data)
+                    continue;
+                _roles[idx] = TileRole.Header;
+                tiles.Add((x, y));
+            }
+
+        if (tiles.Count < need)
+            throw new ArgumentException(
+                $"Grid {GridWidthTiles}×{GridHeightTiles} has no room for a {need}-tile header copy at {BitsPerTile} bits/tile.");
+
+        return tiles.ToArray();
     }
 
     private (int X, int Y)[] MarkBeacon()

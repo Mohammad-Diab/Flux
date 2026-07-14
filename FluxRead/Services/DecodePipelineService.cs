@@ -150,7 +150,7 @@ public sealed class DecodePipelineService
         progress?.Report(new DecodeProgress(1, files.Length));
 
         // Payload frames adopt the transfer's palette; frame 0 stayed on the palette-independent cube path.
-        var payloadDecoder = metadata.ColorCount == 256 ? decoder : new FrameDecoder(ColorMap.FromCount(metadata.ColorCount));
+        var payloadDecoder = metadata.ColorCount == 256 ? decoder : new FrameDecoder(ColorMap.FromCount(metadata.ColorCount, metadata.PaletteKind));
         int bitsPerTile = metadata.BitsPerTile;
 
         var assembler = new PayloadAssembler(metadata);

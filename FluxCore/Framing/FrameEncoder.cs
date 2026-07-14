@@ -101,13 +101,17 @@ public static class FrameEncoder
         Span<byte> symbols = stackalloc byte[ReedSolomonBlockCodec.EncodedHeaderLength];
         ReedSolomonBlockCodec.EncodeHeader(header, symbols);
 
+        // Pack the header symbols to the layout's header depth (8-bit → one byte per tile, identical
+        // to before; lower depths spread each byte across several tiles so a small palette can render it).
+        var packed = TileBitPacker.Pack(symbols, layout.HeaderBitsPerTile);
+
         for (int copy = 0; copy < FrameFormat.HeaderCopyCount; copy++)
         {
             var positions = layout.GetHeaderCopyTiles(copy);
-            for (int i = 0; i < FrameFormat.HeaderCopyLength; i++)
+            for (int i = 0; i < positions.Count; i++)
             {
                 var (x, y) = positions[i];
-                tiles[y * layout.GridWidthTiles + x] = symbols[i];
+                tiles[y * layout.GridWidthTiles + x] = packed[i];
             }
         }
     }

@@ -1,6 +1,7 @@
 using System.IO;
 using System.Text.Json;
 using FluxCore.Ecc;
+using FluxCore.Imaging;
 
 namespace FluxCore.Transfer;
 
@@ -20,7 +21,8 @@ internal sealed record RenderManifest(
     int TilePixelSize,
     int ColorCount,
     uint TotalFrames,
-    DateTimeOffset? CreatedUtc = null)
+    DateTimeOffset? CreatedUtc = null,
+    PaletteKind PaletteKind = PaletteKind.Standard)
 {
     public static RenderManifest? TryRead(string manifestPath)
     {

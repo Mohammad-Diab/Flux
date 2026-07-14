@@ -207,7 +207,7 @@ public sealed class CaptureLoopService
                         _payloadBits = metadata.BitsPerTile;
                         _payloadDecoder = metadata.ColorCount == 256
                             ? _decoder
-                            : new FrameDecoder(ColorMap.FromCount(metadata.ColorCount));
+                            : new FrameDecoder(ColorMap.FromCount(metadata.ColorCount, metadata.PaletteKind));
                         return metadata;
                     }
                 }

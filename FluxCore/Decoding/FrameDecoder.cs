@@ -356,16 +356,18 @@ public sealed class FrameDecoder
 
         for (int copy = 0; copy < FrameFormat.HeaderCopyCount; copy++)
         {
-            var symbols = new byte[FrameFormat.HeaderCopyLength];
             var positions = layout.GetHeaderCopyTiles(copy);
-            for (int i = 0; i < symbols.Length; i++)
+            var packed = new ushort[positions.Count];
+            for (int i = 0; i < packed.Length; i++)
             {
                 var (x, y) = positions[i];
                 var sample = sampleAt(x, y);
-                // Header symbols are RS bytes; palettes ≥256 only use indices 0-255 for the header.
-                symbols[i] = (byte)_classifier.Classify(sample.R, sample.G, sample.B).PaletteIndex;
+                packed[i] = _classifier.Classify(sample.R, sample.G, sample.B).PaletteIndex;
             }
 
+            // Header tiles are packed at the layout's header depth (8-bit → one byte per tile);
+            // unpack back to the 48 RS symbols before error-correcting the header.
+            var symbols = TileBitPacker.Unpack(packed, layout.HeaderBitsPerTile, FrameFormat.HeaderCopyLength);
             if (ReedSolomonBlockCodec.TryDecodeHeader(symbols, out var candidate))
                 candidates.Add(candidate);
         }

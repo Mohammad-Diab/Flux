@@ -92,7 +92,8 @@ public sealed class FluxEncodeService
             originalName: SourceName(sourcePath),
             originalLength: PathSize.GetTotalBytes(sourcePath),
             contentSignature: combinedSignature,
-            colorCount: options.ColorCount)
+            colorCount: options.ColorCount,
+            paletteKind: options.PaletteKind)
         {
             GridWidthTiles = (ushort)layout.GridWidthTiles,
             GridHeightTiles = (ushort)layout.GridHeightTiles,
@@ -223,7 +224,8 @@ public sealed class FluxEncodeService
             layout.TilePixelSize,
             options.ColorCount,
             totalFrames,
-            CreatedUtc: existing?.CreatedUtc ?? DateTimeOffset.UtcNow);
+            CreatedUtc: existing?.CreatedUtc ?? DateTimeOffset.UtcNow,
+            PaletteKind: options.PaletteKind);
         await File.WriteAllTextAsync(manifestPath, JsonSerializer.Serialize(manifest), cancellationToken);
     }
 
@@ -237,7 +239,9 @@ public sealed class FluxEncodeService
     {
         int bitsPerTile = PaletteGenerator.BitsForCount(metadata.ColorCount);
         int bytesPerFrame = metadata.EccLevel.PayloadBytesPerFrame(layout.CodewordsForBits(bitsPerTile));
-        var colorMap = metadata.ColorCount == 256 ? ColorMap.Default : ColorMap.FromCount(metadata.ColorCount);
+        var colorMap = metadata.ColorCount == 256
+            ? ColorMap.Default
+            : ColorMap.FromCount(metadata.ColorCount, metadata.PaletteKind);
         uint totalFrames = metadata.TotalFrames;
         int rendered = 0;
         int completed = 0;
@@ -285,8 +289,9 @@ public sealed class FluxEncodeService
 
     private static FrameLayout BuildPayloadLayout(EncodeOptions options)
     {
-        var layout = new FrameLayout(options.GridWidthTiles, options.GridHeightTiles, options.TilePixelSize);
-        int codewords = layout.CodewordsForBits(PaletteGenerator.BitsForCount(options.ColorCount));
+        int bitsPerTile = PaletteGenerator.BitsForCount(options.ColorCount);
+        var layout = new FrameLayout(options.GridWidthTiles, options.GridHeightTiles, options.TilePixelSize, bitsPerTile);
+        int codewords = layout.CodewordsForBits(bitsPerTile);
         int bytesPerFrame = options.EccLevel.PayloadBytesPerFrame(codewords);
         if (bytesPerFrame > ushort.MaxValue)
             throw new ArgumentException(

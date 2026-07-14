@@ -47,7 +47,7 @@ public sealed class CastHistoryService
                 entries.Add(new CastHistoryEntry(
                     renderDir, framesDir, name, payload.SourcePath, payload.SourceKind,
                     total, payload.PayloadLength, created, complete,
-                    render.EccLevel, render.GridWidthTiles, render.GridHeightTiles, render.ColorCount));
+                    render.EccLevel, render.GridWidthTiles, render.GridHeightTiles, render.ColorCount, render.PaletteKind));
             }
         }
 

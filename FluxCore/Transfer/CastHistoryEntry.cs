@@ -1,4 +1,5 @@
 using FluxCore.Ecc;
+using FluxCore.Imaging;
 
 namespace FluxCore.Transfer;
 
@@ -16,6 +17,7 @@ namespace FluxCore.Transfer;
 /// <param name="GridWidthTiles">Payload-frame grid width in tiles.</param>
 /// <param name="GridHeightTiles">Payload-frame grid height in tiles.</param>
 /// <param name="ColorCount">Data-tile colour count of this render variant.</param>
+/// <param name="PaletteKind">Data-tile palette family of this render variant.</param>
 public sealed record CastHistoryEntry(
     string SessionDirectory,
     string FramesDirectory,
@@ -29,4 +31,5 @@ public sealed record CastHistoryEntry(
     EccLevel EccLevel,
     int GridWidthTiles,
     int GridHeightTiles,
-    int ColorCount);
+    int ColorCount,
+    PaletteKind PaletteKind = PaletteKind.Standard);

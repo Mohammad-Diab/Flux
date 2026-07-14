@@ -2,6 +2,7 @@ using System.IO;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Flux.Ui;
+using FluxCore.Imaging;
 using FluxCore.Transfer;
 
 namespace FluxCast.ViewModels;
@@ -37,10 +38,12 @@ public partial class CastHistoryItemViewModel : ObservableObject
     /// <summary>Gets the source name.</summary>
     public string DisplayName => Entry.DisplayName;
 
-    /// <summary>Gets the render-spec label distinguishing this variant (grid, ECC, and colour when not 256).</summary>
-    public string SpecText => Entry.ColorCount == 256
-        ? $"{Entry.GridWidthTiles}×{Entry.GridHeightTiles} · {Entry.EccLevel} ECC"
-        : $"{Entry.GridWidthTiles}×{Entry.GridHeightTiles} · {Entry.EccLevel} ECC · {Entry.ColorCount} colours";
+    /// <summary>Gets the render-spec label distinguishing this variant (grid, ECC, and colour/rugged when not the 256 default).</summary>
+    public string SpecText => Entry.PaletteKind == PaletteKind.Rugged
+        ? $"{Entry.GridWidthTiles}×{Entry.GridHeightTiles} · {Entry.EccLevel} ECC · rugged"
+        : Entry.ColorCount == 256
+            ? $"{Entry.GridWidthTiles}×{Entry.GridHeightTiles} · {Entry.EccLevel} ECC"
+            : $"{Entry.GridWidthTiles}×{Entry.GridHeightTiles} · {Entry.EccLevel} ECC · {Entry.ColorCount} colours";
 
     /// <summary>Gets the Segoe MDL2 glyph for the source type (folder vs file).</summary>
     public string TypeGlyph => Entry.SourceKind == SourceKind.Folder ? "" : "";

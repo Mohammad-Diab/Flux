@@ -77,7 +77,30 @@ public class MetadataPayloadTests
         Assert.Equal(original.OriginalLength, restored.OriginalLength);
         Assert.Equal(original.ContentSignature, restored.ContentSignature);
         Assert.Equal(original.ColorCount, restored.ColorCount);
+        Assert.Equal(original.PaletteKind, restored.PaletteKind);
         Assert.True(restored.TryBuildLayout(out _));
+    }
+
+    [Fact]
+    public void SerializeDeserialize_PreservesPaletteKind()
+    {
+        var standard = CreateValid();
+        Assert.Equal(PaletteKind.Standard, MetadataPayload.Deserialize(standard.Serialize()).PaletteKind);
+
+        var rugged = new MetadataPayload(
+            Filled(0xAA), PayloadType.Raw, EccLevel.Medium, 5, 1000, "x", 2000, Filled(0xBB),
+            colorCount: 8, paletteKind: PaletteKind.Rugged);
+        var restored = MetadataPayload.Deserialize(rugged.Serialize());
+        Assert.Equal(PaletteKind.Rugged, restored.PaletteKind);
+        Assert.Equal(8, restored.ColorCount);
+    }
+
+    [Fact]
+    public void Constructor_RejectsRuggedWithNonEightColourCount()
+    {
+        Assert.Throws<ArgumentException>(() => new MetadataPayload(
+            Filled(0), PayloadType.Raw, EccLevel.Low, 1, 0, "x", 0, Filled(0),
+            colorCount: 256, paletteKind: PaletteKind.Rugged));
     }
 
     [Fact]
@@ -141,6 +164,7 @@ public class MetadataPayloadTests
     [Theory]
     [InlineData(1)]
     [InlineData(2)]
+    [InlineData(3)]
     public void Deserialize_RejectsOlderVersions(byte version)
     {
         var data = new byte[MetadataPayload.FixedSize];

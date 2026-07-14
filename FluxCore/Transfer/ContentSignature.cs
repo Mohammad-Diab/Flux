@@ -46,14 +46,14 @@ public static class ContentSignature
         return hash.GetHashAndReset();
     }
 
-    /// <summary>Computes the render signature from the format spec (ECC, grid, tile size, colour, version).</summary>
+    /// <summary>Computes the render signature from the format spec (ECC, grid, tile size, colour, palette kind, version).</summary>
     /// <param name="options">Encode options whose render-affecting fields are hashed.</param>
     public static byte[] ComputeRenderSignature(EncodeOptions options)
     {
         ArgumentNullException.ThrowIfNull(options);
 
         using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
-        hash.AppendData([(byte)options.EccLevel, FrameFormat.Version]);
+        hash.AppendData([(byte)options.EccLevel, FrameFormat.Version, (byte)options.PaletteKind]);
         AppendInt64(hash, options.GridWidthTiles);
         AppendInt64(hash, options.GridHeightTiles);
         AppendInt64(hash, options.TilePixelSize);

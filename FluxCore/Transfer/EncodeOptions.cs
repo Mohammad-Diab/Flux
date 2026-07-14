@@ -1,5 +1,6 @@
 using FluxCore.Ecc;
 using FluxCore.Framing;
+using FluxCore.Imaging;
 
 namespace FluxCore.Transfer;
 
@@ -11,11 +12,13 @@ namespace FluxCore.Transfer;
 /// <param name="GridWidthTiles">Payload-frame grid width in tiles (frame 0 is always the default grid).</param>
 /// <param name="GridHeightTiles">Payload-frame grid height in tiles.</param>
 /// <param name="TilePixelSize">Payload-frame tile edge length in pixels.</param>
-/// <param name="ColorCount">Data-tile colour count (256 today; a render-key input for the future colour lever).</param>
+/// <param name="ColorCount">Data-tile colour count (a render-key input; the rugged tier fixes this at 8).</param>
+/// <param name="PaletteKind">Data-tile palette family (standard lattice or rugged grayscale ladder).</param>
 public sealed record EncodeOptions(
     EccLevel EccLevel = EccLevel.Medium,
     bool Compress = true,
     int GridWidthTiles = FrameFormat.GridWidthTiles,
     int GridHeightTiles = FrameFormat.GridHeightTiles,
     int TilePixelSize = FrameFormat.TilePixelSize,
-    int ColorCount = 256);
+    int ColorCount = 256,
+    PaletteKind PaletteKind = PaletteKind.Standard);
