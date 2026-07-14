@@ -1,6 +1,30 @@
 <UserControl x:Class="FluxCast.Views.RecentCastsView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <UserControl.Resources>
+        <Style x:Key="OverflowMenuButton" TargetType="Button">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+            <Setter Property="HorizontalContentAlignment" Value="Left"/>
+            <Setter Property="Padding" Value="12,8"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bd" Background="{TemplateBinding Background}" CornerRadius="6" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Left" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="{StaticResource HoverOverlayBrush}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </UserControl.Resources>
     <Grid Margin="0,16,0,20">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -33,9 +57,7 @@
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="Auto"/>
                                     <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="100"/>
-                                    <ColumnDefinition Width="80"/>
-                                    <ColumnDefinition Width="100"/>
+                                    <ColumnDefinition Width="Auto"/>
                                     <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
 
@@ -49,40 +71,61 @@
                                 <StackPanel Grid.Column="1" Margin="14,0,12,0" VerticalAlignment="Center">
                                     <TextBlock Text="{Binding DisplayName}" FontSize="15" FontWeight="SemiBold"
                                                Foreground="{StaticResource TextPrimaryBrush}"
-                                               TextTrimming="CharacterEllipsis"/>
-                                    <Border HorizontalAlignment="Left" Background="{StaticResource SurfaceAltBrush}"
-                                            CornerRadius="5" Padding="7,2" Margin="0,4,0,0">
-                                        <TextBlock Text="{Binding SpecText}" FontSize="11"
-                                                   Foreground="{StaticResource TextSecondaryBrush}"/>
-                                    </Border>
-                                    <TextBlock Text="{Binding LocationText}" Style="{StaticResource SubtleText}"
-                                               FontSize="12" Opacity="0.75" TextTrimming="CharacterEllipsis"
-                                               Margin="0,3,0,0" ToolTip="{Binding LocationText}"/>
+                                               TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"/>
+                                    <Grid Margin="0,4,0,0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Border Grid.Column="0" Background="{StaticResource SurfaceAltBrush}"
+                                                CornerRadius="5" Padding="7,2" VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding SpecText}" FontSize="11"
+                                                       Foreground="{StaticResource TextSecondaryBrush}"/>
+                                        </Border>
+                                        <TextBlock Grid.Column="1" Text="{Binding LocationText}" FontSize="12"
+                                                   Foreground="{StaticResource TextSecondaryBrush}" Opacity="0.75"
+                                                   VerticalAlignment="Center" Margin="8,0,0,0"
+                                                   TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"
+                                                   ToolTip="{Binding LocationText}"/>
+                                    </Grid>
                                 </StackPanel>
 
-                                <TextBlock Grid.Column="2" Text="{Binding FramesText}" Style="{StaticResource SubtleText}"
-                                           VerticalAlignment="Center"/>
-                                <TextBlock Grid.Column="3" Text="{Binding SizeText}" Style="{StaticResource SubtleText}"
-                                           VerticalAlignment="Center"/>
-                                <TextBlock Grid.Column="4" Text="{Binding DateText}" Style="{StaticResource SubtleText}"
-                                           VerticalAlignment="Center"/>
+                                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,16,0">
+                                    <TextBlock Text="{Binding FramesText}" Style="{StaticResource SubtleText}"/>
+                                    <TextBlock Text=" · " Style="{StaticResource SubtleText}"/>
+                                    <TextBlock Text="{Binding SizeText}" Style="{StaticResource SubtleText}"/>
+                                    <TextBlock Text=" · " Style="{StaticResource SubtleText}"/>
+                                    <TextBlock Text="{Binding DateText}" Style="{StaticResource SubtleText}"/>
+                                </StackPanel>
 
-                                <StackPanel Grid.Column="5" Orientation="Horizontal" VerticalAlignment="Center" Margin="12,0,0,0">
+                                <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center">
                                     <Button Content="Resume" Style="{StaticResource PrimaryButton}"
                                             MinHeight="0" Padding="18,8" FontSize="12.5" Effect="{x:Null}"
                                             Command="{Binding ResumeCommand}" ToolTip="{Binding ResumeTooltip}"/>
-                                    <Button Content="Open location" Style="{StaticResource SecondaryButton}"
-                                            MinHeight="0" Padding="14,8" FontSize="12.5" Margin="8,0,0,0"
-                                            Command="{Binding OpenLocationCommand}" ToolTip="{Binding OpenLocationTooltip}"/>
-                                    <Button Content="Open frames" Style="{StaticResource SecondaryButton}"
-                                            MinHeight="0" Padding="14,8" FontSize="12.5" Margin="8,0,0,0"
-                                            Command="{Binding OpenFramesCommand}" ToolTip="Open the generated frames folder"/>
-                                    <Button Content="Export frames…" Style="{StaticResource SecondaryButton}"
-                                            MinHeight="0" Padding="14,8" FontSize="12.5" Margin="8,0,0,0"
-                                            Command="{Binding ExportFramesCommand}"
-                                            ToolTip="Copy the frame PNGs to a folder you choose, with per-frame checksums"/>
-                                    <Button Content="Delete" Style="{StaticResource DangerGhostButton}"
-                                            Margin="8,0,0,0" Command="{Binding DeleteCommand}"/>
+                                    <Grid Margin="8,0,0,0">
+                                        <Button x:Name="MoreBtn" Style="{StaticResource SecondaryButton}"
+                                                MinHeight="0" MinWidth="0" Padding="12,8" Click="ToggleOverflow" ToolTip="More actions">
+                                            <TextBlock Text="&#xE712;" FontFamily="Segoe MDL2 Assets" FontSize="14"/>
+                                        </Button>
+                                        <Popup StaysOpen="False" AllowsTransparency="True" Placement="Bottom"
+                                               HorizontalOffset="-170" VerticalOffset="-6" PlacementTarget="{Binding ElementName=MoreBtn}">
+                                            <!-- Margin leaves room inside the transparent popup for the card's drop shadow. -->
+                                            <Border Style="{StaticResource Card}" Padding="6" MinWidth="188" Margin="18,14,18,24">
+                                                <StackPanel>
+                                                    <Button Content="Open location" Style="{StaticResource OverflowMenuButton}"
+                                                            Command="{Binding OpenLocationCommand}" Click="CloseOverflow"/>
+                                                    <Button Content="Open frames" Style="{StaticResource OverflowMenuButton}"
+                                                            Command="{Binding OpenFramesCommand}" Click="CloseOverflow"/>
+                                                    <Button Content="Export frames…" Style="{StaticResource OverflowMenuButton}"
+                                                            Command="{Binding ExportFramesCommand}" Click="CloseOverflow"/>
+                                                    <Border Height="1" Background="{StaticResource BorderBrush}" Margin="6,5"/>
+                                                    <Button Content="Delete" Style="{StaticResource OverflowMenuButton}"
+                                                            Foreground="{StaticResource DangerBrush}"
+                                                            Command="{Binding DeleteCommand}" Click="CloseOverflow"/>
+                                                </StackPanel>
+                                            </Border>
+                                        </Popup>
+                                    </Grid>
                                 </StackPanel>
                             </Grid>
                         </Border>
