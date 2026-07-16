@@ -25,6 +25,12 @@
                        FontSize="13" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}"/>
             <TextBlock Text="{Binding Subtitle, ElementName=Root}" Margin="10,0,0,0" VerticalAlignment="Center"
                        FontSize="12" Foreground="{StaticResource TextSecondaryBrush}"/>
+            <Border Margin="10,0,0,0" VerticalAlignment="Center" Padding="6,1" CornerRadius="4"
+                    Background="{StaticResource HoverOverlayBrush}"
+                    Visibility="{Binding Version, ElementName=Root, Converter={StaticResource NullToCollapsed}}">
+                <TextBlock Text="{Binding Version, ElementName=Root, StringFormat=v{0}}" VerticalAlignment="Center"
+                           FontSize="11" Foreground="{StaticResource TextSecondaryBrush}"/>
+            </Border>
         </StackPanel>
 
         <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Top"

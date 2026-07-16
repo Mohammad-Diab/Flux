@@ -32,20 +32,21 @@
     <Grid>
         <ui:AmbientBackground/>
         <DockPanel x:Name="RootContent">
-            <ui:TitleBar DockPanel.Dock="Top" Title="FluxCast" Subtitle="Optical sender"
+            <ui:TitleBar x:Name="TitleBarCtl" DockPanel.Dock="Top" Title="FluxCast" Subtitle="Optical sender"
                          BrandGeometry="M7,1 L13,7 L9.5,7 L9.5,13 L4.5,13 L4.5,7 L1,7 Z"
                          ShowSettingsButton="{Binding CanOpenSettings}" SettingsCommand="{Binding ShowSettingsCommand}"
                          ShowBackButton="{Binding ShowBackButton}" BackCommand="{Binding BackCommand}"/>
             <Border DockPanel.Dock="Top" Padding="24,8,24,2"
                     Visibility="{Binding ShowTabs, Converter={StaticResource BoolToVisibility}}">
-                <StackPanel Orientation="Horizontal">
+                <controls:SlidingTabBar HorizontalAlignment="Left">
                     <RadioButton Content="Cast" GroupName="Tab" Style="{StaticResource TabRadio}"
                                  IsChecked="{Binding IsHistoryTab, Converter={StaticResource InverseBool}, Mode=TwoWay}"/>
                     <RadioButton Content="History" GroupName="Tab" Style="{StaticResource TabRadio}"
                                  IsChecked="{Binding IsHistoryTab, Mode=TwoWay}"/>
-                </StackPanel>
+                </controls:SlidingTabBar>
             </Border>
-            <controls:TransitionHost Content="{Binding Current}"
+            <controls:TransitionHost x:Name="ContentHost" Content="{Binding Current}" SlideFrom="{Binding TransitionSlide}"
+                                     Genie="{Binding TransitionGenie}"
                                      HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch"/>
         </DockPanel>
     </Grid>

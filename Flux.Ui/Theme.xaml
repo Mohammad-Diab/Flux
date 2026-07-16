@@ -484,6 +484,25 @@
         <Setter Property="Effect" Value="{Binding AnimationsEnabled, Source={StaticResource MotionSettings}, Converter={StaticResource EffectWhenEnabled}, ConverterParameter={StaticResource SoftShadow}}"/>
     </Style>
 
+    <!-- ============ TransitionHost (3D page swing) ============ -->
+    <Style TargetType="{x:Type controls:TransitionHost}">
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type controls:TransitionHost}">
+                    <Grid ClipToBounds="True">
+                        <ContentPresenter x:Name="PART_Content"
+                                          Content="{TemplateBinding Content}"
+                                          ContentTemplate="{TemplateBinding ContentTemplate}"
+                                          HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                          VerticalAlignment="{TemplateBinding VerticalContentAlignment}"/>
+                        <Image x:Name="PART_Outgoing" Stretch="Fill" Visibility="Hidden" IsHitTestVisible="False"/>
+                        <Canvas x:Name="PART_Genie" Visibility="Hidden" IsHitTestVisible="False"/>
+                    </Grid>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <!-- ============ Tabs (pill) ============ -->
     <Style x:Key="TabRadio" TargetType="RadioButton">
         <Setter Property="FontSize" Value="14"/>
@@ -499,7 +518,33 @@
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsChecked" Value="True">
-                            <Setter TargetName="Bd" Property="Background" Value="{StaticResource AccentGradientHorizontal}"/>
+                            <Setter Property="Foreground" Value="White"/>
+                        </Trigger>
+                        <MultiTrigger>
+                            <MultiTrigger.Conditions>
+                                <Condition Property="IsChecked" Value="False"/>
+                                <Condition Property="IsMouseOver" Value="True"/>
+                            </MultiTrigger.Conditions>
+                            <Setter TargetName="Bd" Property="Background" Value="{StaticResource HoverOverlayBrush}"/>
+                            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+                        </MultiTrigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- Segment of a bordered toggle group; stretches to an equal share, content centred, no gap. -->
+    <Style x:Key="SegmentToggle" TargetType="RadioButton" BasedOn="{StaticResource TabRadio}">
+        <Setter Property="Margin" Value="0"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="RadioButton">
+                    <Border x:Name="Bd" Padding="0,9" CornerRadius="7" Background="Transparent">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsChecked" Value="True">
                             <Setter Property="Foreground" Value="White"/>
                         </Trigger>
                         <MultiTrigger>

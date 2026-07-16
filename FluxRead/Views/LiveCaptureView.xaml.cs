@@ -130,11 +130,24 @@ public partial class LiveCaptureView : UserControl
 
     private async Task<bool> TryAutoNextAsync(SKBitmap shot, Int32Rect virtualScreen, FrameRegion frame)
     {
+        // The presenter's toolbar (carrying the "Next" button) sits above the frame; scan that band
+        // first, then fall back to below in case a layout puts the controls there.
         int sx = Math.Max(0, frame.X - frame.Width / 4);
-        int sy = frame.Y + frame.Height;
         int sw = Math.Min(shot.Width - sx, frame.Width + frame.Width / 2);
-        int sh = Math.Min(shot.Height - sy, frame.Height);
-        if (sw <= 0 || sh <= 0)
+        if (sw <= 0)
+            return false;
+
+        int aboveHeight = Math.Min(frame.Y, frame.Height);
+        int belowY = frame.Y + frame.Height;
+        int belowHeight = Math.Min(shot.Height - belowY, frame.Height);
+
+        return await ScanStripForNextAsync(shot, virtualScreen, sx, frame.Y - aboveHeight, sw, aboveHeight)
+            || await ScanStripForNextAsync(shot, virtualScreen, sx, belowY, sw, belowHeight);
+    }
+
+    private async Task<bool> ScanStripForNextAsync(SKBitmap shot, Int32Rect virtualScreen, int sx, int sy, int sw, int sh)
+    {
+        if (sh <= 0)
             return false;
 
         using var strip = new SKBitmap(sw, sh, SKColorType.Bgra8888, SKAlphaType.Premul);

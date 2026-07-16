@@ -1,4 +1,5 @@
 using System;
+using System.Reflection;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -18,6 +19,9 @@ public partial class TitleBar : UserControl
 
     public static readonly DependencyProperty SubtitleProperty =
         DependencyProperty.Register(nameof(Subtitle), typeof(string), typeof(TitleBar), new PropertyMetadata(""));
+
+    public static readonly DependencyProperty VersionProperty =
+        DependencyProperty.Register(nameof(Version), typeof(string), typeof(TitleBar), new PropertyMetadata(ResolveVersion()));
 
     public static readonly DependencyProperty BrandGeometryProperty =
         DependencyProperty.Register(nameof(BrandGeometry), typeof(Geometry), typeof(TitleBar), new PropertyMetadata(BrandMark.DefaultGlyph));
@@ -52,6 +56,27 @@ public partial class TitleBar : UserControl
     {
         get => (string)GetValue(SubtitleProperty);
         set => SetValue(SubtitleProperty, value);
+    }
+
+    /// <summary>App version shown next to the subtitle; defaults to the running app's version.</summary>
+    public string Version
+    {
+        get => (string)GetValue(VersionProperty);
+        set => SetValue(VersionProperty, value);
+    }
+
+    // The entry assembly is the running app (FluxCast/FluxRead); prefer its informational version
+    // (e.g. "0.9.0-beta"), dropping any "+build" suffix, and fall back to the numeric version.
+    private static string ResolveVersion()
+    {
+        var assembly = Assembly.GetEntryAssembly();
+        var version = assembly?.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
+        if (string.IsNullOrEmpty(version))
+            version = assembly?.GetName().Version?.ToString();
+        if (string.IsNullOrEmpty(version))
+            return "";
+        int plus = version.IndexOf('+');
+        return plus >= 0 ? version[..plus] : version;
     }
 
     public Geometry BrandGeometry
@@ -123,4 +148,16 @@ public partial class TitleBar : UserControl
     }
 
     private void OnClose(object sender, RoutedEventArgs e) => Window.GetWindow(this)?.Close();
+
+    /// <summary>Centre of the Settings gear in <paramref name="relativeTo"/>'s coordinates, valid even
+    /// while the gear is hidden (it sits one caption slot left of Minimize).</summary>
+    public Point GetSettingsAnchor(Visual relativeTo)
+    {
+        var anchor = SettingsButton.IsVisible ? (FrameworkElement)SettingsButton : MinButton;
+        var center = anchor.TransformToVisual(relativeTo)
+            .Transform(new Point(anchor.ActualWidth / 2, anchor.ActualHeight / 2));
+        if (!SettingsButton.IsVisible)
+            center.X -= MinButton.ActualWidth;
+        return center;
+    }
 }

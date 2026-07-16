@@ -12,6 +12,14 @@ public partial class MainWindow : Window
         InitializeComponent();
         Flux.Ui.Controls.FluxWindowChrome.Attach(this, RootContent);
         DataContextChanged += OnDataContextChanged;
+        Loaded += (_, _) => UpdateGenieTarget();
+        SizeChanged += (_, _) => UpdateGenieTarget();
+    }
+
+    private void UpdateGenieTarget()
+    {
+        if (IsLoaded)
+            ContentHost.GenieTarget = TitleBarCtl.GetSettingsAnchor(ContentHost);
     }
 
     private void OnDataContextChanged(object sender, DependencyPropertyChangedEventArgs e)

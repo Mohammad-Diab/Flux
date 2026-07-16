@@ -41,6 +41,14 @@ public partial class MainWindow : Window
         FluxWindowChrome.Attach(this, RootContent);
         ModeHost.Content = _liveView;
         shell.PropertyChanged += OnShellPropertyChanged;
+        Loaded += (_, _) => UpdateGenieTarget();
+        SizeChanged += (_, _) => UpdateGenieTarget();
+    }
+
+    private void UpdateGenieTarget()
+    {
+        if (IsLoaded)
+            ModeHost.GenieTarget = TitleBarCtl.GetSettingsAnchor(ModeHost);
     }
 
     private void OnShellPropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -58,6 +66,7 @@ public partial class MainWindow : Window
 
         // Slide by direction of travel: forward from the right, back from the left.
         ModeHost.SlideFrom = tab >= _currentTab ? 36 : -36;
+        ModeHost.Genie = GenieMode.None;
         _currentTab = tab;
         if (tab == 2)
             _receivedVm.Refresh();
@@ -69,13 +78,13 @@ public partial class MainWindow : Window
     {
         if (_shell.IsSettingsOpen)
         {
-            ModeHost.SlideFrom = 36;
+            ModeHost.Genie = GenieMode.Opening;
             ModeHost.Content = _settingsView;
             TabStrip.Visibility = Visibility.Collapsed;
         }
         else
         {
-            ModeHost.SlideFrom = -36;
+            ModeHost.Genie = GenieMode.Closing;
             ModeHost.Content = TabContent(_currentTab);
             TabStrip.Visibility = Visibility.Visible;
         }

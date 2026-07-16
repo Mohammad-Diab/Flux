@@ -2,6 +2,7 @@ using System.IO;
 using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Flux.Ui.Controls;
 using Flux.Ui.Services;
 using Flux.Ui.ViewModels;
 using FluxCast.Services;
@@ -43,6 +44,16 @@ public partial class ShellViewModel : ObservableObject
 
     [ObservableProperty]
     private bool _isHistoryTab;
+
+    /// <summary>Signed slide distance for the content transition; its sign encodes the nav direction.</summary>
+    [ObservableProperty]
+    private double _transitionSlide = 36;
+
+    /// <summary>Genie mode for the next transition; set for Settings open/close, None for tab switches.</summary>
+    [ObservableProperty]
+    private GenieMode _transitionGenie;
+
+    private int _lastNavIndex;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CanOpenSettings))]
@@ -201,8 +212,19 @@ public partial class ShellViewModel : ObservableObject
         return path;
     }
 
-    private void UpdateCurrent() =>
+    private void UpdateCurrent()
+    {
+        // Cast(0) → History(1) → Settings(2): moving deeper slides in from the right, back slides from
+        // the left. Set the direction before Current so the transition picks up the fresh value.
+        int navIndex = IsSettingsOpen ? 2 : IsHistoryTab ? 1 : 0;
+        TransitionGenie = navIndex == 2 && _lastNavIndex != 2 ? GenieMode.Opening
+            : _lastNavIndex == 2 && navIndex != 2 ? GenieMode.Closing
+            : GenieMode.None;
+        TransitionSlide = navIndex >= _lastNavIndex ? 36 : -36;
+        _lastNavIndex = navIndex;
+
         Current = IsSettingsOpen ? _settingsScreen
             : IsHistoryTab ? _recentCasts
             : _castScreen;
+    }
 }
