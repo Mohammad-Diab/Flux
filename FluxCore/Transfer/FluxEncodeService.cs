@@ -293,9 +293,9 @@ public sealed class FluxEncodeService
         var layout = new FrameLayout(options.GridWidthTiles, options.GridHeightTiles, options.TilePixelSize, bitsPerTile);
         int codewords = layout.CodewordsForBits(bitsPerTile);
         int bytesPerFrame = options.EccLevel.PayloadBytesPerFrame(codewords);
-        if (bytesPerFrame > ushort.MaxValue)
+        if ((long)bytesPerFrame > uint.MaxValue)
             throw new ArgumentException(
-                $"Grid {options.GridWidthTiles}×{options.GridHeightTiles} at {options.EccLevel} ECC needs {bytesPerFrame} bytes per frame, over the {ushort.MaxValue}-byte per-frame limit.",
+                $"Grid {options.GridWidthTiles}×{options.GridHeightTiles} at {options.EccLevel} ECC needs {bytesPerFrame} bytes per frame, over the {uint.MaxValue}-byte per-frame limit.",
                 nameof(options));
         return layout;
     }

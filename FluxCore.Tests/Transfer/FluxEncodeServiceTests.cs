@@ -307,13 +307,25 @@ public class FluxEncodeServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task Encode_GridExceedingPerFrameCap_Throws()
+    public async Task Encode_GridPastOldHeaderLimit_EncodesSuccessfully()
     {
-        var source = await CreateSourceFileAsync(1000);
+        // 400×200 @ Low needs >65,535 B/frame — rejected under the old ushort cap, allowed now that
+        // FrameHeader.PayloadLength is a uint. The encode-side guard must match the decode-side bound.
+        var source = await CreateSourceFileAsync(200_000);
+        var options = new EncodeOptions(EccLevel.Low, Compress: false, GridWidthTiles: 400, GridHeightTiles: 200);
 
-        await Assert.ThrowsAsync<ArgumentException>(() =>
-            _service.EncodeAsync(source, SessionRoot,
-                new EncodeOptions(EccLevel.Low, Compress: false, GridWidthTiles: 400, GridHeightTiles: 200)));
+        int bitsPerTile = PaletteGenerator.BitsForCount(options.ColorCount);
+        var layout = new FrameLayout(options.GridWidthTiles, options.GridHeightTiles, options.TilePixelSize, bitsPerTile);
+        int bytesPerFrame = options.EccLevel.PayloadBytesPerFrame(layout.CodewordsForBits(bitsPerTile));
+        Assert.True(bytesPerFrame > ushort.MaxValue);
+
+        var result = await _service.EncodeAsync(source, SessionRoot, options);
+
+        Assert.Equal((int)result.TotalFrames, result.FramesRendered);
+        for (uint id = 0; id < result.TotalFrames; id++)
+        {
+            Assert.True(File.Exists(Path.Combine(result.FramesDirectory, FluxEncodeService.FrameFileName(id))));
+        }
     }
 
     private sealed class InlineProgress(Action<EncodeProgress> handler) : IProgress<EncodeProgress>
