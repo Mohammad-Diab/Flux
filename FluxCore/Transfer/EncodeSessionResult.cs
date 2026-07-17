@@ -1,3 +1,6 @@
+using FluxCore.Framing;
+using FluxCore.Imaging;
+
 namespace FluxCore.Transfer;
 
 /// <summary>
@@ -11,6 +14,9 @@ namespace FluxCore.Transfer;
 /// <param name="ContentSignature">32-byte combined transfer signature painted into frame 0.</param>
 /// <param name="PayloadReused">Whether an existing compressed payload was reused (resume).</param>
 /// <param name="FramesRendered">Frames actually rendered this run (0 = fully resumed).</param>
+/// <param name="ColorCount">Payload-frame colour count (for the presenter's capture-size check).</param>
+/// <param name="PaletteKind">Payload-frame palette family.</param>
+/// <param name="TilePixelSize">Payload-frame tile edge in pixels.</param>
 public sealed record EncodeSessionResult(
     string SessionDirectory,
     string PayloadDirectory,
@@ -19,4 +25,7 @@ public sealed record EncodeSessionResult(
     long PayloadLength,
     byte[] ContentSignature,
     bool PayloadReused,
-    int FramesRendered);
+    int FramesRendered,
+    int ColorCount = 256,
+    PaletteKind PaletteKind = PaletteKind.Standard,
+    int TilePixelSize = FrameFormat.TilePixelSize);

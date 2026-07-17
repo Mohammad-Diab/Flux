@@ -114,7 +114,8 @@ public sealed class FluxEncodeService
             renderDirectory, totalFrames, rendered, payloadReused);
 
         return new EncodeSessionResult(
-            renderDirectory, payloadDirectory, framesDirectory, totalFrames, payload.Length, combinedSignature, payloadReused, rendered);
+            renderDirectory, payloadDirectory, framesDirectory, totalFrames, payload.Length, combinedSignature, payloadReused, rendered,
+            options.ColorCount, options.PaletteKind, layout.TilePixelSize);
     }
 
     private async Task<(byte[] Payload, PayloadType Type, bool Reused)> LoadOrCompressPayloadAsync(

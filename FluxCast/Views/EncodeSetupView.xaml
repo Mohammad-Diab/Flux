@@ -106,7 +106,7 @@
                             <TextBlock Text="TRANSFER SPEED" FontSize="11" FontWeight="SemiBold"
                                        Foreground="{StaticResource TextSecondaryBrush}" Margin="2,24,0,10"/>
                             <ComboBox ItemsSource="{Binding TileSizes}" SelectedItem="{Binding SelectedTileSize}"/>
-                            <ComboBox ItemsSource="{Binding Colors}" SelectedItem="{Binding SelectedColor}" Margin="0,8,0,0"/>
+                            <ComboBox ItemsSource="{Binding AvailableColors}" SelectedItem="{Binding SelectedColor}" Margin="0,8,0,0"/>
 
                             <CheckBox Content="Compress with 7-Zip (folders are always compressed)"
                                       IsChecked="{Binding Compress}" Margin="2,16,0,0" FontSize="13">
@@ -125,9 +125,20 @@
 
                     <TextBlock Text="{Binding GridSummary}" FontSize="12" Foreground="{StaticResource AccentBrush}"
                                Margin="2,16,0,0" TextWrapping="Wrap"/>
-                    <TextBlock Text="{Binding GridCaution}" FontSize="12" Foreground="{StaticResource DangerBrush}"
+                    <TextBlock Text="{Binding GridCaution}" FontSize="12"
                                Margin="2,4,0,0" TextWrapping="Wrap"
-                               Visibility="{Binding GridCaution, Converter={StaticResource NullToCollapsed}}"/>
+                               Visibility="{Binding GridCaution, Converter={StaticResource NullToCollapsed}}">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Foreground" Value="{StaticResource WarningBrush}"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding WarningLevel}" Value="Severe">
+                                        <Setter Property="Foreground" Value="{StaticResource DangerBrush}"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
 
                     <Button Content="Start encoding" Command="{Binding StartCommand}"
                             Style="{StaticResource PrimaryButton}" HorizontalAlignment="Stretch" Margin="0,24,0,0"/>

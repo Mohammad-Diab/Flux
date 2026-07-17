@@ -52,6 +52,23 @@ public static class PaletteGenerator
         return BitOperations.Log2((uint)colorCount);
     }
 
+    /// <summary>Captured pixels-per-tile a palette needs to decode over a real optical capture, as
+    /// (Marginal, Safe): below Marginal it likely won't decode; up to Safe it needs a near-pixel-
+    /// perfect channel; at or above Safe it is robust. Denser palettes need more pixels per tile.</summary>
+    /// <param name="colorCount">A supported colour count.</param>
+    /// <param name="kind">Palette family.</param>
+    public static (double Marginal, double Safe) CaptureTilePxFloor(int colorCount, PaletteKind kind)
+    {
+        if (kind == PaletteKind.Rugged)
+            return (3, 4);
+        return colorCount switch
+        {
+            <= 256 => (5, 6),
+            512 => (6, 8),
+            _ => (8, 10),
+        };
+    }
+
     /// <summary>Generates the standard-tier palette for a colour count (a power of two in [8, 1024]).</summary>
     /// <param name="colorCount">Number of colours.</param>
     public static GeneratedPalette Generate(int colorCount) => Generate(colorCount, PaletteKind.Standard);

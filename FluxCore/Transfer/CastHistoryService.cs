@@ -93,6 +93,7 @@ public sealed class CastHistoryService
             renderDirectory, payloadDirectory, framesDir, total,
             payload?.PayloadLength ?? 0,
             Sha256Helper.FromHexString(render.CombinedSignatureHex),
-            PayloadReused: true, FramesRendered: 0);
+            PayloadReused: true, FramesRendered: 0,
+            render.ColorCount, render.PaletteKind, render.TilePixelSize);
     }
 }

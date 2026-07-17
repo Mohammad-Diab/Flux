@@ -43,6 +43,19 @@ public enum SetupMode
     Advanced,
 }
 
+/// <summary>How safe the current tile-size/colour pairing is for the fitted tile pixel size.</summary>
+public enum SetupWarningLevel
+{
+    /// <summary>Tiles are large enough for the chosen palette; no caution.</summary>
+    None,
+
+    /// <summary>Decodable only on a near-pixel-perfect channel (amber).</summary>
+    Caution,
+
+    /// <summary>Tiles too small for the palette — decoding will fail (red).</summary>
+    Severe,
+}
+
 /// <summary>
 /// Setup screen: pick a file or folder, validate it, choose options, start encoding.
 /// </summary>
@@ -86,6 +99,7 @@ public partial class EncodeSetupViewModel : ObservableObject
     private int _displayHeightPx;
     private FrameLayout _layout;
     private int _bitsPerTile = 8;
+    private bool _recomputing;
 
     /// <summary>Gets the selectable ECC levels.</summary>
     public IReadOnlyList<EccChoice> EccLevels { get; } =
@@ -132,8 +146,14 @@ public partial class EncodeSetupViewModel : ObservableObject
     /// <summary>Gets the fitted grid, capacity, and throughput readout for the chosen tile/ECC settings.</summary>
     public string GridSummary { get; private set; } = "";
 
-    /// <summary>Gets the clear-channel caution shown when the tiles are small enough to be fragile.</summary>
+    /// <summary>Gets the capture-robustness caution for the fitted tile size and palette (empty when safe).</summary>
     public string GridCaution { get; private set; } = "";
+
+    /// <summary>Gets how severe <see cref="GridCaution"/> is, so the view can colour it amber or red.</summary>
+    public SetupWarningLevel WarningLevel { get; private set; } = SetupWarningLevel.None;
+
+    /// <summary>Gets the colours selectable at the fitted tile size; ones too small to decode are dropped.</summary>
+    public IReadOnlyList<ColorChoice> AvailableColors { get; private set; }
 
     /// <summary>Gets whether the customization levers (ECC, tile size, palette, compress) are shown.</summary>
     public bool IsAdvanced => Mode == SetupMode.Advanced;
@@ -176,6 +196,7 @@ public partial class EncodeSetupViewModel : ObservableObject
         _selectedTileSize = TileSizes[2];
         _selectedColor = Colors.First(c => c.Kind == PaletteKind.Standard && c.ColorCount == 256);
         _layout = FrameLayout.Default;
+        AvailableColors = Colors;
         RecomputeLayout();
     }
 
@@ -299,40 +320,72 @@ public partial class EncodeSetupViewModel : ObservableObject
 
     private void RecomputeLayout()
     {
-        _bitsPerTile = PaletteGenerator.BitsForCount(EffectiveColorCount);
-        // Per-frame payload is a uint, so the grid is bounded only by the display (no codeword cap).
-        _layout = FrameLayout.FitToDisplay(
-            _displayWidthPx, _displayHeightPx, EffectiveTilePx, maxCodewords: 0, bitsPerTile: _bitsPerTile);
-
-        int codewords = _layout.CodewordsForBits(_bitsPerTile);
-        int bytesPerFrame = EffectiveEcc.PayloadBytesPerFrame(codewords);
-        double throughput = (double)codewords / FrameFormat.CodewordCount;
-        if (EffectivePaletteKind == PaletteKind.Rugged)
-            GridSummary =
-                $"{_layout.GridWidthTiles}×{_layout.GridHeightTiles} tiles · rugged 8-gray · {ByteFormat.Bytes(bytesPerFrame)}/frame · survives chroma-lossy / RDP links";
-        else
+        if (_recomputing)
+            return;
+        _recomputing = true;
+        try
         {
-            string colours = EffectiveColorCount == 256 ? "" : $"{EffectiveColorCount} colours · ";
-            GridSummary =
-                $"{_layout.GridWidthTiles}×{_layout.GridHeightTiles} tiles · {colours}{ByteFormat.Bytes(bytesPerFrame)}/frame · ≈{throughput:0.0}× throughput";
+            RefreshAvailableColors();
+
+            _bitsPerTile = PaletteGenerator.BitsForCount(EffectiveColorCount);
+            // Per-frame payload is a uint, so the grid is bounded only by the display (no codeword cap).
+            _layout = FrameLayout.FitToDisplay(
+                _displayWidthPx, _displayHeightPx, EffectiveTilePx, maxCodewords: 0, bitsPerTile: _bitsPerTile);
+
+            int codewords = _layout.CodewordsForBits(_bitsPerTile);
+            int bytesPerFrame = EffectiveEcc.PayloadBytesPerFrame(codewords);
+            double throughput = (double)codewords / FrameFormat.CodewordCount;
+            if (EffectivePaletteKind == PaletteKind.Rugged)
+                GridSummary =
+                    $"{_layout.GridWidthTiles}×{_layout.GridHeightTiles} tiles · rugged 8-gray · {ByteFormat.Bytes(bytesPerFrame)}/frame · survives chroma-lossy / RDP links";
+            else
+            {
+                string colours = EffectiveColorCount == 256 ? "" : $"{EffectiveColorCount} colours · ";
+                GridSummary =
+                    $"{_layout.GridWidthTiles}×{_layout.GridHeightTiles} tiles · {colours}{ByteFormat.Bytes(bytesPerFrame)}/frame · ≈{throughput:0.0}× throughput";
+            }
+
+            BuildCaution();
+
+            OnPropertyChanged(nameof(GridSummary));
+            OnPropertyChanged(nameof(GridCaution));
+            OnPropertyChanged(nameof(WarningLevel));
+            UpdateDetails();
         }
-
-        GridCaution = BuildCaution();
-
-        OnPropertyChanged(nameof(GridSummary));
-        OnPropertyChanged(nameof(GridCaution));
-        UpdateDetails();
+        finally
+        {
+            _recomputing = false;
+        }
     }
 
-    // Rugged is the robust tier, so it carries no clear-channel caution.
-    private string BuildCaution() => EffectivePaletteKind == PaletteKind.Rugged ? "" : EffectiveColorCount switch
+    // Offer only colours the fitted tile size can carry robustly (safe floor); snap off a hidden one.
+    private void RefreshAvailableColors()
     {
-        1024 => "1024 colours decodes only on a near-pixel-perfect channel (local capture or exact PNG folders) — it will fail over RDP or any compression.",
-        512 => "512 colours needs a clean channel; run a test frame before committing to a long transfer.",
-        _ => EffectiveTilePx <= 6
-            ? "Small tiles — use only on a clean, near-pixel-perfect channel (local capture or exact PNGs)."
-            : "",
-    };
+        int tilePx = EffectiveTilePx;
+        AvailableColors = Colors
+            .Where(c => tilePx >= PaletteGenerator.CaptureTilePxFloor(c.ColorCount, c.Kind).Safe)
+            .ToList();
+        OnPropertyChanged(nameof(AvailableColors));
+
+        if (IsAdvanced && !AvailableColors.Contains(SelectedColor))
+            SelectedColor = AvailableColors.LastOrDefault(c => c.Kind == PaletteKind.Standard) ?? AvailableColors[^1];
+    }
+
+    // Tiles are always large enough (safe filter), so the only caution left is the low colour-distance
+    // of 512/1024 — clean-channel tiers regardless of tile size.
+    private void BuildCaution()
+    {
+        WarningLevel = EffectivePaletteKind == PaletteKind.Standard && EffectiveColorCount >= 512
+            ? SetupWarningLevel.Caution
+            : SetupWarningLevel.None;
+        GridCaution = EffectiveColorCount switch
+        {
+            _ when EffectivePaletteKind == PaletteKind.Rugged => "",
+            1024 => "1024 colours decodes only on a near-pixel-perfect channel (local capture or exact PNGs) — it fails over RDP or compression.",
+            512 => "512 colours needs a clean channel — run Test frame before a long transfer.",
+            _ => "",
+        };
+    }
 
     private void UpdateDetails()
     {

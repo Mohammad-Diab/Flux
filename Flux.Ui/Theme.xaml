@@ -26,6 +26,7 @@
     <Color x:Key="AccentColor">#7C5CFF</Color>
     <Color x:Key="DangerColor">#FF5C6C</Color>
     <Color x:Key="SuccessColor">#38D39F</Color>
+    <Color x:Key="WarningColor">#F5A623</Color>
 
     <LinearGradientBrush x:Key="BgBrush" StartPoint="0,0" EndPoint="1,1">
         <GradientStop Color="{DynamicResource BgColor1}" Offset="0"/>
@@ -51,6 +52,7 @@
     <SolidColorBrush x:Key="AccentBrush" Color="{StaticResource AccentColor}"/>
     <SolidColorBrush x:Key="DangerBrush" Color="{StaticResource DangerColor}"/>
     <SolidColorBrush x:Key="SuccessBrush" Color="{StaticResource SuccessColor}"/>
+    <SolidColorBrush x:Key="WarningBrush" Color="{StaticResource WarningColor}"/>
     <SolidColorBrush x:Key="SelectionBrush" Color="#337C5CFF"/>
     <SolidColorBrush x:Key="DangerSelectionBrush" Color="#33FF5C6C"/>
 

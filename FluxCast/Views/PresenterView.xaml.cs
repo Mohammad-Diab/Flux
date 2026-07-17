@@ -4,6 +4,7 @@ using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using FluxCast.ViewModels;
 
 namespace FluxCast.Views;
 
@@ -25,7 +26,7 @@ public partial class PresenterView : UserControl
 
     private void UpdateSizeWarning()
     {
-        if (FrameImage.Source is not BitmapSource frame)
+        if (FrameImage.Source is not BitmapSource frame || DataContext is not PresenterViewModel vm)
         {
             SizeWarning.Visibility = Visibility.Collapsed;
             return;
@@ -39,7 +40,8 @@ public partial class PresenterView : UserControl
             FrameArea.ActualWidth * dpi.DpiScaleX / frame.PixelWidth,
             FrameArea.ActualHeight * dpi.DpiScaleY / frame.PixelHeight);
 
-        // Below ~0.6x the rendered tiles fall under ~5px and get fragile once a capture recompresses.
-        SizeWarning.Visibility = scale is > 0 and < 0.6 ? Visibility.Visible : Visibility.Collapsed;
+        // Warn once on-screen tiles fall below the size this cast's palette needs to survive a capture.
+        double onScreenTilePx = scale * vm.TilePixelSize;
+        SizeWarning.Visibility = scale > 0 && onScreenTilePx < vm.SafeTilePx ? Visibility.Visible : Visibility.Collapsed;
     }
 }

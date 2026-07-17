@@ -3,6 +3,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Flux.Ui.Services;
 using FluxCast.Services;
+using FluxCore.Imaging;
 using FluxCore.Transfer;
 
 namespace FluxCast.ViewModels;
@@ -20,6 +21,13 @@ public partial class PresenterViewModel : ObservableObject
 
     /// <summary>Gets the total frame count, including frame 0.</summary>
     public uint TotalFrames { get; }
+
+    /// <summary>Gets the smallest on-screen tile size (px) still robust for this cast's palette, so the
+    /// view can warn if the window is shrunk below it.</summary>
+    public double SafeTilePx { get; }
+
+    /// <summary>Gets the payload-frame tile edge in pixels, used to turn a display scale into a tile size.</summary>
+    public int TilePixelSize { get; }
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(NextCommand))]
@@ -43,6 +51,8 @@ public partial class PresenterViewModel : ObservableObject
         _onClose = onClose;
         _dialogs = dialogs;
         TotalFrames = session.TotalFrames;
+        TilePixelSize = session.TilePixelSize;
+        SafeTilePx = PaletteGenerator.CaptureTilePxFloor(session.ColorCount, session.PaletteKind).Safe;
         _frames = new CachedFrameProvider(session.FramesDirectory, session.TotalFrames);
 
         CurrentFrame = _frames.GetFrame(0);
