@@ -61,7 +61,9 @@ public partial class App : Application
         services.AddSingleton(provider => new LiveCaptureView(
             provider.GetRequiredService<DecodePipelineService>(),
             provider.GetRequiredService<DialogService>(),
-            provider.GetRequiredService<ReceptionHistoryService>()));
+            provider.GetRequiredService<ReceptionHistoryService>(),
+            provider.GetRequiredService<SettingsService>(),
+            provider.GetRequiredService<FluxSettings>()));
         services.AddSingleton(provider => new ReceivedItemsViewModel(
             provider.GetRequiredService<ReceptionHistoryService>(),
             provider.GetRequiredService<DialogService>()));

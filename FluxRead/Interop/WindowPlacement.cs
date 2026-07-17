@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using System.Windows;
 
 namespace FluxRead.Interop;
@@ -56,6 +57,32 @@ public static class WindowPlacement
             hwnd, IntPtr.Zero, targetX, targetY, 0, 0,
             NativeMethods.SWP_NOSIZE | NativeMethods.SWP_NOZORDER | NativeMethods.SWP_NOACTIVATE);
         return true;
+    }
+
+    /// <summary>Parks a window bottom-right of <paramref name="referenceWindow"/>'s monitor work area
+    /// (or <paramref name="hwnd"/>'s if none), sized for that monitor's DPI. Physical pixels, so it
+    /// lands correctly across mixed-DPI monitors; the size arguments are DIPs.</summary>
+    public static void PlaceBottomRightOfMonitor(
+        IntPtr hwnd, IntPtr referenceWindow, double widthDip, double heightDip, double marginDip)
+    {
+        var reference = referenceWindow != IntPtr.Zero ? referenceWindow : hwnd;
+        var monitor = NativeMethods.MonitorFromWindow(reference, NativeMethods.MONITOR_DEFAULTTONEAREST);
+        var info = new NativeMethods.MONITORINFO { cbSize = Marshal.SizeOf<NativeMethods.MONITORINFO>() };
+        if (!NativeMethods.GetMonitorInfo(monitor, ref info))
+            return;
+
+        double scale = NativeMethods.GetDpiForMonitor(monitor, NativeMethods.MDT_EFFECTIVE_DPI, out uint dpiX, out _) == 0
+            ? dpiX / 96.0
+            : 1.0;
+
+        int w = (int)Math.Round(widthDip * scale);
+        int h = (int)Math.Round(heightDip * scale);
+        int m = (int)Math.Round(marginDip * scale);
+        int x = info.rcWork.Right - w - m;
+        int y = info.rcWork.Bottom - h - m;
+
+        NativeMethods.SetWindowPos(
+            hwnd, IntPtr.Zero, x, y, w, h, NativeMethods.SWP_NOZORDER | NativeMethods.SWP_NOACTIVATE);
     }
 
     /// <summary>

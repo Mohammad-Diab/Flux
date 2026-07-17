@@ -13,6 +13,9 @@ public sealed class FluxSettings
 {
     public AppThemeMode ThemeMode { get; set; } = AppThemeMode.System;
     public bool PerformanceMode { get; set; }
+
+    // null = auto (expanded on multi-monitor, collapsed on single); set once the user toggles it.
+    public bool? MiniCaptureExpanded { get; set; }
 }
 
 /// <summary>Loads and saves <see cref="FluxSettings"/> as JSON under %LOCALAPPDATA%\Flux\{appName}.</summary>

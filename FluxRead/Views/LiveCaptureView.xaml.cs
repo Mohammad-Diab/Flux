@@ -30,6 +30,8 @@ public partial class LiveCaptureView : UserControl
     private readonly DecodePipelineService _pipeline;
     private readonly DialogService _dialogs;
     private readonly ReceptionHistoryService _history;
+    private readonly SettingsService _settings;
+    private readonly FluxSettings _settingsModel;
     private readonly ScreenRegionCapture _previewCapture = new();
     private readonly DispatcherTimer _previewTimer;
     private readonly DispatcherTimer _elapsedTimer;
@@ -43,11 +45,15 @@ public partial class LiveCaptureView : UserControl
     private MiniCaptureWindow? _mini;
     private CancellationTokenSource? _cts;
 
-    public LiveCaptureView(DecodePipelineService pipeline, DialogService dialogs, ReceptionHistoryService history)
+    public LiveCaptureView(
+        DecodePipelineService pipeline, DialogService dialogs, ReceptionHistoryService history,
+        SettingsService settings, FluxSettings settingsModel)
     {
         _pipeline = pipeline;
         _dialogs = dialogs;
         _history = history;
+        _settings = settings;
+        _settingsModel = settingsModel;
         _vm = new LiveCaptureViewModel();
         DataContext = _vm;
         InitializeComponent();
@@ -283,7 +289,13 @@ public partial class LiveCaptureView : UserControl
             assemblerFactory: metadata => _history.OpenAssembler(ShellViewModel.SessionRoot, metadata));
         var progress = new Progress<LoopStatus>(_vm.Apply);
 
-        _mini = new MiniCaptureWindow(_vm, TogglePause, () => _cts.Cancel()) { Owner = owner };
+        // Default: expanded on multi-monitor, collapsed on single — until the user picks and we save it.
+        bool expanded = _settingsModel.MiniCaptureExpanded
+            ?? NativeMethods.GetSystemMetrics(NativeMethods.SM_CMONITORS) > 1;
+        _mini = new MiniCaptureWindow(_vm, TogglePause, () => _cts.Cancel(), expanded, OnMiniExpandedChanged)
+        {
+            Owner = owner,
+        };
         owner.Hide();
         _mini.Show();
 
@@ -311,6 +323,12 @@ public partial class LiveCaptureView : UserControl
             owner.Show();
             owner.Activate();
         }
+    }
+
+    private void OnMiniExpandedChanged(bool expanded)
+    {
+        _settingsModel.MiniCaptureExpanded = expanded;
+        _settings.Save(_settingsModel);
     }
 
     // Ticks once a second during a transfer: elapsed wall-clock and a frames-based ETA.
