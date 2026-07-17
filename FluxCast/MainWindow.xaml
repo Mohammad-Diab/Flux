@@ -46,7 +46,7 @@
                 </controls:SlidingTabBar>
             </Border>
             <controls:TransitionHost x:Name="ContentHost" Content="{Binding Current}" SlideFrom="{Binding TransitionSlide}"
-                                     Genie="{Binding TransitionGenie}"
+                                     Genie="{Binding TransitionGenie}" ZoomSlide="{Binding TransitionZoom}"
                                      HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch"/>
         </DockPanel>
     </Grid>

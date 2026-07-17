@@ -53,6 +53,10 @@ public partial class ShellViewModel : ObservableObject
     [ObservableProperty]
     private GenieMode _transitionGenie;
 
+    /// <summary>Whether the next transition uses the zoom-slide (tab switches) vs a plain slide (in-page nav).</summary>
+    [ObservableProperty]
+    private bool _transitionZoom;
+
     private int _lastNavIndex;
 
     [ObservableProperty]
@@ -221,6 +225,7 @@ public partial class ShellViewModel : ObservableObject
             : _lastNavIndex == 2 && navIndex != 2 ? GenieMode.Closing
             : GenieMode.None;
         TransitionSlide = navIndex >= _lastNavIndex ? 36 : -36;
+        TransitionZoom = navIndex != _lastNavIndex && navIndex != 2 && _lastNavIndex != 2;
         _lastNavIndex = navIndex;
 
         Current = IsSettingsOpen ? _settingsScreen

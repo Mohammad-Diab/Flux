@@ -66,6 +66,7 @@ public partial class MainWindow : Window
 
         // Slide by direction of travel: forward from the right, back from the left.
         ModeHost.SlideFrom = tab >= _currentTab ? 36 : -36;
+        ModeHost.ZoomSlide = true;   // mode switches are this window's tabs
         ModeHost.Genie = GenieMode.None;
         _currentTab = tab;
         if (tab == 2)

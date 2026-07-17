@@ -13,9 +13,10 @@ namespace Flux.Ui.Controls;
 public enum GenieMode { None, Opening, Closing }
 
 /// <summary>
-/// A ContentControl that plays a page transition when its content changes. Tab switches use a
-/// sequenced zoom-slide-zoom (current page steps back, slides across, new page steps forward). When
-/// <see cref="UseGenie"/> is set the change instead plays a macOS-style genie: the outgoing page,
+/// A ContentControl that plays a page transition when its content changes. Tab switches (<see
+/// cref="ZoomSlide"/>) use a sequenced zoom-slide-zoom (current page steps back, slides across, new
+/// page steps forward); in-page navigation uses a plain slide. When <see cref="Genie"/> is set the
+/// change instead plays a macOS-style genie: the outgoing page,
 /// on a subdivided mesh, folds and is sucked toward the top-right (the Settings gear) with a curved
 /// tapering neck, revealing the destination page beneath. Skips animation when
 /// <see cref="MotionSettings"/> is off. Direction follows <see cref="SlideFrom"/>.
@@ -23,6 +24,7 @@ public enum GenieMode { None, Opening, Closing }
 public class TransitionHost : ContentControl
 {
     private static readonly TimeSpan Duration = TimeSpan.FromMilliseconds(480);
+    private static readonly TimeSpan SlideDuration = TimeSpan.FromMilliseconds(300);   // plain in-page slide
     private const double ZoomOut = 0.82;   // how far the pages step back (scale) while they slide
     private const double ZoomEnd = 0.32;   // fraction of the timeline spent zooming out
     private const double SlideEnd = 0.68;   // fraction by which the slide is done (zoom-in fills the rest)
@@ -76,6 +78,17 @@ public class TransitionHost : ContentControl
     {
         get => (double)GetValue(SlideFromProperty);
         set => SetValue(SlideFromProperty, value);
+    }
+
+    /// <summary>When true the change plays the zoom-slide-zoom (tab switches); when false it plays a
+    /// plain slide (in-page navigation). Ignored when a genie is requested.</summary>
+    public static readonly DependencyProperty ZoomSlideProperty =
+        DependencyProperty.Register(nameof(ZoomSlide), typeof(bool), typeof(TransitionHost), new PropertyMetadata(false));
+
+    public bool ZoomSlide
+    {
+        get => (bool)GetValue(ZoomSlideProperty);
+        set => SetValue(ZoomSlideProperty, value);
     }
 
     /// <summary>
@@ -167,23 +180,52 @@ public class TransitionHost : ContentControl
         double width = ActualWidth;
         int generation = ++_generation;
 
-        // Outgoing: zoom out in place, then slide off toward the new tab (staying zoomed out).
-        _outgoingScale.BeginAnimation(ScaleTransform.ScaleXProperty, KeyFrames((1, 0), (ZoomOut, ZoomEnd), (ZoomOut, 1)));
-        _outgoingScale.BeginAnimation(ScaleTransform.ScaleYProperty, KeyFrames((1, 0), (ZoomOut, ZoomEnd), (ZoomOut, 1)));
-        _outgoingSlide.BeginAnimation(TranslateTransform.XProperty, KeyFrames((0, 0), (0, ZoomEnd), (direction * width, SlideEnd), (direction * width, 1)));
-
-        // Incoming: wait off the far side (zoomed out) through the zoom-out, slide in, then zoom in.
-        _incomingScale.BeginAnimation(ScaleTransform.ScaleXProperty, KeyFrames((ZoomOut, 0), (ZoomOut, SlideEnd), (1, 1)));
-        _incomingScale.BeginAnimation(ScaleTransform.ScaleYProperty, KeyFrames((ZoomOut, 0), (ZoomOut, SlideEnd), (1, 1)));
-        var slideIn = KeyFrames((-direction * width, 0), (-direction * width, ZoomEnd), (0, SlideEnd), (0, 1));
-        slideIn.Completed += (_, _) =>
+        void Finish(object? _, EventArgs __)
         {
             if (_generation != generation)
                 return;
             _outgoing.Visibility = Visibility.Hidden;
             _outgoing.Source = null;
-        };
-        _incomingSlide.BeginAnimation(TranslateTransform.XProperty, slideIn);
+        }
+
+        if (ZoomSlide)
+        {
+            // Outgoing: zoom out in place, then slide off toward the new tab (staying zoomed out).
+            _outgoingScale.BeginAnimation(ScaleTransform.ScaleXProperty, KeyFrames((1, 0), (ZoomOut, ZoomEnd), (ZoomOut, 1)));
+            _outgoingScale.BeginAnimation(ScaleTransform.ScaleYProperty, KeyFrames((1, 0), (ZoomOut, ZoomEnd), (ZoomOut, 1)));
+            _outgoingSlide.BeginAnimation(TranslateTransform.XProperty, KeyFrames((0, 0), (0, ZoomEnd), (direction * width, SlideEnd), (direction * width, 1)));
+
+            // Incoming: wait off the far side (zoomed out) through the zoom-out, slide in, then zoom in.
+            _incomingScale.BeginAnimation(ScaleTransform.ScaleXProperty, KeyFrames((ZoomOut, 0), (ZoomOut, SlideEnd), (1, 1)));
+            _incomingScale.BeginAnimation(ScaleTransform.ScaleYProperty, KeyFrames((ZoomOut, 0), (ZoomOut, SlideEnd), (1, 1)));
+            var slideIn = KeyFrames((-direction * width, 0), (-direction * width, ZoomEnd), (0, SlideEnd), (0, 1));
+            slideIn.Completed += Finish;
+            _incomingSlide.BeginAnimation(TranslateTransform.XProperty, slideIn);
+        }
+        else
+        {
+            // Plain slide (in-page navigation): both pages cross at full size, no zoom.
+            ClearScales();
+            _outgoingSlide.BeginAnimation(TranslateTransform.XProperty, Slide(0, direction * width));
+            var slideIn = Slide(-direction * width, 0);
+            slideIn.Completed += Finish;
+            _incomingSlide.BeginAnimation(TranslateTransform.XProperty, slideIn);
+        }
+    }
+
+    private DoubleAnimation Slide(double from, double to) =>
+        new(from, to, SlideDuration) { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseInOut } };
+
+    private void ClearScales()
+    {
+        foreach (var scale in new[] { _outgoingScale, _incomingScale })
+        {
+            if (scale is null)
+                continue;
+            scale.BeginAnimation(ScaleTransform.ScaleXProperty, null);
+            scale.BeginAnimation(ScaleTransform.ScaleYProperty, null);
+            scale.ScaleX = scale.ScaleY = 1;
+        }
     }
 
     private void StartGenie(GenieMode mode)
