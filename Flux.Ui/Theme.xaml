@@ -650,7 +650,7 @@
                             </MultiTrigger.Conditions>
                             <MultiTrigger.EnterActions>
                                 <BeginStoryboard Name="PulseSb">
-                                    <Storyboard RepeatBehavior="Forever" AutoReverse="True">
+                                    <Storyboard RepeatBehavior="Forever" AutoReverse="True" Timeline.DesiredFrameRate="30">
                                         <DoubleAnimation Storyboard.TargetName="Pulse" Storyboard.TargetProperty="Opacity"
                                                          From="0.25" To="0.9" Duration="0:0:0.9"
                                                          EasingFunction="{x:Null}"/>

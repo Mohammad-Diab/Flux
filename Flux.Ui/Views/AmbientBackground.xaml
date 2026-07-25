@@ -4,8 +4,9 @@
              IsHitTestVisible="False">
     <UserControl.Resources>
         <SineEase x:Key="DriftEase" EasingMode="EaseInOut"/>
-        <!-- Started/stopped from code-behind so it honors the motion setting (perpetual otherwise). -->
-        <Storyboard x:Key="Drift" RepeatBehavior="Forever" AutoReverse="True">
+        <!-- Started/stopped from code-behind to honor the motion setting; low frame rate (the drift is
+             a few px/sec) keeps it cheap. -->
+        <Storyboard x:Key="Drift" RepeatBehavior="Forever" AutoReverse="True" Timeline.DesiredFrameRate="8">
             <DoubleAnimation Storyboard.TargetName="Orb1" Storyboard.TargetProperty="X"
                              From="0" To="220" Duration="0:0:34" EasingFunction="{StaticResource DriftEase}"/>
             <DoubleAnimation Storyboard.TargetName="Orb1" Storyboard.TargetProperty="Y"
@@ -21,7 +22,7 @@
 
     <Grid Opacity="{DynamicResource AmbientOpacity}">
         <Ellipse Width="760" Height="760" HorizontalAlignment="Left" VerticalAlignment="Top"
-                 Margin="-280,-320,0,0" Opacity="0.16">
+                 Margin="-280,-320,0,0" Opacity="0.16" CacheMode="BitmapCache">
             <Ellipse.Fill>
                 <RadialGradientBrush>
                     <GradientStop Color="#3B82F6" Offset="0"/>
@@ -34,7 +35,7 @@
         </Ellipse>
 
         <Ellipse Width="680" Height="680" HorizontalAlignment="Right" VerticalAlignment="Bottom"
-                 Margin="0,0,-260,-300" Opacity="0.14">
+                 Margin="0,0,-260,-300" Opacity="0.14" CacheMode="BitmapCache">
             <Ellipse.Fill>
                 <RadialGradientBrush>
                     <GradientStop Color="#C13BFF" Offset="0"/>
@@ -47,7 +48,7 @@
         </Ellipse>
 
         <Ellipse Width="520" Height="520" HorizontalAlignment="Center" VerticalAlignment="Center"
-                 Margin="120,180,0,0" Opacity="0.10">
+                 Margin="120,180,0,0" Opacity="0.10" CacheMode="BitmapCache">
             <Ellipse.Fill>
                 <RadialGradientBrush>
                     <GradientStop Color="#7C5CFF" Offset="0"/>
