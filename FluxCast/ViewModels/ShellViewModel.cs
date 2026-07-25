@@ -108,6 +108,16 @@ public partial class ShellViewModel : ObservableObject
         ShowSetup();
     }
 
+    /// <summary>Confirms leaving when a cast is mid-generation or presenting; true if it's safe to close.</summary>
+    public bool ConfirmClose() => Current switch
+    {
+        EncodeProgressViewModel => _dialogs.Confirm(
+            "Stop encoding?", "Frames are still being generated. Close FluxCast and discard this cast?", destructive: true),
+        PresenterViewModel => _dialogs.Confirm(
+            "End cast?", "A cast is in progress. Close FluxCast?", destructive: true),
+        _ => true,
+    };
+
     /// <summary>Navigates the Cast tab to the setup screen.</summary>
     public void ShowSetup()
     {

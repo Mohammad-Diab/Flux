@@ -10,7 +10,8 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
-        Flux.Ui.Controls.FluxWindowChrome.Attach(this, RootContent);
+        Flux.Ui.Controls.FluxWindowChrome.Attach(this, RootContent,
+            confirmClose: () => (DataContext as ShellViewModel)?.ConfirmClose() ?? true);
         DataContextChanged += OnDataContextChanged;
         Loaded += (_, _) => UpdateGenieTarget();
         SizeChanged += (_, _) => UpdateGenieTarget();

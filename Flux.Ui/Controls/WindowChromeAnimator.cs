@@ -29,9 +29,10 @@ public static class WindowChromeAnimator
 
     /// <summary>
     /// Attaches window-motion to <paramref name="window"/>, scaling <paramref name="content"/>
-    /// (typically the window's root panel) and fading the window as a whole.
+    /// (typically the window's root panel) and fading the window as a whole. An optional
+    /// <paramref name="confirmClose"/> runs first on a close attempt; returning false vetoes it.
     /// </summary>
-    public static void Attach(Window window, FrameworkElement content)
+    public static void Attach(Window window, FrameworkElement content, Func<bool>? confirmClose = null)
     {
         var scale = new ScaleTransform(1, 1);
         content.RenderTransform = scale;
@@ -42,7 +43,14 @@ public static class WindowChromeAnimator
         window.StateChanged += (_, _) => OnStateChanged(window, state);
         window.Closing += (_, e) =>
         {
-            if (state.AllowClose || !MotionSettings.Current.AnimationsEnabled)
+            if (state.AllowClose)
+                return;
+            if (confirmClose is not null && !confirmClose())
+            {
+                e.Cancel = true;
+                return;
+            }
+            if (!MotionSettings.Current.AnimationsEnabled)
                 return;
             e.Cancel = true;
             AnimateOut(window, state, () => { state.AllowClose = true; window.Close(); });

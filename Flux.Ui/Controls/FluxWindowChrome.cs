@@ -7,10 +7,11 @@ namespace Flux.Ui.Controls;
 /// <summary>One-call chrome wiring for FluxWindow-styled windows.</summary>
 public static class FluxWindowChrome
 {
-    /// <summary>Open/minimize animations, native transitions, rounded corners, shared taskbar progress.</summary>
-    public static void Attach(Window window, FrameworkElement rootContent)
+    /// <summary>Open/minimize animations, native transitions, rounded corners, shared taskbar progress.
+    /// An optional <paramref name="confirmClose"/> can veto a close attempt (returning false).</summary>
+    public static void Attach(Window window, FrameworkElement rootContent, Func<bool>? confirmClose = null)
     {
-        WindowChromeAnimator.Attach(window, rootContent);
+        WindowChromeAnimator.Attach(window, rootContent, confirmClose);
         window.SourceInitialized += (_, _) =>
         {
             NativeChrome.EnableWindowAnimations(window);

@@ -68,6 +68,7 @@
                          GradientStops="{StaticResource SpectrumStops}"/>
 
     <DropShadowEffect x:Key="SoftShadow" BlurRadius="20" ShadowDepth="4" Direction="270" Opacity="0.28" Color="#000000"/>
+    <DropShadowEffect x:Key="DialogShadow" BlurRadius="52" ShadowDepth="16" Direction="270" Opacity="0.55" Color="#000000"/>
 
     <CubicEase x:Key="EaseOut" EasingMode="EaseOut"/>
 

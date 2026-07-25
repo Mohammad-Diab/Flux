@@ -1,4 +1,9 @@
+using System;
 using System.Windows;
+using System.Windows.Input;
+using System.Windows.Media;
+using System.Windows.Media.Animation;
+using Flux.Ui.Controls;
 
 namespace Flux.Ui.Views;
 
@@ -26,9 +31,65 @@ public partial class MessageDialog : Window
             CancelButton.Visibility = Visibility.Collapsed;
         else
             CancelButton.Content = cancelText;
+
+        Loaded += OnLoaded;
+        // Escape dismisses through the same animated close (the buttons no longer auto-close the dialog).
+        PreviewKeyDown += (_, e) =>
+        {
+            if (e.Key == Key.Escape)
+            {
+                e.Handled = true;
+                CloseWith(false);
+            }
+        };
     }
 
-    private void OnConfirm(object sender, RoutedEventArgs e) => DialogResult = true;
+    private void OnLoaded(object sender, RoutedEventArgs e)
+    {
+        if (!MotionSettings.Current.AnimationsEnabled)
+        {
+            Opacity = 1;
+            return;
+        }
 
-    private void OnCancel(object sender, RoutedEventArgs e) => DialogResult = false;
+        var ease = new BackEase { EasingMode = EasingMode.EaseOut, Amplitude = 0.4 };
+        var duration = TimeSpan.FromMilliseconds(260);
+        RootScale.BeginAnimation(ScaleTransform.ScaleXProperty, new DoubleAnimation(0.88, 1, duration) { EasingFunction = ease });
+        RootScale.BeginAnimation(ScaleTransform.ScaleYProperty, new DoubleAnimation(0.88, 1, duration) { EasingFunction = ease });
+        BeginAnimation(OpacityProperty, new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(180)));
+    }
+
+    private void OnDragMove(object sender, MouseButtonEventArgs e)
+    {
+        if (e.ButtonState == MouseButtonState.Pressed)
+            DragMove();
+    }
+
+    private void OnConfirm(object sender, RoutedEventArgs e) => CloseWith(true);
+
+    private void OnCancel(object sender, RoutedEventArgs e) => CloseWith(false);
+
+    private bool _closing;
+
+    // Shrink-and-fade out, then report the result (which closes the modal); instant when motion is off.
+    private void CloseWith(bool result)
+    {
+        if (_closing)
+            return;
+        _closing = true;
+
+        if (!MotionSettings.Current.AnimationsEnabled)
+        {
+            DialogResult = result;
+            return;
+        }
+
+        var ease = new CubicEase { EasingMode = EasingMode.EaseIn };
+        var duration = TimeSpan.FromMilliseconds(150);
+        RootScale.BeginAnimation(ScaleTransform.ScaleXProperty, new DoubleAnimation(1, 0.92, duration) { EasingFunction = ease });
+        RootScale.BeginAnimation(ScaleTransform.ScaleYProperty, new DoubleAnimation(1, 0.92, duration) { EasingFunction = ease });
+        var fade = new DoubleAnimation(1, 0, duration) { EasingFunction = ease };
+        fade.Completed += (_, _) => DialogResult = result;
+        BeginAnimation(OpacityProperty, fade);
+    }
 }
