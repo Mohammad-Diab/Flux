@@ -25,6 +25,9 @@ public class TransitionHost : ContentControl
 {
     private static readonly TimeSpan Duration = TimeSpan.FromMilliseconds(480);
     private static readonly TimeSpan SlideDuration = TimeSpan.FromMilliseconds(300);   // plain in-page slide
+    // Capture the transition sheets at ~1.25x max: a moving/warping page hides the detail, and a
+    // smaller texture is far cheaper to composite each frame on a high-DPI display.
+    private const double SnapshotMaxScale = 1.25;
     private const double ZoomOut = 0.82;   // how far the pages step back (scale) while they slide
     private const double ZoomEnd = 0.32;   // fraction of the timeline spent zooming out
     private const double SlideEnd = 0.68;   // fraction by which the slide is done (zoom-in fills the rest)
@@ -34,8 +37,8 @@ public class TransitionHost : ContentControl
     private static readonly TimeSpan GenieOpen = TimeSpan.FromMilliseconds(340);
     private static readonly TimeSpan GenieClose = TimeSpan.FromMilliseconds(280);
     private const double GenieStagger = 0.55;   // how strongly trigger-side strips lead (taffy stretch)
-    private const double GenieStripPx = 4;      // target strip width; thinner = smoother curve
-    private const int GenieMaxStrips = 160;
+    private const double GenieStripPx = 6;      // target strip width; thinner = smoother curve, more layers
+    private const int GenieMaxStrips = 120;
     private const double GenieBendPhase = 0.45; // portion of the timeline the funnel bend ramps in over
     private const double GenieNeckRatio = 0.06; // strip height at the neck, as a fraction of full
     private const double GenieAboveContent = 74; // the gear/back sits this far above the content top
@@ -180,12 +183,19 @@ public class TransitionHost : ContentControl
         double width = ActualWidth;
         int generation = ++_generation;
 
+        // Rasterize each sheet once and let the GPU transform the cache, instead of re-rendering the
+        // live page every frame.
+        _outgoing.CacheMode = new BitmapCache();
+        _presenter.CacheMode = new BitmapCache();
+
         void Finish(object? _, EventArgs __)
         {
             if (_generation != generation)
                 return;
             _outgoing.Visibility = Visibility.Hidden;
             _outgoing.Source = null;
+            _outgoing.CacheMode = null;
+            _presenter.CacheMode = null;
         }
 
         if (ZoomSlide)
@@ -307,17 +317,20 @@ public class TransitionHost : ContentControl
             double left = i * stripW;
             var scale = new ScaleTransform(1, 1, 0, 0);
             var translate = new TranslateTransform();
+            var fill = new ImageBrush(snapshot)
+            {
+                ViewboxUnits = BrushMappingMode.Absolute,
+                Viewbox = new Rect(left, 0, stripW + 0.75, _genieHeight),
+            };
+            fill.Freeze();
             var strip = new Rectangle
             {
                 Width = stripW + 0.75,   // slight overdraw hides sub-pixel seams between strips
                 Height = _genieHeight,
-                Fill = new ImageBrush(snapshot)
-                {
-                    ViewboxUnits = BrushMappingMode.Absolute,
-                    Viewbox = new Rect(left, 0, stripW + 0.75, _genieHeight),
-                },
+                Fill = fill,
                 RenderTransform = Group(scale, translate),
             };
+            RenderOptions.SetBitmapScalingMode(strip, BitmapScalingMode.LowQuality);
             Canvas.SetLeft(strip, left);
             _genieLayer.Children.Add(strip);
             _strips.Add(new Strip { Left = left, Width = stripW, Scale = scale, Translate = translate, Element = strip });
@@ -392,16 +405,20 @@ public class TransitionHost : ContentControl
         {
             _outgoing.Visibility = Visibility.Hidden;
             _outgoing.Source = null;
+            _outgoing.CacheMode = null;
         }
+        if (_presenter is not null)
+            _presenter.CacheMode = null;
     }
 
     private RenderTargetBitmap Snapshot(ContentPresenter presenter)
     {
         double w = presenter.ActualWidth, h = presenter.ActualHeight;
         var dpi = VisualTreeHelper.GetDpi(this);
+        double scale = Math.Min(dpi.DpiScaleX, SnapshotMaxScale);
         var bitmap = new RenderTargetBitmap(
-            (int)Math.Ceiling(w * dpi.DpiScaleX), (int)Math.Ceiling(h * dpi.DpiScaleY),
-            96 * dpi.DpiScaleX, 96 * dpi.DpiScaleY, PixelFormats.Pbgra32);
+            Math.Max(1, (int)Math.Ceiling(w * scale)), Math.Max(1, (int)Math.Ceiling(h * scale)),
+            96 * scale, 96 * scale, PixelFormats.Pbgra32);
 
         // The page's own surface is transparent over the window background, so composite the content
         // over an opaque fill — otherwise the outgoing sheet is see-through. Pin the brush to the
