@@ -1,3 +1,4 @@
+using Flux.Ui.Services;
 using FluxCore.Compression;
 using FluxRead.Services;
 using Microsoft.Extensions.DependencyInjection;
@@ -7,7 +8,7 @@ namespace FluxRead.WinUI;
 
 public partial class App : Application
 {
-    private Window? _window;
+    private MainWindow? _window;
 
     public static IServiceProvider Services { get; private set; } = null!;
 
@@ -15,13 +16,21 @@ public partial class App : Application
 
     protected override void OnLaunched(LaunchActivatedEventArgs args)
     {
+        var settings = new SettingsService("FluxRead");
+        var model = settings.Load();
+
         var services = new ServiceCollection();
         services.AddSingleton(_ => new CompressionService());
         services.AddSingleton(p => new DecodePipelineService(p.GetRequiredService<CompressionService>()));
         services.AddSingleton<ViewModels.FolderDecodeViewModel>();
+        services.AddSingleton(settings);
+        services.AddSingleton(model);
+        services.AddSingleton(_ => new ViewModels.SettingsViewModel(
+            settings, model, mode => _window?.ApplyTheme(mode)));
         Services = services.BuildServiceProvider();
 
         _window = new MainWindow();
+        _window.ApplyTheme(model.ThemeMode);
         _window.Activate();
     }
 }

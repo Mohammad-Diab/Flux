@@ -6,8 +6,7 @@
 
     <Grid Background="{ThemeResource BgBrush}" RowDefinitions="48,Auto,*">
 
-        <!-- Custom title bar: WinUI extends content into it and takes a drag region element, which
-             replaces WPF's WindowChrome + IsHitTestVisibleInChrome. -->
+        <!-- SetTitleBar takes this as the drag region, replacing WPF's WindowChrome. -->
         <Grid x:Name="TitleBarStrip" Grid.Row="0" Padding="16,0">
             <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Spacing="10">
                 <Border Width="22" Height="22" CornerRadius="6" Background="{StaticResource AccentGradient}"/>
@@ -17,12 +16,17 @@
                            Foreground="{ThemeResource TextSecondaryBrush}" VerticalAlignment="Center"/>
             </StackPanel>
             <!-- Clear of the native caption buttons, which own the right edge of the drag region. -->
-            <Button x:Name="ThemeToggle" Content="Theme" Style="{StaticResource SecondaryButton}"
-                    HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,148,0"
-                    MinHeight="30" Padding="12,0" FontSize="12" Click="OnToggleTheme"/>
+            <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Right"
+                        VerticalAlignment="Center" Margin="0,0,148,0">
+                <Button x:Name="BackButton" Content="Back" Style="{StaticResource SecondaryButton}"
+                        MinHeight="30" Padding="12,0" FontSize="12" Visibility="Collapsed"
+                        Click="OnCloseSettings"/>
+                <Button x:Name="SettingsButton" Content="Settings" Style="{StaticResource SecondaryButton}"
+                        MinHeight="30" Padding="12,0" FontSize="12" Click="OnOpenSettings"/>
+            </StackPanel>
         </Grid>
 
-        <Border Grid.Row="1" Padding="24,8,24,2">
+        <Border x:Name="TabStrip" Grid.Row="1" Padding="24,8,24,2">
             <controls:SlidingTabBar HorizontalAlignment="Left">
                 <RadioButton x:Name="LiveTab" Content="Live optical capture" GroupName="Mode"
                              Style="{StaticResource TabRadio}" Checked="OnTabChanged"/>

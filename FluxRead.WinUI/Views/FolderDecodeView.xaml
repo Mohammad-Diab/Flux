@@ -17,8 +17,7 @@
                     IsEnabled="{x:Bind Vm.IsIdle, Mode=OneWay}"/>
         </Grid>
 
-        <!-- WinUI 3 has no first-party DataGrid, and this read-only 4-column grid needs none:
-             a header row over a ListView matches it. -->
+        <!-- No first-party DataGrid in WinUI, and a read-only grid needs none. -->
         <Border Grid.Row="2" Style="{StaticResource Card}" Margin="0,16,0,0" Padding="6">
             <Grid RowDefinitions="Auto,*">
                 <Grid Grid.Row="0" Padding="10,8" ColumnDefinitions="160,50,120,*">

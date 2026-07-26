@@ -4,11 +4,8 @@ using Microsoft.UI.Xaml.Media;
 
 namespace FluxRead.WinUI.Controls;
 
-/// <summary>
-/// A progress bar tall enough to hold its own readout, drawn over the fill. WinUI's ProgressBar bakes
-/// a hairline track into its template and ignores Height, so this owns the track and fill rather than
-/// retemplating it.
-/// </summary>
+/// <summary>A progress bar tall enough to hold its readout. WinUI's ProgressBar ignores Height, so this
+/// owns its track and fill instead.</summary>
 public sealed class ReadoutBar : Grid
 {
     private readonly Border _track = new();

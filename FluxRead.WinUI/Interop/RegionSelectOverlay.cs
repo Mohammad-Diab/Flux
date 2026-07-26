@@ -2,11 +2,8 @@ using System.Runtime.InteropServices;
 
 namespace FluxRead.WinUI.Interop;
 
-/// <summary>
-/// Fullscreen capture-region selector. This is a plain Win32 layered window, not XAML: a WinUI window
-/// has an opaque backdrop and the Windows App SDK 1.7 exposes no transparent one, so the desktop cannot
-/// show through a XAML overlay. Coordinates in and out are physical pixels.
-/// </summary>
+/// <summary>Fullscreen capture-region selector, in physical pixels. A layered Win32 window rather than
+/// XAML, because a WinUI window's backdrop is opaque and 1.7 offers no transparent one.</summary>
 public sealed class RegionSelectOverlay
 {
     /// <summary>Shows the overlay and blocks until the user drags a rectangle or presses Escape.</summary>

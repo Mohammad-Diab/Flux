@@ -3,10 +3,7 @@ using Windows.UI.ViewManagement;
 
 namespace FluxRead.WinUI.Controls;
 
-/// <summary>
-/// The single gate every animation checks. Off means instant, which is a performance and accessibility
-/// choice: it honours both the user's preference and the system animation setting.
-/// </summary>
+/// <summary>The gate every animation checks — the user's preference and the system animation setting.</summary>
 public sealed class MotionSettings : INotifyPropertyChanged
 {
     public static MotionSettings Current { get; } = new();

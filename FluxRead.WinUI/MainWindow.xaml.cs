@@ -1,3 +1,4 @@
+using Flux.Ui.Services;
 using FluxRead.WinUI.ViewModels;
 using FluxRead.WinUI.Views;
 using Microsoft.Extensions.DependencyInjection;
@@ -13,6 +14,7 @@ public sealed partial class MainWindow : Window
     private readonly IntPtr _hwnd;
     private readonly FolderDecodeViewModel _folderVm;
     private readonly FolderDecodeView _folderView = new();
+    private readonly SettingsView _settingsView = new();
 
     public MainWindow()
     {
@@ -83,13 +85,33 @@ public sealed partial class MainWindow : Window
         return file?.Path;
     }
 
-    private void OnToggleTheme(object sender, RoutedEventArgs e)
+    /// <summary>Applies the saved appearance preference; System defers to Windows.</summary>
+    public void ApplyTheme(AppThemeMode mode)
     {
         if (Content is FrameworkElement root)
         {
-            root.RequestedTheme = root.ActualTheme == ElementTheme.Dark
-                ? ElementTheme.Light
-                : ElementTheme.Dark;
+            root.RequestedTheme = mode switch
+            {
+                AppThemeMode.Light => ElementTheme.Light,
+                AppThemeMode.Dark => ElementTheme.Dark,
+                _ => ElementTheme.Default,
+            };
         }
+    }
+
+    private void OnOpenSettings(object sender, RoutedEventArgs e)
+    {
+        ModeHost.Content = _settingsView;
+        TabStrip.Visibility = Visibility.Collapsed;
+        SettingsButton.Visibility = Visibility.Collapsed;
+        BackButton.Visibility = Visibility.Visible;
+    }
+
+    private void OnCloseSettings(object sender, RoutedEventArgs e)
+    {
+        TabStrip.Visibility = Visibility.Visible;
+        SettingsButton.Visibility = Visibility.Visible;
+        BackButton.Visibility = Visibility.Collapsed;
+        OnTabChanged(sender, e);
     }
 }

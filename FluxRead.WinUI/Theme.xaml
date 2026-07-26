@@ -2,8 +2,7 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
-    <!-- Theme-varying tokens. WinUI resolves ThemeDictionaries against the element's ActualTheme, so
-         switching ElementTheme retints everything live — no runtime token swapping like WPF needed. -->
+    <!-- ThemeDictionaries retint live from ElementTheme, so no WPF-style token swapping is needed. -->
     <ResourceDictionary.ThemeDictionaries>
         <ResourceDictionary x:Key="Dark">
             <SolidColorBrush x:Key="TextPrimaryBrush" Color="#EEF1F7"/>
@@ -43,8 +42,7 @@
     <SolidColorBrush x:Key="SuccessBrush" Color="#38D39F"/>
     <SolidColorBrush x:Key="DangerSelectionBrush" Color="#33FF5C6C"/>
 
-    <!-- WinUI drives stock controls from named "lightweight styling" brushes rather than template
-         triggers, so recolouring the switch is an override, not a retemplate. -->
+    <!-- Stock controls recolour through named lightweight-styling brushes, not a retemplate. -->
     <SolidColorBrush x:Key="ToggleSwitchFillOn" Color="#7C5CFF"/>
     <SolidColorBrush x:Key="ToggleSwitchFillOnPointerOver" Color="#8E71FF"/>
     <SolidColorBrush x:Key="ToggleSwitchFillOnPressed" Color="#6A4AE0"/>
@@ -77,8 +75,7 @@
         <Setter Property="Foreground" Value="{ThemeResource TextSecondaryBrush}"/>
     </Style>
 
-    <!-- WinUI has no template triggers: the WPF hover/press MultiTriggers become VisualStates, and the
-         hover overlay animates through the state's Storyboard instead of an EnterAction. -->
+    <!-- WinUI has no template triggers, so the WPF hover/press MultiTriggers become VisualStates. -->
     <Style x:Key="FluxButtonBase" TargetType="Button">
         <Setter Property="FontFamily" Value="Segoe UI Variable Text, Segoe UI"/>
         <Setter Property="FontSize" Value="14"/>
@@ -169,8 +166,7 @@
         <Setter Property="CornerRadius" Value="14"/>
     </Style>
 
-    <!-- Ghost destructive action: red text at rest, solid red with white text on hover. The WPF
-         version cross-faded two brushes from a MultiTrigger; here both states are VisualStates. -->
+    <!-- Red text at rest, solid red with white text on hover. -->
     <Style x:Key="DangerGhostButton" TargetType="Button">
         <Setter Property="FontSize" Value="12.5"/>
         <Setter Property="FontWeight" Value="SemiBold"/>
@@ -229,8 +225,7 @@
         </Setter>
     </Style>
 
-    <!-- Pill tab. WinUI has no equivalent, so the whole look is ours: the checked pill is drawn by
-         the tab strip behind the labels, and this only carries the text state. -->
+    <!-- Only the text state: the checked pill itself is drawn behind the labels by SlidingTabBar. -->
     <Style x:Key="TabRadio" TargetType="RadioButton">
         <Setter Property="FontSize" Value="14"/>
         <Setter Property="FontWeight" Value="SemiBold"/>
@@ -283,8 +278,7 @@
         </Setter>
     </Style>
 
-    <!-- At-rest look for the stock controls. WinUI drives its own hover/focus states from lightweight
-         styling resources, so only the resting appearance is set here. -->
+    <!-- Resting look only; WinUI drives hover and focus from its own lightweight-styling resources. -->
     <Style TargetType="TextBox">
         <Setter Property="MinHeight" Value="{StaticResource ControlHeight}"/>
         <Setter Property="CornerRadius" Value="8"/>

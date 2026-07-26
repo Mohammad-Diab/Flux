@@ -8,10 +8,8 @@ using Microsoft.UI.Xaml;
 
 namespace FluxRead.WinUI.ViewModels;
 
-/// <summary>
-/// Folder-decode screen, ported from the WPF view model. The decode pipeline, rows and pause gate
-/// are the same code; only the timer and the pickers are platform-specific.
-/// </summary>
+/// <summary>Folder-decode screen. Shares the WPF pipeline and pause gate; only the timer and pickers
+/// are platform-specific.</summary>
 public partial class FolderDecodeViewModel : ObservableObject
 {
     private readonly DecodePipelineService _pipeline;

@@ -35,6 +35,8 @@
 	<ItemGroup>
 		<Compile Include="..\FluxRead\Services\DecodePipelineService.cs" Link="Services\DecodePipelineService.cs" />
 		<Compile Include="..\FluxRead\Services\PauseGate.cs" Link="Services\PauseGate.cs" />
+		<!-- Shared so both apps read and write the same settings.json byte for byte. -->
+		<Compile Include="..\Flux.Ui\Services\SettingsService.cs" Link="Services\SettingsService.cs" />
 	</ItemGroup>
 
 </Project>

@@ -7,12 +7,8 @@ using Windows.Foundation;
 
 namespace FluxRead.WinUI.Controls;
 
-/// <summary>
-/// A horizontal strip of RadioButton tabs with one accent pill that slides and resizes behind whichever
-/// tab is checked, instead of each tab painting its own background. The tabs stay real RadioButtons, so
-/// automation and keyboarding are unchanged; the pill is a non-interactive background child. Snaps
-/// instantly when <see cref="MotionSettings"/> is off.
-/// </summary>
+/// <summary>A strip of RadioButton tabs with one accent pill sliding behind whichever is checked. Snaps
+/// instantly when <see cref="MotionSettings"/> is off.</summary>
 public class SlidingTabBar : Panel
 {
     private static readonly TimeSpan Duration = TimeSpan.FromMilliseconds(320);
