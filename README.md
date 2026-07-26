@@ -40,7 +40,8 @@ distinct per-app icons (▲ send / ▼ receive).
   <tr>
     <td width="50%" valign="top">
       <img src="docs/screenshots/fluxcast-setup.png" alt="FluxCast — encode setup"/><br/>
-      <sub><b>FluxCast · setup</b> — pick a file or folder, choose a mode, start encoding.</sub>
+      <sub><b>FluxCast · setup</b> — pick a source, choose a mode, read the fitted grid and
+      throughput, start encoding.</sub>
     </td>
     <td width="50%" valign="top">
       <img src="docs/screenshots/fluxread-live.png" alt="FluxRead — live optical capture"/><br/>
@@ -54,7 +55,8 @@ distinct per-app icons (▲ send / ▼ receive).
     </td>
     <td width="50%" valign="top">
       <img src="docs/screenshots/fluxread-folder.png" alt="FluxRead — folder decode"/><br/>
-      <sub><b>FluxRead · folder decode</b> — decode a folder of frames with a per-frame results grid.</sub>
+      <sub><b>FluxRead · folder decode</b> — decode a folder of frames with a per-frame results
+      grid, then verify and save.</sub>
     </td>
   </tr>
 </table>
