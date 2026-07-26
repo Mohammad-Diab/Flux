@@ -30,15 +30,35 @@ FluxCore tests keep working untouched.
     FluxRead.WinUI\FluxRead.WinUI.csproj /t:Restore,Build /p:Configuration=Debug /p:Platform=x64
 ```
 
+## Theme port status
+
+Ported and rendered: typography (Display/Heading/Brand/Subtle), Primary/Secondary/Danger buttons
+with hover, press and disabled states, DangerGhostButton, Card, TextBox, ComboBox, ToggleSwitch, and
+the tall readout bar. Verified against a throwaway gallery window, since removed.
+
+Three WinUI mechanisms replace WPF ones, and all three are confirmed working:
+
+| WPF | WinUI |
+|---|---|
+| `ControlTemplate.Triggers`, `MultiTrigger` | `VisualStateManager` states |
+| `DynamicResource` colour-token swap + `ThemeService` | `ThemeDictionaries` + `ElementTheme` |
+| Restyling a stock control's states by retemplating | Named "lightweight styling" brush overrides |
+
+Not ported: `ScrollBar` (WinUI's overlay bars are already close), `CaptionButton` and `FluxWindow`
+(the native title bar supersedes them), and the `DataGrid*` styles (no DataGrid — see below).
+
 ## Known gaps found by the spike
 
-- **Tall progress bar does not work.** WinUI's `ProgressBar` keeps a thin fixed-height track and
-  ignores `Height`, so the readout bar renders as a hairline. The folder-decode readout needs a
-  custom `ProgressBar` template (parts `DeterminateProgressBarIndicator` / `ProgressBarTrack`) or a
-  width-driven `Border`. First task if the port proceeds.
+- **`ProgressBar` cannot be made tall.** Its thin track is baked into the template and it ignores
+  both `Height` and a per-instance `ProgressBarTrackHeight` override — both were tried and neither
+  worked. Solved by `Controls/ReadoutBar.cs`, a small custom control owning its own track and fill,
+  with the readout drawn over it. Matches the WPF design.
 - **No first-party DataGrid.** The Toolkit's is stale 7.x; the maintained option is third-party
   (`WinUI.TableView`). The read-only results grid needs neither — a header row over a `ListView`
   matches it, which is what the spike does. `ReceivedItemsView` should be checked the same way.
+- **The pill tab style is only half of a tab bar.** `TabRadio`'s checked state is white text, which
+  relies on the accent pill being drawn behind it by the strip — so a checked tab is invisible until
+  `SlidingTabBar` is ported. Port the control and the style together.
 - Not yet attempted, and the expensive part of the real port: `TransitionHost` (genie/zoom needs
   Composition — WinUI has no `VisualBrush`), `RevealHost` (no `LayoutTransform`), `AmbientBackground`,
   `WindowChromeAnimator` (window open/close/minimise animation), `MiniCaptureWindow`, and the

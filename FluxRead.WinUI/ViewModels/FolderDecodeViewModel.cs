@@ -39,7 +39,7 @@ public partial class FolderDecodeViewModel : ObservableObject
     private bool _isDecoding;
 
     [ObservableProperty]
-    private double _progressValue;
+    private double _fraction;
 
     [ObservableProperty]
     private string _summary = "Choose a folder of frame images to decode.";
@@ -174,7 +174,7 @@ public partial class FolderDecodeViewModel : ObservableObject
         CanSave = false;
         StatusText = null;
         Rows.Clear();
-        ProgressValue = 0;
+        Fraction = 0;
         _completed = 0;
         _failed = 0;
         _total = 0;
@@ -217,7 +217,7 @@ public partial class FolderDecodeViewModel : ObservableObject
 
         _completed = p.Completed;
         _total = p.Total;
-        ProgressValue = p.Total == 0 ? 0 : (double)p.Completed / p.Total * 100;
+        Fraction = p.Total == 0 ? 0 : (double)p.Completed / p.Total;
 
         DecodedCountText = $"{p.Completed} / {p.Total}";
         FailedCountText = _failed > 0 ? $"{_failed} failed" : "";

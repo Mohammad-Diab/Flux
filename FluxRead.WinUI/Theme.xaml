@@ -43,6 +43,15 @@
     <SolidColorBrush x:Key="SuccessBrush" Color="#38D39F"/>
     <SolidColorBrush x:Key="DangerSelectionBrush" Color="#33FF5C6C"/>
 
+    <!-- WinUI drives stock controls from named "lightweight styling" brushes rather than template
+         triggers, so recolouring the switch is an override, not a retemplate. -->
+    <SolidColorBrush x:Key="ToggleSwitchFillOn" Color="#7C5CFF"/>
+    <SolidColorBrush x:Key="ToggleSwitchFillOnPointerOver" Color="#8E71FF"/>
+    <SolidColorBrush x:Key="ToggleSwitchFillOnPressed" Color="#6A4AE0"/>
+    <SolidColorBrush x:Key="ToggleSwitchStrokeOn" Color="#7C5CFF"/>
+    <SolidColorBrush x:Key="ToggleSwitchStrokeOnPointerOver" Color="#8E71FF"/>
+    <SolidColorBrush x:Key="ToggleSwitchStrokeOnPressed" Color="#6A4AE0"/>
+
     <LinearGradientBrush x:Key="AccentGradient" StartPoint="0,0" EndPoint="1,1">
         <GradientStop Color="#3B82F6" Offset="0"/>
         <GradientStop Color="#7C5CFF" Offset="0.5"/>
@@ -158,6 +167,160 @@
         <Setter Property="BorderBrush" Value="{ThemeResource FluxBorderBrush}"/>
         <Setter Property="BorderThickness" Value="1"/>
         <Setter Property="CornerRadius" Value="14"/>
+    </Style>
+
+    <!-- Ghost destructive action: red text at rest, solid red with white text on hover. The WPF
+         version cross-faded two brushes from a MultiTrigger; here both states are VisualStates. -->
+    <Style x:Key="DangerGhostButton" TargetType="Button">
+        <Setter Property="FontSize" Value="12.5"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="Padding" Value="14,8"/>
+        <Setter Property="MinHeight" Value="0"/>
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Grid>
+                        <Border x:Name="Fill" CornerRadius="10" Background="{StaticResource DangerBrush}" Opacity="0"/>
+                        <TextBlock x:Name="Txt" Text="{TemplateBinding Content}"
+                                   Margin="{TemplateBinding Padding}"
+                                   FontSize="{TemplateBinding FontSize}"
+                                   FontWeight="{TemplateBinding FontWeight}"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center"
+                                   Foreground="{StaticResource DangerBrush}"/>
+                        <VisualStateManager.VisualStateGroups>
+                            <VisualStateGroup x:Name="CommonStates">
+                                <VisualState x:Name="Normal"/>
+                                <VisualState x:Name="PointerOver">
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetName="Fill"
+                                                         Storyboard.TargetProperty="Opacity"
+                                                         To="1" Duration="0:0:0.15"/>
+                                        <ObjectAnimationUsingKeyFrames Storyboard.TargetName="Txt"
+                                                                       Storyboard.TargetProperty="Foreground">
+                                            <DiscreteObjectKeyFrame KeyTime="0:0:0.15" Value="White"/>
+                                        </ObjectAnimationUsingKeyFrames>
+                                    </Storyboard>
+                                </VisualState>
+                                <VisualState x:Name="Pressed">
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetName="Fill"
+                                                         Storyboard.TargetProperty="Opacity"
+                                                         To="0.85" Duration="0"/>
+                                        <ObjectAnimationUsingKeyFrames Storyboard.TargetName="Txt"
+                                                                       Storyboard.TargetProperty="Foreground">
+                                            <DiscreteObjectKeyFrame KeyTime="0" Value="White"/>
+                                        </ObjectAnimationUsingKeyFrames>
+                                    </Storyboard>
+                                </VisualState>
+                                <VisualState x:Name="Disabled">
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetName="Txt"
+                                                         Storyboard.TargetProperty="Opacity"
+                                                         To="0.45" Duration="0"/>
+                                    </Storyboard>
+                                </VisualState>
+                            </VisualStateGroup>
+                        </VisualStateManager.VisualStateGroups>
+                    </Grid>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- Pill tab. WinUI has no equivalent, so the whole look is ours: the checked pill is drawn by
+         the tab strip behind the labels, and this only carries the text state. -->
+    <Style x:Key="TabRadio" TargetType="RadioButton">
+        <Setter Property="FontSize" Value="14"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="MinWidth" Value="0"/>
+        <Setter Property="Margin" Value="0,0,6,0"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="RadioButton">
+                    <Border x:Name="Bd" Padding="16,9" CornerRadius="9" Background="Transparent">
+                        <TextBlock x:Name="Txt" Text="{TemplateBinding Content}"
+                                   FontSize="{TemplateBinding FontSize}"
+                                   FontWeight="{TemplateBinding FontWeight}"
+                                   VerticalAlignment="Center"
+                                   Foreground="{ThemeResource TextSecondaryBrush}"/>
+                        <VisualStateManager.VisualStateGroups>
+                            <VisualStateGroup x:Name="CommonStates">
+                                <VisualState x:Name="Normal"/>
+                                <VisualState x:Name="PointerOver">
+                                    <Storyboard>
+                                        <ObjectAnimationUsingKeyFrames Storyboard.TargetName="Bd"
+                                                                       Storyboard.TargetProperty="Background">
+                                            <DiscreteObjectKeyFrame KeyTime="0" Value="{ThemeResource HoverOverlayBrush}"/>
+                                        </ObjectAnimationUsingKeyFrames>
+                                        <ObjectAnimationUsingKeyFrames Storyboard.TargetName="Txt"
+                                                                       Storyboard.TargetProperty="Foreground">
+                                            <DiscreteObjectKeyFrame KeyTime="0" Value="{ThemeResource TextPrimaryBrush}"/>
+                                        </ObjectAnimationUsingKeyFrames>
+                                    </Storyboard>
+                                </VisualState>
+                            </VisualStateGroup>
+                            <VisualStateGroup x:Name="CheckStates">
+                                <VisualState x:Name="Unchecked"/>
+                                <VisualState x:Name="Checked">
+                                    <Storyboard>
+                                        <ObjectAnimationUsingKeyFrames Storyboard.TargetName="Txt"
+                                                                       Storyboard.TargetProperty="Foreground">
+                                            <DiscreteObjectKeyFrame KeyTime="0" Value="White"/>
+                                        </ObjectAnimationUsingKeyFrames>
+                                        <ObjectAnimationUsingKeyFrames Storyboard.TargetName="Bd"
+                                                                       Storyboard.TargetProperty="Background">
+                                            <DiscreteObjectKeyFrame KeyTime="0" Value="Transparent"/>
+                                        </ObjectAnimationUsingKeyFrames>
+                                    </Storyboard>
+                                </VisualState>
+                            </VisualStateGroup>
+                        </VisualStateManager.VisualStateGroups>
+                    </Border>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- At-rest look for the stock controls. WinUI drives its own hover/focus states from lightweight
+         styling resources, so only the resting appearance is set here. -->
+    <Style TargetType="TextBox">
+        <Setter Property="MinHeight" Value="{StaticResource ControlHeight}"/>
+        <Setter Property="CornerRadius" Value="8"/>
+        <Setter Property="Padding" Value="10,0"/>
+        <Setter Property="VerticalContentAlignment" Value="Center"/>
+        <Setter Property="Background" Value="{ThemeResource SurfaceAltBrush}"/>
+        <Setter Property="BorderBrush" Value="{ThemeResource FluxBorderBrush}"/>
+        <Setter Property="Foreground" Value="{ThemeResource TextPrimaryBrush}"/>
+    </Style>
+
+    <Style TargetType="ComboBox">
+        <Setter Property="MinHeight" Value="{StaticResource ControlHeight}"/>
+        <Setter Property="CornerRadius" Value="8"/>
+        <Setter Property="Padding" Value="10,0"/>
+        <Setter Property="VerticalContentAlignment" Value="Center"/>
+        <Setter Property="Background" Value="{ThemeResource SurfaceAltBrush}"/>
+        <Setter Property="BorderBrush" Value="{ThemeResource FluxBorderBrush}"/>
+        <Setter Property="Foreground" Value="{ThemeResource TextPrimaryBrush}"/>
+    </Style>
+
+    <Style TargetType="ToggleSwitch">
+        <Setter Property="Foreground" Value="{ThemeResource TextPrimaryBrush}"/>
+    </Style>
+
+    <Style x:Key="DisplayText" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="Segoe UI Variable Display, Segoe UI"/>
+        <Setter Property="FontSize" Value="40"/>
+        <Setter Property="FontWeight" Value="Bold"/>
+        <Setter Property="Foreground" Value="{ThemeResource TextPrimaryBrush}"/>
+    </Style>
+
+    <Style x:Key="BrandTitle" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="Segoe UI Variable Display, Segoe UI"/>
+        <Setter Property="FontSize" Value="17"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="Foreground" Value="{ThemeResource TextPrimaryBrush}"/>
     </Style>
 
 </ResourceDictionary>
