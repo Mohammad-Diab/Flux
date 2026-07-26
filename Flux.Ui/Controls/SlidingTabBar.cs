@@ -112,11 +112,9 @@ public class SlidingTabBar : Panel
         return finalSize;
     }
 
-    private void OnTabChecked(object sender, RoutedEventArgs e)
-    {
-        if (e.OriginalSource is ToggleButton tab)
-            MovePill(tab, animate: true);
-    }
+    // Track whichever tab is actually checked rather than the event's source: a handler upstream may
+    // have already reverted the selection, and this event would otherwise strand the pill on it.
+    private void OnTabChecked(object sender, RoutedEventArgs e) => MovePill(FindCheckedTab(), animate: true);
 
     private ToggleButton? FindCheckedTab()
     {

@@ -75,6 +75,7 @@
     <BooleanToVisibilityConverter x:Key="BoolToVisibility"/>
     <converters:NullToCollapsedConverter x:Key="NullToCollapsed"/>
     <converters:InverseBoolConverter x:Key="InverseBool"/>
+    <converters:InverseBoolToVisibilityConverter x:Key="InverseBoolToVisibility"/>
     <converters:EffectWhenEnabledConverter x:Key="EffectWhenEnabled"/>
 
     <!-- Ambient-orb layer opacity; ThemeService dims it on light backgrounds. -->
@@ -511,6 +512,8 @@
         <Setter Property="FontSize" Value="14"/>
         <Setter Property="FontWeight" Value="SemiBold"/>
         <Setter Property="Cursor" Value="Hand"/>
+        <!-- The sliding pill is the selection cue; the default dotted rectangle fights it. -->
+        <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
         <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
         <Setter Property="Margin" Value="0,0,6,0"/>
         <Setter Property="Template">
