@@ -36,13 +36,20 @@ Ported and rendered: typography (Display/Heading/Brand/Subtle), Primary/Secondar
 with hover, press and disabled states, DangerGhostButton, Card, TextBox, ComboBox, ToggleSwitch, and
 the tall readout bar. Verified against a throwaway gallery window, since removed.
 
-Three WinUI mechanisms replace WPF ones, and all three are confirmed working:
+These WinUI mechanisms replace WPF ones, and all are confirmed working:
 
 | WPF | WinUI |
 |---|---|
 | `ControlTemplate.Triggers`, `MultiTrigger` | `VisualStateManager` states |
 | `DynamicResource` colour-token swap + `ThemeService` | `ThemeDictionaries` + `ElementTheme` |
 | Restyling a stock control's states by retemplating | Named "lightweight styling" brush overrides |
+| `element.BeginAnimation(prop, animation)` | a `Storyboard` with `Storyboard.SetTarget`/`SetTargetProperty` |
+| `AddHandler(ToggleButton.CheckedEvent, …)` on a parent | no such routed event — subscribe each child's `Checked` |
+| `SetResourceReference` | read the resource and assign (no freezing to worry about) |
+
+⚠️ **Animating a layout property silently does nothing** unless the `DoubleAnimation` sets
+`EnableDependentAnimation="True"`. The tab pill animates `Width`, so it needs the flag; `TranslateTransform.X`
+does not, being composition-driven. This will bite every ported animation that touches size.
 
 Not ported: `ScrollBar` (WinUI's overlay bars are already close), `CaptionButton` and `FluxWindow`
 (the native title bar supersedes them), and the `DataGrid*` styles (no DataGrid — see below).
@@ -77,9 +84,9 @@ here, so verify the returned rectangle by hand before wiring the capture loop to
 - **No first-party DataGrid.** The Toolkit's is stale 7.x; the maintained option is third-party
   (`WinUI.TableView`). The read-only results grid needs neither — a header row over a `ListView`
   matches it, which is what the spike does. `ReceivedItemsView` should be checked the same way.
-- **The pill tab style is only half of a tab bar.** `TabRadio`'s checked state is white text, which
-  relies on the accent pill being drawn behind it by the strip — so a checked tab is invisible until
-  `SlidingTabBar` is ported. Port the control and the style together.
+- ~~The pill tab style is only half of a tab bar~~ — **closed.** `Controls/SlidingTabBar.cs` is ported and
+  the checked label reads correctly in both themes. Carries the WPF fix from `7f7c120`: the pill follows
+  whichever tab is *checked*, not the event source.
 - Not yet attempted, and the expensive part of the real port: `TransitionHost` (genie/zoom needs
   Composition — WinUI has no `VisualBrush`), `RevealHost` (no `LayoutTransform`), `AmbientBackground`,
   `WindowChromeAnimator` (window open/close/minimise animation), `MiniCaptureWindow`, and the
