@@ -630,17 +630,22 @@
         <Setter Property="Foreground" Value="{StaticResource AccentGradientHorizontal}"/>
         <Setter Property="Background" Value="{StaticResource SurfaceAltBrush}"/>
         <Setter Property="BorderThickness" Value="0"/>
+        <!-- Corner radius, via Tag so a tall bar can match the controls beside it. -->
+        <Setter Property="Tag" Value="4"/>
         <Setter Property="controls:Motion.Enabled" Value="{Binding AnimationsEnabled, Source={StaticResource MotionSettings}}"/>
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="ProgressBar">
                     <Grid ClipToBounds="True">
-                        <Border CornerRadius="4" Background="{TemplateBinding Background}"/>
+                        <Border CornerRadius="{Binding Tag, RelativeSource={RelativeSource TemplatedParent}}"
+                                Background="{TemplateBinding Background}"/>
                         <!-- PART_Track required: WPF sizes PART_Indicator against it, else no fill. -->
                         <Border x:Name="PART_Track"/>
-                        <Border x:Name="PART_Indicator" CornerRadius="4" HorizontalAlignment="Left"
+                        <Border x:Name="PART_Indicator" HorizontalAlignment="Left"
+                                CornerRadius="{Binding Tag, RelativeSource={RelativeSource TemplatedParent}}"
                                 Background="{TemplateBinding Foreground}"/>
-                        <Border x:Name="Pulse" CornerRadius="4" Opacity="0" Background="{StaticResource AccentBrush}"/>
+                        <Border x:Name="Pulse" Opacity="0" Background="{StaticResource AccentBrush}"
+                                CornerRadius="{Binding Tag, RelativeSource={RelativeSource TemplatedParent}}"/>
                     </Grid>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsIndeterminate" Value="True">

@@ -27,6 +27,16 @@ public sealed class EffectWhenEnabledConverter : IValueConverter
         throw new NotSupportedException();
 }
 
+/// <summary>Shows an element when the bound flag is false — the inverse of BooleanToVisibility.</summary>
+public sealed class InverseBoolToVisibilityConverter : IValueConverter
+{
+    public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture) =>
+        value is true ? Visibility.Collapsed : Visibility.Visible;
+
+    public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) =>
+        throw new NotSupportedException();
+}
+
 /// <summary>Collapses an element when the bound value is null or an empty string.</summary>
 public sealed class NullToCollapsedConverter : IValueConverter
 {

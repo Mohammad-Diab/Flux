@@ -1,6 +1,8 @@
 using System.ComponentModel;
 using System.Windows;
+using System.Windows.Threading;
 using Flux.Ui.Controls;
+using Flux.Ui.Services;
 using Flux.Ui.Views;
 using FluxRead.ViewModels;
 using FluxRead.Views;
@@ -17,15 +19,20 @@ public partial class MainWindow : Window
     private readonly LiveCaptureView _liveView;
     private readonly ReceivedItemsView _receivedView;
     private readonly ReceivedItemsViewModel _receivedVm;
+    private readonly FolderDecodeViewModel _folderVm;
+    private readonly DialogService _dialogs;
     private readonly SettingsView _settingsView;
     private readonly ShellViewModel _shell;
     private int _currentTab;
+    private bool _revertingTab;
 
     public MainWindow(
         FolderDecodeView folderView,
         LiveCaptureView liveView,
         ReceivedItemsView receivedView,
         ReceivedItemsViewModel receivedVm,
+        FolderDecodeViewModel folderVm,
+        DialogService dialogs,
         SettingsView settingsView,
         ShellViewModel shell)
     {
@@ -33,6 +40,8 @@ public partial class MainWindow : Window
         _liveView = liveView;
         _receivedView = receivedView;
         _receivedVm = receivedVm;
+        _folderVm = folderVm;
+        _dialogs = dialogs;
         _settingsView = settingsView;
         _shell = shell;
         _receivedVm.ResumeRequested = () => LiveModeButton.IsChecked = true;
@@ -59,10 +68,23 @@ public partial class MainWindow : Window
 
     private void OnModeChanged(object sender, RoutedEventArgs e)
     {
-        if (ModeHost is null)
+        if (ModeHost is null || _revertingTab)
             return;
 
         int tab = LiveModeButton.IsChecked == true ? 0 : FolderModeButton.IsChecked == true ? 1 : 2;
+
+        if (_currentTab == 1 && tab != 1 && !ConfirmLeavingDecode())
+        {
+            // Re-check after this event finishes: setting IsChecked inside a sibling's Checked handler
+            // races the group's own bookkeeping and can leave every tab unchecked.
+            Dispatcher.BeginInvoke(DispatcherPriority.Input, () =>
+            {
+                _revertingTab = true;
+                FolderModeButton.IsChecked = true;
+                _revertingTab = false;
+            });
+            return;
+        }
 
         // Slide by direction of travel: forward from the right, back from the left.
         ModeHost.SlideFrom = tab >= _currentTab ? 36 : -36;
@@ -73,6 +95,30 @@ public partial class MainWindow : Window
             _receivedVm.Refresh();
         if (!_shell.IsSettingsOpen)
             ModeHost.Content = TabContent(tab);
+    }
+
+    // Leaving the tab hides the only view of a running decode, so make the user choose: the decode
+    // is cancelled, or the switch is.
+    private bool ConfirmLeavingDecode()
+    {
+        if (!_folderVm.IsDecoding)
+            return true;
+
+        // Hold the decode while the prompt is up, so it can't run to completion behind the dialog.
+        bool wasPaused = _folderVm.IsPaused;
+        _folderVm.SetPaused(true);
+
+        bool cancel = _dialogs.Confirm(
+            "Decode in progress",
+            "Leaving this tab will stop decoding the frames folder. Cancel the decode?",
+            destructive: true);
+
+        if (cancel)
+            _folderVm.CancelDecode();
+        else if (!wasPaused)
+            _folderVm.SetPaused(false);
+
+        return cancel;
     }
 
     private void UpdateContent()

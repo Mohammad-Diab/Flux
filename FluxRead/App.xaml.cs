@@ -77,6 +77,8 @@ public partial class App : Application
             provider.GetRequiredService<LiveCaptureView>(),
             provider.GetRequiredService<ReceivedItemsView>(),
             provider.GetRequiredService<ReceivedItemsViewModel>(),
+            provider.GetRequiredService<FolderDecodeViewModel>(),
+            provider.GetRequiredService<DialogService>(),
             provider.GetRequiredService<SettingsView>(),
             provider.GetRequiredService<ShellViewModel>()));
     }

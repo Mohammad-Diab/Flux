@@ -16,10 +16,11 @@ namespace FluxRead.Services;
 /// <param name="Success">Whether the frame decoded and was accepted.</param>
 public sealed record FrameRow(string FileName, string FrameId, string Status, string Detail, bool Success);
 
-/// <summary>Progress of a folder decode.</summary>
+/// <summary>Progress of a folder decode, reported once per frame.</summary>
 /// <param name="Completed">Frames processed so far.</param>
 /// <param name="Total">Total frame files.</param>
-public sealed record DecodeProgress(int Completed, int Total);
+/// <param name="Row">The row for the frame just processed, so the grid can fill as it goes.</param>
+public sealed record DecodeProgress(int Completed, int Total, FrameRow Row);
 
 /// <summary>Outcome of decoding a frames folder.</summary>
 /// <param name="Metadata">Decoded frame-0 metadata, if readable.</param>
@@ -53,13 +54,18 @@ public sealed class DecodePipelineService
     }
 
     /// <summary>Decodes every frame_*.png in a folder.</summary>
+    /// <param name="framesDirectory">Folder holding the frame images.</param>
+    /// <param name="progress">Per-frame progress sink.</param>
+    /// <param name="pause">Optional gate checked between frames, so the caller can pause the run.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
     public Task<FolderDecodeResult> DecodeFolderAsync(
         string framesDirectory,
         IProgress<DecodeProgress>? progress = null,
+        PauseGate? pause = null,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(framesDirectory);
-        return Task.Run(() => DecodeFolder(framesDirectory, progress, cancellationToken), cancellationToken);
+        return Task.Run(() => DecodeFolder(framesDirectory, progress, pause, cancellationToken), cancellationToken);
     }
 
     /// <summary>
@@ -112,7 +118,8 @@ public sealed class DecodePipelineService
     }
 
     private FolderDecodeResult DecodeFolder(
-        string framesDirectory, IProgress<DecodeProgress>? progress, CancellationToken cancellationToken)
+        string framesDirectory, IProgress<DecodeProgress>? progress, PauseGate? pause,
+        CancellationToken cancellationToken)
     {
         var files = Directory.GetFiles(framesDirectory, "frame_*.png")
             .OrderBy(f => f, StringComparer.Ordinal)
@@ -145,9 +152,10 @@ public sealed class DecodePipelineService
         if (!metadata.TryBuildLayout(out var layout))
             return new FolderDecodeResult(metadata, null, rows, false, "Frame 0 was made by an incompatible Flux version.");
 
-        rows.Add(new FrameRow(Path.GetFileName(files[0]), "0", "Metadata",
-            $"{metadata.OriginalName} · {metadata.TotalFrames} frames · {metadata.PayloadType}", true));
-        progress?.Report(new DecodeProgress(1, files.Length));
+        var metadataRow = new FrameRow(Path.GetFileName(files[0]), "0", "Metadata",
+            $"{metadata.OriginalName} · {metadata.TotalFrames} frames · {metadata.PayloadType}", true);
+        rows.Add(metadataRow);
+        progress?.Report(new DecodeProgress(1, files.Length, metadataRow));
 
         // Payload frames adopt the transfer's palette; frame 0 stayed on the palette-independent cube path.
         var payloadDecoder = metadata.ColorCount == 256 ? decoder : new FrameDecoder(ColorMap.FromCount(metadata.ColorCount, metadata.PaletteKind));
@@ -157,8 +165,10 @@ public sealed class DecodePipelineService
         for (int i = 1; i < files.Length; i++)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            rows.Add(DecodePayloadFrame(payloadDecoder, assembler, files[i], layout, bitsPerTile));
-            progress?.Report(new DecodeProgress(i + 1, files.Length));
+            pause?.WaitIfPaused(cancellationToken);
+            var row = DecodePayloadFrame(payloadDecoder, assembler, files[i], layout, bitsPerTile);
+            rows.Add(row);
+            progress?.Report(new DecodeProgress(i + 1, files.Length, row));
         }
 
         return new FolderDecodeResult(metadata, assembler, rows, assembler.IsComplete, null);
