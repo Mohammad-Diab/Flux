@@ -47,6 +47,27 @@ Three WinUI mechanisms replace WPF ones, and all three are confirmed working:
 Not ported: `ScrollBar` (WinUI's overlay bars are already close), `CaptionButton` and `FluxWindow`
 (the native title bar supersedes them), and the `DataGrid*` styles (no DataGrid — see below).
 
+## Risk spikes — both resolved
+
+**Pixel-exact frame presentation — PASSES, no fallback needed.** This was the risk that decided whether
+FluxCast could move at all. WinUI's `Image` exposes no nearest-neighbour switch, but it does not need
+one: size the image to `pixelSize / XamlRoot.RasterizationScale` and it lands on exact device pixels,
+because WinUI's layout rounding is *device-pixel* aware. At 175% a 1312×752 frame laid out at a
+fractional 749.714×429.714 DIP rendered as exactly 1312×752 device pixels, and a screen capture was
+**byte-identical to the source PNG** across 109,938 sampled pixels — zero mismatches, zero channel
+delta. No `SwapChainPanel`, Win2D or GDI child needed. Recompute on `SizeChanged`, as WPF did on
+`DpiChanged`.
+
+**Region-selector overlay — needs Win32, not XAML.** A WinUI window's backdrop is opaque and the
+Windows App SDK 1.7 has no `TransparentBackdrop` (tried; the type does not exist), so a translucent
+XAML `Grid` just composites over grey — verified: the overlay covered the desktop but you could not see
+through it. `Interop/RegionSelectOverlay.cs` is the answer instead: a plain `WS_EX_LAYERED` Win32 window
+spanning the virtual desktop, uniform alpha, marquee drawn with GDI, physical-pixel coordinates
+throughout. Confirmed see-through over the full 2880×1620 desktop. It runs its own message loop, so it
+must live on its own STA thread, not the WinUI dispatcher.
+⚠️ The drag itself is user-driven and not yet exercised — synthesising a global mouse drag is off-limits
+here, so verify the returned rectangle by hand before wiring the capture loop to it.
+
 ## Known gaps found by the spike
 
 - **`ProgressBar` cannot be made tall.** Its thin track is baked into the template and it ignores
