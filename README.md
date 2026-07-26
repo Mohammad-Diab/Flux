@@ -27,9 +27,10 @@ It is two Windows (WPF) apps over a shared, UI-agnostic core:
 Targets **.NET 10** (Windows). Windows-only by design — screen capture and the automated
 frame-advance (via the OS input APIs) are Windows-specific.
 
-Both apps share a modern dark interface: custom borderless window chrome with Windows 11 rounded
-corners, a blue→violet→magenta spectrum accent, animated window transitions (open / maximize /
-minimize / close), and distinct per-app icons (▲ send / ▼ receive).
+Both apps share one interface library: custom borderless window chrome with Windows 11 rounded
+corners, a blue→violet→magenta spectrum accent, light / dark / system theming that switches live,
+animated window and view transitions, a reduce-motion performance mode, taskbar progress, and
+distinct per-app icons (▲ send / ▼ receive).
 
 ---
 
@@ -39,7 +40,7 @@ minimize / close), and distinct per-app icons (▲ send / ▼ receive).
   <tr>
     <td width="50%" valign="top">
       <img src="docs/screenshots/fluxcast-setup.png" alt="FluxCast — encode setup"/><br/>
-      <sub><b>FluxCast · setup</b> — pick a file or folder, choose an ECC level, start encoding.</sub>
+      <sub><b>FluxCast · setup</b> — pick a file or folder, choose a mode, start encoding.</sub>
     </td>
     <td width="50%" valign="top">
       <img src="docs/screenshots/fluxread-live.png" alt="FluxRead — live optical capture"/><br/>
@@ -60,35 +61,52 @@ minimize / close), and distinct per-app icons (▲ send / ▼ receive).
 
 ---
 
-## Frame format (FFv2)
+## Frame format (FFv3)
 
-Every frame is a fixed **160 × 90 tile** grid, each tile **8 × 8 px**, with a 16 px white quiet
-zone — a canonical **1312 × 752 px** PNG rendered without antialiasing (one tile = one flat
-color block).
+A frame is a grid of flat colored tiles inside a white quiet zone, rendered without antialiasing
+(one tile = one flat color block). **The grid, tile size, and palette are per-transfer settings**:
+FluxCast fits the grid to the sender's display at the chosen tile size, writes the geometry into
+frame 0, and the receiver adopts whatever frame 0 declares. The legacy fixed geometry — **160 × 90
+tiles at 8 px**, a 1312 × 752 px PNG — remains the default layout and the bootstrap anchor.
 
 - **Corner finder patterns** — four QR-style 7×7 concentric squares (1:1:3:1:1 scanline
   profile). The decoder locates them by run-length scan and builds a homography, so captures
   that arrive scaled, offset, or rotated still register.
 - **Timing patterns** — alternating black/white tiles along the top row and left column;
   verify the homography and resolve orientation (including a 180° flip).
-- **Header** — a 16-byte frame header (format version, frame id, total frames, per-frame
-  payload length, payload CRC-32, ECC level) stored as **three redundant RS(48,16) copies** in
-  spatially diverse positions. The Server confirms a click worked by the decoded frame id
-  incrementing — never a timer.
+- **Header** — an 18-byte frame header (format version, frame id, total frames, per-frame
+  payload length, payload CRC-32, ECC level) stored as **three redundant RS(48,18) copies** in
+  spatially diverse positions. Its tile footprint follows the palette depth — 48 tiles per copy at
+  256 colors and above, 128 at the 3-bit rugged tier. The receiver confirms a Next click worked by
+  the decoded frame id incrementing — never a timer.
 - **Beacon** — a 4×4 block that flips black/white with frame-id parity, a cheap "frame changed"
   cue for the capture loop.
-- **Data** — the remaining **13,515 tiles = 53 × 255** carry the payload as 53 interleaved
-  RS(255,k) codewords (stride-53, so a smeared region spreads across all codewords).
+- **Data** — every remaining tile carries the payload as interleaved RS(255,k) codewords (stride =
+  the codeword count, so a smeared region spreads across all codewords). At the default grid that
+  is **13,515 tiles = 53 × 255**.
 
 ### Colors
 
-- **Payload frames** use `ColorMap.Default`: a fixed **256-color** palette (1 byte/tile), an
-  evenly spaced 8×8×4 RGB lattice with a minimum pairwise distance of 36 — chosen so tiles stay
-  classifiable under lossy screen recompression. White is reserved for null/structural tiles.
-- **Frame 0** (metadata) uses only the **8 RGB cube corners** (black/red/green/blue/cyan/
-  yellow/magenta/white) at 3 bits/tile, decoded by a simple per-channel threshold (minimum
-  distance 255). This makes the bootstrap frame maximally robust and palette-independent, while
-  still carrying the full transfer metadata (SHA-256, name, sizes, ECC level, embedded palette).
+Payload frames use a palette **generated deterministically from a color count and kind** — frame 0
+carries only those two values and both sides regenerate the identical palette, so no color list
+ever crosses the channel. White is reserved for null/structural tiles, and the decoder's confidence
+gate scales to the palette's actual minimum distance.
+
+| Tier | Bits/tile | Min RGB distance | Channel it needs |
+|---|---|---|---|
+| Rugged grayscale-8 | 3 | ≈54, pure luma | survives chroma-lossy links (RDP, 4:2:0) |
+| **256 (default)** | 8 | 36 | any channel |
+| 512 | 9 | ≈26 | clean channel |
+| 1024 | 10 | ≈17 | near-pixel-perfect only |
+
+The rugged tier is eight grays on an even luma ladder: screen codecs preserve luma and wreck
+chroma, so a palette that differs *only* in luma loses nothing to chroma subsampling.
+
+**Frame 0** (metadata) is fixed and never follows these settings — it uses only the **8 RGB cube
+corners** (black/red/green/blue/cyan/yellow/magenta/white) at 3 bits/tile, decoded by a simple
+per-channel threshold (minimum distance 255). That makes the bootstrap frame maximally robust and
+palette-independent while it carries the transfer metadata (SHA-256, name, sizes, ECC level, grid,
+tile size, color count, and palette kind).
 
 ### ECC levels (per-frame payload capacity)
 
@@ -99,21 +117,40 @@ color block).
 | High | RS(255,159) | 48 (18.8%) | 8,427 B |
 | Max | RS(255,127) | 64 (25%) | 6,731 B |
 
-Frame 0 is always encoded at Max. The codec is pinned by a permanent golden round-trip +
-degradation test suite: Medium survives JPEG q85 and High survives q75 at 0.8×/1.0×/1.25×
-scale; beyond that it fails cleanly (CRC), never silently corrupts.
+Payload/frame is quoted at the default 160 × 90 grid with 256 colors; a display-fitted grid and a
+denser palette scale it up (on a 1440p screen, standard 8 px tiles at 1024 colors run ≈5× the
+legacy capacity). Frame 0 is always encoded at Max. The codec is pinned by a permanent golden
+round-trip + degradation test suite: Medium survives JPEG q85 and High survives q75 at
+0.8×/1.0×/1.25× scale; beyond that it fails cleanly (CRC), never silently corrupts.
+
+### Throughput vs. robustness
+
+Three independent levers multiply, and all three ride in frame 0: **grid size** (the biggest —
+scales with the sender's display), **ECC level** (Low carries ~75% more than Max), and **color
+depth** (+12.5% at 512, +25% at 1024). The fast settings trade away error margin, so FluxCast
+prints a live capacity/robustness readout, offers only color-and-tile combinations the display can
+actually present at ~1:1, and ships a **Test frame on this channel** button that sends a throwaway
+two-frame transfer at the chosen settings so you can confirm it reads before committing to a long
+one.
 
 ---
 
 ## Using it
 
 ### Send (FluxCast, on the source machine)
-1. Pick a file or folder; review the size/type/estimated-frame summary.
-2. Choose an ECC level (Medium by default) and whether to compress.
-3. **Start encoding** — a resumable session is written to
-   `%LOCALAPPDATA%\Flux\FluxCast\sessions\{signature}\` (re-running the same source resumes).
-4. Present the frames full-window and advance with **Next** (First / Last / go-to-frame also
+1. Pick a file or folder (or drop one in); review the size/type/estimated-frame summary.
+2. Pick a mode — **Default** (Medium ECC, standard 8 px tiles, 256 colors), **Rugged** (High ECC,
+   large 12 px tiles, grayscale-8; for RDP and other lossy links), or **Advanced**, which exposes
+   the ECC / tile-size / palette / compression levers individually.
+3. Optionally hit **Test frame on this channel** and read it with FluxRead before committing.
+4. **Start encoding** — a resumable session is written under
+   `%LOCALAPPDATA%\Flux\FluxCast\sessions\` (re-running the same source resumes; re-rendering the
+   same content at different settings reuses the compressed payload).
+5. Present the frames full-window and advance with **Next** (First / Last / go-to-frame also
    available). Do not move or resize the window during a transfer.
+
+**Recent casts** lists past sessions, clusters the render variants of the same content, and can
+re-present one or **export its frames** to a folder.
 
 ### Receive (FluxRead, on the destination machine)
 
@@ -125,9 +162,14 @@ and saves (raw → file, 7z → extracted folder).
 1. **Select region** — drag a rectangle around FluxCast's frame area (generous margins are fine;
    the fiducials handle registration).
 2. **Calibrate Next (F8)** — hover over FluxCast's Next button and press F8 to record its point.
-3. **Start** — FluxRead loops: capture → decode → click Next → confirm the frame id advanced →
-   repeat until complete, then reassembles, verifies, and saves. If it stalls, it asks you to
-   Retry / Recalibrate / Abort rather than spinning forever.
+3. **Start** — FluxRead reads the settings off frame 0, then loops: capture → decode → click Next
+   → confirm the frame id advanced → repeat until complete, then reassembles, verifies, and saves.
+   A compact always-on-top mini window takes over during the transfer so a single screen can show
+   both apps, and a per-frame quality readout reports clean / marginal / low-confidence captures.
+   If it stalls, it asks you to Retry / Recalibrate / Abort rather than spinning forever.
+
+An interrupted reception is kept: the **Received** list offers to resume it, and FluxRead
+fast-forwards to the first missing frame instead of restarting.
 
 ---
 
@@ -144,19 +186,24 @@ coordinates are physical pixels.
 
 ## Project layout
 
-- `FluxCore/` — `Framing/` (format, header, encoder), `Ecc/`, `Imaging/` (palette, renderer,
-  cube-corner colors), `Decoding/` (fiducials, homography, sampler, decoder, assembler),
-  `Compression/`, `Hashing/`, `Transfer/` (content signature, encode service, capture loop).
-- `FluxCore.Tests/` — 230+ xUnit tests incl. the golden round-trip and degradation matrix.
-- `FluxCast/` — WPF sender (setup / progress / presenter).
-- `FluxRead/` — WPF receiver (folder-decode + live optical; `Interop/` holds the Win32 capture,
-  click, DPI, hotkey, and window-placement helpers).
+- `FluxCore/` — `Framing/` (format, parametric layout, header, encoder), `Ecc/`, `Imaging/`
+  (palette generator, renderer, cube-corner colors), `Decoding/` (fiducials, homography, sampler,
+  decoder, assembler), `Compression/`, `Hashing/`, `Transfer/` (content signature, encode service,
+  capture loop).
+- `FluxCore.Tests/` — 365 xUnit tests incl. the golden round-trip and degradation matrix.
+- `Flux.Ui/` — the shared WPF library: the single theme, window chrome and transitions, motion and
+  theme settings, and the views both apps embed.
+- `FluxCast/` — WPF sender (setup / progress / presenter / recent casts).
+- `FluxRead/` — WPF receiver (folder-decode + live optical + received items; `Interop/` holds the
+  Win32 capture, click, DPI, hotkey, and window-placement helpers).
 
 ## Accepted v1 limitations
 
-- FluxRead has no cross-restart resume (a killed transfer restarts from frame 0).
 - Windows-only.
-- Fixed grid, palette, and render scale — no adaptive sizing.
+- A transfer's settings are fixed once encoding starts — changing the grid, palette, or ECC level
+  re-renders the session and is a new transfer to the receiver, never a resume.
+- The 512- and 1024-color tiers and the rugged tier are validated by unit tests over clean and
+  simulated-lossy channels; end-to-end runs over a real RDP link are still manual acceptance work.
 
 ## Responsible use
 
