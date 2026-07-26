@@ -1,0 +1,40 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<OutputType>WinExe</OutputType>
+		<TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+		<TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
+		<RootNamespace>FluxRead.WinUI</RootNamespace>
+		<ApplicationManifest>app.manifest</ApplicationManifest>
+		<Platforms>x64</Platforms>
+		<RuntimeIdentifier>win-x64</RuntimeIdentifier>
+		<UseWinUI>true</UseWinUI>
+		<Nullable>enable</Nullable>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<!-- Unpackaged, self-contained: launches as a plain exe like the WPF apps, and needs no
+		     machine-wide Windows App Runtime install. -->
+		<WindowsPackageType>None</WindowsPackageType>
+		<WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
+		<SelfContained>true</SelfContained>
+		<EnableMsixTooling>false</EnableMsixTooling>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<PackageReference Include="Microsoft.WindowsAppSDK" Version="1.7.250606001" />
+		<PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.26100.1742" />
+		<PackageReference Include="CommunityToolkit.Mvvm" Version="8.3.2" />
+		<PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.0" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\FluxCore\FluxCore.csproj" />
+	</ItemGroup>
+
+	<!-- The decode pipeline and pause gate carry no WPF dependency, so the spike shares the source
+	     rather than forking it. They move to a neutral project if the port goes ahead. -->
+	<ItemGroup>
+		<Compile Include="..\FluxRead\Services\DecodePipelineService.cs" Link="Services\DecodePipelineService.cs" />
+		<Compile Include="..\FluxRead\Services\PauseGate.cs" Link="Services\PauseGate.cs" />
+	</ItemGroup>
+
+</Project>
