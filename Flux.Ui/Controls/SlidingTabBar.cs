@@ -145,7 +145,7 @@ public class SlidingTabBar : Panel
         }
 
         double fromWidth = double.IsNaN(_pill.Width) ? _pill.ActualWidth : _pill.Width;
-        var ease = new QuinticEase { EasingMode = EasingMode.EaseOut };
+        var ease = MotionCurves.Settle;
         _offset.BeginAnimation(TranslateTransform.XProperty,
             new DoubleAnimation(_offset.X, targetX, Duration) { EasingFunction = ease });
         _pill.BeginAnimation(WidthProperty,

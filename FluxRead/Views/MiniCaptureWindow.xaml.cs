@@ -102,7 +102,7 @@ public partial class MiniCaptureWindow : Window
             return;
         }
 
-        var ease = new CubicEase { EasingMode = EasingMode.EaseInOut };
+        var ease = MotionCurves.Travel;
         BeginAnimation(HeightProperty, new DoubleAnimation(ActualHeight, targetHeight, ResizeDuration) { EasingFunction = ease });
         BeginAnimation(TopProperty, new DoubleAnimation(Top, targetTop, ResizeDuration) { EasingFunction = ease });
     }

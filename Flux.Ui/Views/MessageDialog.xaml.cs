@@ -13,6 +13,10 @@ namespace Flux.Ui.Views;
 /// </summary>
 public partial class MessageDialog : Window
 {
+    private static readonly TimeSpan OpenDuration = TimeSpan.FromMilliseconds(260);
+    private static readonly TimeSpan OpenFadeDuration = TimeSpan.FromMilliseconds(180);
+    private static readonly TimeSpan CloseDuration = TimeSpan.FromMilliseconds(150);
+
     /// <summary>Creates a dialog. A null <paramref name="cancelText"/> shows only the confirm button.</summary>
     /// <param name="title">Heading text.</param>
     /// <param name="message">Body text.</param>
@@ -52,11 +56,10 @@ public partial class MessageDialog : Window
             return;
         }
 
-        var ease = new BackEase { EasingMode = EasingMode.EaseOut, Amplitude = 0.4 };
-        var duration = TimeSpan.FromMilliseconds(260);
-        RootScale.BeginAnimation(ScaleTransform.ScaleXProperty, new DoubleAnimation(0.88, 1, duration) { EasingFunction = ease });
-        RootScale.BeginAnimation(ScaleTransform.ScaleYProperty, new DoubleAnimation(0.88, 1, duration) { EasingFunction = ease });
-        BeginAnimation(OpacityProperty, new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(180)));
+        var ease = MotionCurves.Pop;
+        RootScale.BeginAnimation(ScaleTransform.ScaleXProperty, new DoubleAnimation(0.88, 1, OpenDuration) { EasingFunction = ease });
+        RootScale.BeginAnimation(ScaleTransform.ScaleYProperty, new DoubleAnimation(0.88, 1, OpenDuration) { EasingFunction = ease });
+        BeginAnimation(OpacityProperty, new DoubleAnimation(0, 1, OpenFadeDuration));
     }
 
     private void OnDragMove(object sender, MouseButtonEventArgs e)
@@ -84,11 +87,10 @@ public partial class MessageDialog : Window
             return;
         }
 
-        var ease = new CubicEase { EasingMode = EasingMode.EaseIn };
-        var duration = TimeSpan.FromMilliseconds(150);
-        RootScale.BeginAnimation(ScaleTransform.ScaleXProperty, new DoubleAnimation(1, 0.92, duration) { EasingFunction = ease });
-        RootScale.BeginAnimation(ScaleTransform.ScaleYProperty, new DoubleAnimation(1, 0.92, duration) { EasingFunction = ease });
-        var fade = new DoubleAnimation(1, 0, duration) { EasingFunction = ease };
+        var ease = MotionCurves.Exit;
+        RootScale.BeginAnimation(ScaleTransform.ScaleXProperty, new DoubleAnimation(1, 0.92, CloseDuration) { EasingFunction = ease });
+        RootScale.BeginAnimation(ScaleTransform.ScaleYProperty, new DoubleAnimation(1, 0.92, CloseDuration) { EasingFunction = ease });
+        var fade = new DoubleAnimation(1, 0, CloseDuration) { EasingFunction = ease };
         fade.Completed += (_, _) => DialogResult = result;
         BeginAnimation(OpacityProperty, fade);
     }

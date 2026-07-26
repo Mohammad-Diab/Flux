@@ -59,7 +59,7 @@ public class RevealHost : ContentControl
         }
 
         var duration = open ? OpenDuration : CloseDuration;
-        var ease = new QuinticEase { EasingMode = EasingMode.EaseOut };
+        var ease = MotionCurves.Settle;
 
         var fade = new DoubleAnimation(open ? 1 : 0, duration) { EasingFunction = ease };
         if (!open)

@@ -224,7 +224,7 @@ public class TransitionHost : ContentControl
     }
 
     private DoubleAnimation Slide(double from, double to) =>
-        new(from, to, SlideDuration) { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseInOut } };
+        new(from, to, SlideDuration) { EasingFunction = MotionCurves.Travel };
 
     private void ClearScales()
     {
@@ -373,10 +373,10 @@ public class TransitionHost : ContentControl
     // Builds a keyframed animation; fraction is the position on the timeline (0..1) for each value.
     private DoubleAnimationUsingKeyFrames KeyFrames(params (double Value, double Fraction)[] frames)
     {
-        var ease = new CubicEase { EasingMode = EasingMode.EaseInOut };
         var animation = new DoubleAnimationUsingKeyFrames { Duration = Duration };
         foreach (var (value, fraction) in frames)
-            animation.KeyFrames.Add(new EasingDoubleKeyFrame(value, KeyTime.FromTimeSpan(Duration * fraction), ease));
+            animation.KeyFrames.Add(
+                new EasingDoubleKeyFrame(value, KeyTime.FromTimeSpan(Duration * fraction), MotionCurves.Travel));
         return animation;
     }
 

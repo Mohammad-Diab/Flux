@@ -17,6 +17,10 @@ public static class WindowChromeAnimator
     private const int WmSysCommand = 0x0112;
     private const int ScMinimize = 0xF020;
 
+    private static readonly TimeSpan OutDuration = TimeSpan.FromMilliseconds(160);
+    private static readonly TimeSpan InDuration = TimeSpan.FromMilliseconds(240);
+    private static readonly TimeSpan SettleDuration = TimeSpan.FromMilliseconds(260);
+
     private sealed class State
     {
         public ScaleTransform Scale = null!;
@@ -119,10 +123,10 @@ public static class WindowChromeAnimator
     private static void AnimateOut(Window window, State state, Action done)
     {
         state.Animating = true;
-        var ease = new CubicEase { EasingMode = EasingMode.EaseIn };
-        var fade = new DoubleAnimation(window.Opacity, 0, TimeSpan.FromMilliseconds(160)) { EasingFunction = ease };
+        var ease = MotionCurves.Exit;
+        var fade = new DoubleAnimation(window.Opacity, 0, OutDuration) { EasingFunction = ease };
         fade.Completed += (_, _) => done();
-        var shrink = new DoubleAnimation(1, 0.92, TimeSpan.FromMilliseconds(160)) { EasingFunction = ease };
+        var shrink = new DoubleAnimation(1, 0.92, OutDuration) { EasingFunction = ease };
         state.Scale.BeginAnimation(ScaleTransform.ScaleXProperty, shrink);
         state.Scale.BeginAnimation(ScaleTransform.ScaleYProperty, shrink);
         window.BeginAnimation(UIElement.OpacityProperty, fade);
@@ -130,18 +134,17 @@ public static class WindowChromeAnimator
 
     private static void AnimateIn(Window window, State state)
     {
-        var ease = new QuinticEase { EasingMode = EasingMode.EaseOut };
-        var grow = new DoubleAnimation(0.94, 1, TimeSpan.FromMilliseconds(240)) { EasingFunction = ease };
+        var ease = MotionCurves.Settle;
+        var grow = new DoubleAnimation(0.94, 1, InDuration) { EasingFunction = ease };
         state.Scale.BeginAnimation(ScaleTransform.ScaleXProperty, grow);
         state.Scale.BeginAnimation(ScaleTransform.ScaleYProperty, grow);
         window.BeginAnimation(UIElement.OpacityProperty,
-            new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(240)) { EasingFunction = ease });
+            new DoubleAnimation(0, 1, InDuration) { EasingFunction = ease });
     }
 
     private static void SettleScale(State state, double from)
     {
-        var ease = new QuinticEase { EasingMode = EasingMode.EaseOut };
-        var settle = new DoubleAnimation(from, 1, TimeSpan.FromMilliseconds(260)) { EasingFunction = ease };
+        var settle = new DoubleAnimation(from, 1, SettleDuration) { EasingFunction = MotionCurves.Settle };
         state.Scale.BeginAnimation(ScaleTransform.ScaleXProperty, settle);
         state.Scale.BeginAnimation(ScaleTransform.ScaleYProperty, settle);
     }
