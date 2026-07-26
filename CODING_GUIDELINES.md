@@ -1,6 +1,6 @@
 ﻿# Coding Rules and Engineering Guidelines
 
-Applies to projects: `FluxCore`, `FluxCast`, `FluxRead` (.NET8, .NET MAUI).
+Applies to projects: `FluxCore`, `Flux.Ui`, `FluxCast`, `FluxRead` (.NET 10, WPF).
 
 ---
 
@@ -10,8 +10,8 @@ Applies to projects: `FluxCore`, `FluxCast`, `FluxRead` (.NET8, .NET MAUI).
   - `camelCase` for locals/parameters  
   - `_camelCase` for private fields  
 - Keep methods and classes small, single responsibility  
-- Add short comments above complex logic or public APIs  
-- Organize by feature/folder (Encoding, Decoding, ECC, Imaging)  
+- Minimal comments: at most one short line, and only for a non-obvious "why" — clear names instead  
+- Organize by feature/folder (Framing, Decoding, Ecc, Imaging — not `Encoding`, it shadows `System.Text.Encoding`)  
 - Avoid duplicate code → refactor into shared helpers in `FluxCore`  
 - Favor clarity over clever tricks  
 

@@ -1,5 +1,11 @@
 # Flux v2 Rebuild — Task List
 
+> **Historical record — phases 0–10 are complete.** Kept for the design rationale and the test
+> gates. Anything below describes the codec as it stood at the end of the rebuild; the format has
+> since gained a parametric grid, 512/1024-colour and rugged-grayscale palettes, and a two-level
+> session layout. See README.md for the current spec and BACKLOG.md for open work. The one task
+> still outstanding here is **milestone C.2** (the real-RDP acceptance run).
+
 Flux is a one-way optical data bridge: **FluxCast** (WPF, runs inside a locked-down remote session) displays a file as colored-tile frames; **FluxRead** (WPF, runs locally) watches the screen region, decodes each frame, clicks Next itself, and reconstructs the file.
 
 Tasks are dependency-ordered. Each task has a **Test** gate — do not start the next task until the gate passes. Milestones (🚩) are hard checkpoints.
@@ -155,9 +161,13 @@ All in `FluxRead/Interop/`, each exercisable from a hidden dev panel:
 
 ---
 
-## Future ideas (post-v1, not scheduled)
+## Future ideas (post-v1) — resolved
 
-- **Rugged payload mode** — reuse the frame-0 cube-corner scheme (8 colors, 3 bits/tile, per-channel threshold, min RGB distance 255) as an alternative *payload* encoding tier for truly awful channels, instead of the 256-color/1-byte-per-tile mode. Trades ~62% capacity for near-black/white robustness. Would be a per-transfer mode flag echoed in frame 0's metadata so the decoder picks the right payload scheme. Frame 0 itself already uses this scheme as of the 8-color metadata frame work.
+- ~~**Rugged payload mode** — reuse the frame-0 cube-corner scheme as an alternative payload tier~~
+  — **shipped, but NOT this way.** Cube corners can't be a payload palette: index 7 is white, which
+  is reserved for null/structural tiles on payload frames, and dropping it leaves 7 colours (not a
+  power of two, breaks the bit packer). The shipped rugged tier is instead **grayscale-8 on an even
+  luma ladder** — chroma loss can't touch it. Carried as a `PaletteKind` in frame 0's metadata.
 
 ## UX polish round 1 (user-requested, done)
 
@@ -169,8 +179,9 @@ All in `FluxRead/Interop/`, each exercisable from a hidden dev panel:
 - [x] FluxRead: on Start, a compact always-on-top **mini window** (state, progress, thumbnail, Pause/Resume, Cancel) replaces the big window so single-screen users see both; `CaptureLoopService` gained pause/resume *(built; visible during the C.1 run)*
 - Verified live: tabs + live-default, themed presenter with un-clipped buttons and uniform scaling, go-to reflects current frame. 230/230 tests green.
 
-## Accepted v1 limitations
+## Accepted v1 limitations (as of the rebuild — two have since been lifted)
 
-- FluxRead has no cross-restart resume (a killed transfer restarts from frame 0)
+- ~~FluxRead has no cross-restart resume~~ — lifted; reception is persisted and resumable (`b40389d`)
 - Windows-only (WPF + GDI capture + SendInput)
-- Fixed grid/palette/scale — no adaptive sizing
+- ~~Fixed grid/palette/scale — no adaptive sizing~~ — lifted; grid and palette are per-transfer
+  settings carried in frame 0, and FluxCast fits the grid to the display
