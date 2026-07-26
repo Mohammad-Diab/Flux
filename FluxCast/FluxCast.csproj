@@ -10,7 +10,7 @@
 		<ApplicationIcon>Assets\AppIcon.ico</ApplicationIcon>
 		<RootNamespace>FluxCast</RootNamespace>
 		<AssemblyName>FluxCast</AssemblyName>
-		<Version>0.9.0-beta</Version>
+		<Version>0.10.0-beta</Version>
 		<Product>Flux</Product>
 		<Authors>Mohammad Diab</Authors>
 		<Description>FluxCast — sender for Flux, an optical data channel (renders files as error-corrected on-screen frames).</Description>
