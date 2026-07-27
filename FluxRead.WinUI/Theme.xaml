@@ -22,6 +22,7 @@
             <StaticResource x:Key="HyperlinkButtonForeground" ResourceKey="TextSecondaryBrush"/>
             <StaticResource x:Key="HyperlinkButtonForegroundPointerOver" ResourceKey="TextPrimaryBrush"/>
             <StaticResource x:Key="HyperlinkButtonForegroundPressed" ResourceKey="TextSecondaryBrush"/>
+            <x:Double x:Key="AmbientOpacity">1</x:Double>
             <LinearGradientBrush x:Key="BgBrush" StartPoint="0,0" EndPoint="1,1">
                 <GradientStop Color="#0C0E14" Offset="0"/>
                 <GradientStop Color="#12151F" Offset="0.55"/>
@@ -45,6 +46,7 @@
             <StaticResource x:Key="HyperlinkButtonForeground" ResourceKey="TextSecondaryBrush"/>
             <StaticResource x:Key="HyperlinkButtonForegroundPointerOver" ResourceKey="TextPrimaryBrush"/>
             <StaticResource x:Key="HyperlinkButtonForegroundPressed" ResourceKey="TextSecondaryBrush"/>
+            <x:Double x:Key="AmbientOpacity">0.5</x:Double>
             <LinearGradientBrush x:Key="BgBrush" StartPoint="0,0" EndPoint="1,1">
                 <GradientStop Color="#F7F9FC" Offset="0"/>
                 <GradientStop Color="#EEF1F7" Offset="0.55"/>

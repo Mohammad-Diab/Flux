@@ -21,6 +21,7 @@ public sealed partial class MainWindow : Window
     private readonly ReceivedItemsView _receivedView;
     private readonly ReceivedItemsViewModel _receivedVm;
     private bool _revertingTab;
+    private int _currentTab = 1;
 
     public MainWindow()
     {
@@ -43,8 +44,10 @@ public sealed partial class MainWindow : Window
         Title = "FluxRead";
         ExtendsContentIntoTitleBar = true;
         SetTitleBar(TitleBarStrip);
+        Ambient.Attach(this);
 
         _hwnd = WindowNative.GetWindowHandle(this);
+        FluxRead.WinUI.Interop.TaskbarProgress.Current.Attach(_hwnd);
 
         // Unpackaged WinUI pickers have no implicit parent window, so each one is bound to our HWND.
         _folderVm.PickFolderAsync = PickFolderAsync;
@@ -53,7 +56,7 @@ public sealed partial class MainWindow : Window
         _dialogs.PickSaveFileAsync = PickSaveTargetAsync;
         _dialogs.XamlRootSource = () => Content?.XamlRoot;
 
-        ModeHost.Content = _folderView;
+        ModeHost.Page = _folderView;
     }
 
     private async void OnTabChanged(object sender, RoutedEventArgs e)
@@ -78,7 +81,12 @@ public sealed partial class MainWindow : Window
         if (ReceivedTab.IsChecked == true)
             _receivedVm.Refresh();
 
-        ModeHost.Content = FolderTab.IsChecked == true ? _folderView
+        int tab = LiveTab.IsChecked == true ? 0 : FolderTab.IsChecked == true ? 1 : 2;
+        // Slide by direction of travel: forward from the right, back from the left.
+        ModeHost.SlideFrom = tab >= _currentTab ? 36 : -36;
+        _currentTab = tab;
+
+        ModeHost.Page = FolderTab.IsChecked == true ? _folderView
             : LiveTab.IsChecked == true ? _liveView
             : _receivedView;
     }
@@ -145,7 +153,8 @@ public sealed partial class MainWindow : Window
 
     private void OnOpenSettings(object sender, RoutedEventArgs e)
     {
-        ModeHost.Content = _settingsView;
+        ModeHost.SlideFrom = 36;
+        ModeHost.Page = _settingsView;
         TabStrip.Visibility = Visibility.Collapsed;
         SettingsButton.Visibility = Visibility.Collapsed;
         BackButton.Visibility = Visibility.Visible;
@@ -156,6 +165,7 @@ public sealed partial class MainWindow : Window
         TabStrip.Visibility = Visibility.Visible;
         SettingsButton.Visibility = Visibility.Visible;
         BackButton.Visibility = Visibility.Collapsed;
+        ModeHost.SlideFrom = -36;
         ShowActiveTab();
     }
 }

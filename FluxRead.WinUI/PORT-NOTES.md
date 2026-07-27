@@ -134,6 +134,20 @@ unchanged. The rest was rewritten:
 - `Flux.Ui.ByteFormat` joined the source-linked files; `ShellViewModel.SessionRoot` became
   `Services/ReceptionPaths`, pointing at the same folder so a reception can move between the two apps.
 
+## Motion and polish
+
+- **`TransitionHost` needs no Composition.** WPF snapshotted the outgoing page into a `VisualBrush`
+  because it could; WinUI can simply keep both real pages on two layers and animate them. The only rule
+  is that a page lives in one tree at a time, so it must leave the incoming presenter before the
+  outgoing one can show it. **The genie is dropped** — its 120-strip warp would need a
+  `CompositionVisualSurface` per strip, and the zoom-slide covers settings open/close well enough.
+- `Timeline.DesiredFrameRate` does not exist, and the ambient drift does not miss it: it animates
+  `TranslateTransform`, which runs on the compositor rather than the UI thread.
+- No `TaskbarItemInfo`. `Interop/TaskbarProgress` calls `ITaskbarList3` directly — declare the
+  `ITaskbarList`/`ITaskbarList2` methods first so the vtable lines up.
+- `WindowChromeAnimator` and the custom `ScrollBar` styles are both **unnecessary**: WinUI never
+  suppressed the OS window animations, and its overlay scrollbars already match the custom ones.
+
 ## Second windows (MiniCaptureWindow)
 
 - A second `Window` inherits neither the shell's `ElementTheme` nor its dialogs. It needs its own

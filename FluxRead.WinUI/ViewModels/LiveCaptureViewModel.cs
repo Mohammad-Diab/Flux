@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using FluxCore.Transfer;
+using FluxRead.WinUI.Interop;
 using FluxRead.WinUI.Services;
 using Microsoft.UI.Xaml.Media;
 
@@ -171,6 +172,8 @@ public partial class LiveCaptureViewModel : ObservableObject
             MissingCountText = "";
         }
 
+        UpdateTaskbar(status.State);
+
         // Log event messages verbatim; skip empty ticks and consecutive repeats (e.g. a held frame-0 warning).
         if (!string.IsNullOrEmpty(status.Message) && status.Message != _lastLoggedMessage)
         {
@@ -199,6 +202,26 @@ public partial class LiveCaptureViewModel : ObservableObject
         catch
         {
             // A dropped thumbnail must never interrupt the transfer.
+        }
+    }
+
+    private void UpdateTaskbar(CaptureLoopState state)
+    {
+        switch (state)
+        {
+            case CaptureLoopState.Failed:
+            case CaptureLoopState.Cancelled:
+                TaskbarProgress.Current.Clear();
+                break;
+            case CaptureLoopState.WaitingForFrame0:
+                TaskbarProgress.Current.SetIndeterminate();
+                break;
+            default:
+                if (ExpectedCount > 0 && ReceivedCount > 0)
+                    TaskbarProgress.Current.Report(TransferProgress);
+                else
+                    TaskbarProgress.Current.SetIndeterminate();
+                break;
         }
     }
 

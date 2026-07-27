@@ -309,6 +309,7 @@ public sealed partial class LiveCaptureView : UserControl
         }
         finally
         {
+            TaskbarProgress.Current.Clear();
             _elapsedTimer.Stop();
             _transferWatch.Stop();
             Vm.IsRunning = false;
