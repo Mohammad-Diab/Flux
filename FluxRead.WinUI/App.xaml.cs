@@ -26,6 +26,7 @@ public partial class App : Application
         services.AddSingleton<ViewModels.FolderDecodeViewModel>();
         services.AddSingleton<Services.DialogService>();
         services.AddSingleton(_ => new ReceptionHistoryService());
+        services.AddSingleton<ViewModels.ReceivedItemsViewModel>();
         services.AddSingleton(settings);
         services.AddSingleton(model);
         services.AddSingleton(_ => new ViewModels.SettingsViewModel(

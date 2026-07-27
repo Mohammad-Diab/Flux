@@ -1,0 +1,85 @@
+<UserControl
+    x:Class="FluxRead.WinUI.Views.ReceivedItemsView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:vm="using:FluxRead.WinUI.ViewModels">
+
+    <Grid Margin="0,8,0,20" RowDefinitions="Auto,*">
+
+        <StackPanel Grid.Row="0" Margin="24,0,24,14">
+            <TextBlock Text="Received" Style="{StaticResource HeadingText}"/>
+            <TextBlock Text="Open a saved item, resume an unfinished one, or delete it to free space."
+                       Style="{StaticResource SubtleText}" Margin="0,4,0,0"/>
+        </StackPanel>
+
+        <StackPanel Grid.Row="1" VerticalAlignment="Center" HorizontalAlignment="Center"
+                    Visibility="{x:Bind Vm.IsEmpty, Mode=OneWay}">
+            <!-- Segoe MDL2 renders as tofu here, so the empty-state glyph is a vector inbox arrow. -->
+            <Path Data="M20,2 L20,24 M12,16 L20,24 L28,16 M2,28 L2,38 L38,38 L38,28"
+                  Stroke="{ThemeResource TextSecondaryBrush}" StrokeThickness="2.5"
+                  StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round"
+                  HorizontalAlignment="Center"/>
+            <TextBlock Text="Nothing received yet" FontSize="16" FontWeight="SemiBold"
+                       Foreground="{ThemeResource TextPrimaryBrush}" HorizontalAlignment="Center" Margin="0,16,0,0"/>
+            <TextBlock Text="Receive a transfer and it'll show up here." Style="{StaticResource SubtleText}"
+                       HorizontalAlignment="Center" Margin="0,4,0,0"/>
+        </StackPanel>
+
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto"
+                      Visibility="{x:Bind Vm.HasItems, Mode=OneWay}">
+            <ItemsControl ItemsSource="{x:Bind Vm.Items, Mode=OneWay}" Margin="24,0,24,20">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:ReceivedItemViewModel">
+                        <Border Style="{StaticResource Card}" Padding="16,14" Margin="0,0,0,12">
+                            <Grid ColumnDefinitions="Auto,*,120,80,100,Auto">
+                                <Border Grid.Column="0" Width="40" Height="40" CornerRadius="10"
+                                        Background="{ThemeResource SurfaceAltBrush}" VerticalAlignment="Center">
+                                    <Grid>
+                                        <Path Data="M1,3 L7,3 L9,6 L17,6 L17,15 L1,15 Z"
+                                              Stroke="{ThemeResource TextSecondaryBrush}" StrokeThickness="1.4"
+                                              StrokeLineJoin="Round" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                              Visibility="{x:Bind IsArchive}"/>
+                                        <Path Data="M3,1 L11,1 L15,5 L15,16 L3,16 Z M11,1 L11,5 L15,5"
+                                              Stroke="{ThemeResource TextSecondaryBrush}" StrokeThickness="1.4"
+                                              StrokeLineJoin="Round" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                              Visibility="{x:Bind IsSingleFile}"/>
+                                    </Grid>
+                                </Border>
+
+                                <StackPanel Grid.Column="1" Margin="14,0,12,0" VerticalAlignment="Center">
+                                    <TextBlock Text="{x:Bind DisplayName}" FontSize="15" FontWeight="SemiBold"
+                                               Foreground="{ThemeResource TextPrimaryBrush}"
+                                               TextTrimming="CharacterEllipsis"/>
+                                    <TextBlock Text="{x:Bind LocationText}" Style="{StaticResource SubtleText}"
+                                               FontSize="12" Opacity="0.75" TextTrimming="CharacterEllipsis"
+                                               Margin="0,3,0,0" ToolTipService.ToolTip="{x:Bind LocationText}"/>
+                                </StackPanel>
+
+                                <TextBlock Grid.Column="2" Text="{x:Bind FramesText}" Style="{StaticResource SubtleText}"
+                                           VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="3" Text="{x:Bind SizeText}" Style="{StaticResource SubtleText}"
+                                           VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="4" Text="{x:Bind DateText}" Style="{StaticResource SubtleText}"
+                                           VerticalAlignment="Center"/>
+
+                                <StackPanel Grid.Column="5" Orientation="Horizontal" VerticalAlignment="Center"
+                                            Margin="12,0,0,0" Spacing="8">
+                                    <Button Content="Resume" Style="{StaticResource PrimaryButton}"
+                                            MinHeight="0" Padding="18,8" FontSize="12.5"
+                                            Command="{x:Bind ResumeCommand}"
+                                            ToolTipService.ToolTip="{x:Bind ResumeTooltip}"/>
+                                    <Button Content="Open location" Style="{StaticResource SecondaryButton}"
+                                            MinHeight="0" Padding="14,8" FontSize="12.5"
+                                            Command="{x:Bind OpenLocationCommand}"
+                                            ToolTipService.ToolTip="{x:Bind OpenLocationTooltip}"/>
+                                    <Button Content="Delete" Style="{StaticResource DangerGhostButton}"
+                                            Command="{x:Bind DeleteCommand}"/>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
+    </Grid>
+</UserControl>

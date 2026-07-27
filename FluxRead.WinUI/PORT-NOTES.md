@@ -84,8 +84,10 @@ here, so verify the returned rectangle by hand before wiring the capture loop to
   worked. Solved by `Controls/ReadoutBar.cs`, a small custom control owning its own track and fill,
   with the readout drawn over it. Matches the WPF design.
 - **No first-party DataGrid.** The Toolkit's is stale 7.x; the maintained option is third-party
-  (`WinUI.TableView`). The read-only results grid needs neither — a header row over a `ListView`
-  matches it, which is what the spike does. `ReceivedItemsView` should be checked the same way.
+  (`WinUI.TableView`). Neither screen needed one: folder decode is a header row over a `ListView`, and
+  `ReceivedItemsView` is cards over an `ItemsControl`, exactly as in WPF.
+- Icon glyphs stay vector `Path`s throughout (Segoe MDL2 is tofu here). Note `Path` clips anything at
+  negative coordinates, so keep the geometry inside a 0-origin box.
 - ~~The pill tab style is only half of a tab bar~~ — **closed.** `Controls/SlidingTabBar.cs` is ported and
   the checked label reads correctly in both themes. Carries the WPF fix from `7f7c120`: the pill follows
   whichever tab is *checked*, not the event source.

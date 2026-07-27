@@ -18,6 +18,8 @@ public sealed partial class MainWindow : Window
     private readonly FolderDecodeView _folderView = new();
     private readonly SettingsView _settingsView = new();
     private readonly LiveCaptureView _liveView;
+    private readonly ReceivedItemsView _receivedView;
+    private readonly ReceivedItemsViewModel _receivedVm;
     private bool _revertingTab;
 
     public MainWindow()
@@ -33,6 +35,10 @@ public sealed partial class MainWindow : Window
             App.Services.GetRequiredService<FluxCore.Transfer.ReceptionHistoryService>(),
             App.Services.GetRequiredService<SettingsService>(),
             App.Services.GetRequiredService<FluxSettings>());
+
+        _receivedVm = App.Services.GetRequiredService<ReceivedItemsViewModel>();
+        _receivedVm.ResumeRequested = () => LiveTab.IsChecked = true;
+        _receivedView = new ReceivedItemsView(_receivedVm);
 
         Title = "FluxRead";
         ExtendsContentIntoTitleBar = true;
@@ -67,10 +73,15 @@ public sealed partial class MainWindow : Window
         ShowActiveTab();
     }
 
-    private void ShowActiveTab() =>
+    private void ShowActiveTab()
+    {
+        if (ReceivedTab.IsChecked == true)
+            _receivedVm.Refresh();
+
         ModeHost.Content = FolderTab.IsChecked == true ? _folderView
             : LiveTab.IsChecked == true ? _liveView
-            : Placeholder("Received");
+            : _receivedView;
+    }
 
     // Leaving the tab hides the only view of a running decode, so make the user choose: the decode
     // is cancelled, or the switch is.
@@ -95,25 +106,6 @@ public sealed partial class MainWindow : Window
 
         return cancel;
     }
-
-    private static UIElement Placeholder(string title) => new StackPanel
-    {
-        Margin = new Thickness(24, 8, 24, 24),
-        Children =
-        {
-            new TextBlock
-            {
-                Text = title,
-                Style = (Style)Application.Current.Resources["HeadingText"],
-            },
-            new TextBlock
-            {
-                Text = "Not ported yet — the list of received transfers lands here.",
-                Style = (Style)Application.Current.Resources["SubtleText"],
-                Margin = new Thickness(0, 8, 0, 0),
-            },
-        },
-    };
 
     private async Task<string?> PickFolderAsync(string _)
     {

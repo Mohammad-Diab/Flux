@@ -38,6 +38,7 @@
 		<!-- Shared so both apps read and write the same settings.json byte for byte. -->
 		<Compile Include="..\Flux.Ui\Services\SettingsService.cs" Link="Services\SettingsService.cs" />
 		<Compile Include="..\Flux.Ui\ByteFormat.cs" Link="Services\ByteFormat.cs" />
+		<Compile Include="..\Flux.Ui\TimeFormat.cs" Link="Services\TimeFormat.cs" />
 		<!-- Interop that is pure P/Invoke or WinRT: shared as-is, only the WPF-typed pieces were rewritten. -->
 		<Compile Include="..\FluxRead\Interop\NativeMethods.cs" Link="Interop\NativeMethods.cs" />
 		<Compile Include="..\FluxRead\Interop\MouseClicker.cs" Link="Interop\MouseClicker.cs" />
