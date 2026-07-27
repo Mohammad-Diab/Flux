@@ -1,6 +1,6 @@
 using System.Runtime.InteropServices;
 
-namespace FluxRead.WinUI.Interop;
+namespace Flux.Ui.WinUI.Interop;
 
 /// <summary>
 /// Drives the taskbar button's progress bar. WinUI has no <c>TaskbarItemInfo</c>, so this talks to

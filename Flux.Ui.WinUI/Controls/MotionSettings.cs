@@ -1,7 +1,7 @@
 using System.ComponentModel;
 using Windows.UI.ViewManagement;
 
-namespace FluxRead.WinUI.Controls;
+namespace Flux.Ui.WinUI.Controls;
 
 /// <summary>The gate every animation checks — the user's preference and the system animation setting.</summary>
 public sealed class MotionSettings : INotifyPropertyChanged

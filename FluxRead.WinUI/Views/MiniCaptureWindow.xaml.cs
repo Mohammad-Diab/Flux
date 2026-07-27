@@ -1,5 +1,5 @@
 using System.ComponentModel;
-using FluxRead.WinUI.Controls;
+using Flux.Ui.WinUI.Controls;
 using FluxRead.WinUI.Interop;
 using FluxRead.WinUI.ViewModels;
 using Microsoft.UI.Windowing;

@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.IO;
 using CommunityToolkit.Mvvm.ComponentModel;
 using FluxCore.Transfer;
+using Flux.Ui.WinUI.Services;
 using FluxRead.WinUI.Services;
 
 namespace FluxRead.WinUI.ViewModels;

@@ -5,7 +5,7 @@ using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Animation;
 using Windows.Foundation;
 
-namespace FluxRead.WinUI.Controls;
+namespace Flux.Ui.WinUI.Controls;
 
 /// <summary>A strip of RadioButton tabs with one accent pill sliding behind whichever is checked. Snaps
 /// instantly when <see cref="MotionSettings"/> is off.</summary>

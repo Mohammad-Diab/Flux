@@ -2,7 +2,7 @@ using Microsoft.UI.Xaml.Media.Imaging;
 using SkiaSharp;
 using Windows.Storage.Streams;
 
-namespace FluxRead.WinUI.Services;
+namespace Flux.Ui.WinUI.Services;
 
 /// <summary>Converts capture output to WinUI image sources.</summary>
 public static class BitmapConverter

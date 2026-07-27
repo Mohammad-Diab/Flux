@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+		<TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
+		<RootNamespace>Flux.Ui.WinUI</RootNamespace>
+		<Platforms>x64</Platforms>
+		<UseWinUI>true</UseWinUI>
+		<Nullable>enable</Nullable>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<EnableMsixTooling>false</EnableMsixTooling>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<PackageReference Include="Microsoft.WindowsAppSDK" Version="1.7.250606001" />
+		<PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.26100.1742" />
+		<PackageReference Include="CommunityToolkit.Mvvm" Version="8.3.2" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\FluxCore\FluxCore.csproj" />
+	</ItemGroup>
+
+	<!-- Shared with the WPF apps so both read and write the same settings.json, and format text alike. -->
+	<ItemGroup>
+		<Compile Include="..\Flux.Ui\Services\SettingsService.cs" Link="Services\SettingsService.cs" />
+		<Compile Include="..\Flux.Ui\ByteFormat.cs" Link="ByteFormat.cs" />
+		<Compile Include="..\Flux.Ui\TimeFormat.cs" Link="TimeFormat.cs" />
+	</ItemGroup>
+
+</Project>

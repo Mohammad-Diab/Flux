@@ -2,7 +2,7 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 
-namespace FluxRead.WinUI.Controls;
+namespace Flux.Ui.WinUI.Controls;
 
 /// <summary>A progress bar tall enough to hold its readout. WinUI's ProgressBar ignores Height, so this
 /// owns its track and fill instead.</summary>

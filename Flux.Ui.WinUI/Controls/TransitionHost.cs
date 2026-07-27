@@ -3,7 +3,7 @@ using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Animation;
 
-namespace FluxRead.WinUI.Controls;
+namespace Flux.Ui.WinUI.Controls;
 
 /// <summary>
 /// Content host that cross-fades between pages: the outgoing page steps back and slides away while

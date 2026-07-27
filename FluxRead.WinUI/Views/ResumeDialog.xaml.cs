@@ -1,5 +1,6 @@
-using Microsoft.UI.Xaml;
+using Flux.Ui.WinUI.Views;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml;
 
 namespace FluxRead.WinUI.Views;
 

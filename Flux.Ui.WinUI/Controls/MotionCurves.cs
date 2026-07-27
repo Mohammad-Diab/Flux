@@ -1,6 +1,6 @@
 using Microsoft.UI.Xaml.Media.Animation;
 
-namespace FluxRead.WinUI.Controls;
+namespace Flux.Ui.WinUI.Controls;
 
 /// <summary>
 /// The shared easing curves every Flux animation draws from, so motion reads as one system rather

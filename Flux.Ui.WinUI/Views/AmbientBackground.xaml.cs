@@ -1,9 +1,9 @@
 using System.ComponentModel;
-using FluxRead.WinUI.Controls;
+using Flux.Ui.WinUI.Controls;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 
-namespace FluxRead.WinUI.Views;
+namespace Flux.Ui.WinUI.Views;
 
 /// <summary>
 /// Non-interactive layer of slow-drifting spectrum glow orbs behind the app content. It is hidden

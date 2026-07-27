@@ -1,8 +1,8 @@
 <local:FluxDialog
-    x:Class="FluxRead.WinUI.Views.MessageDialog"
+    x:Class="Flux.Ui.WinUI.Views.MessageDialog"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:local="using:FluxRead.WinUI.Views"
+    xmlns:local="using:Flux.Ui.WinUI.Views"
     Opened="OnOpened">
 
     <local:FluxDialog.Resources>

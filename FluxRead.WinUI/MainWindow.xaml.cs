@@ -1,4 +1,7 @@
 using Flux.Ui.Services;
+using Flux.Ui.WinUI.ViewModels;
+using Flux.Ui.WinUI.Views;
+using Flux.Ui.WinUI.Services;
 using FluxRead.WinUI.Services;
 using FluxRead.WinUI.ViewModels;
 using FluxRead.WinUI.Views;
@@ -16,7 +19,7 @@ public sealed partial class MainWindow : Window
     private readonly FolderDecodeViewModel _folderVm;
     private readonly DialogService _dialogs;
     private readonly FolderDecodeView _folderView = new();
-    private readonly SettingsView _settingsView = new();
+    private readonly SettingsView _settingsView;
     private readonly LiveCaptureView _liveView;
     private readonly ReceivedItemsView _receivedView;
     private readonly ReceivedItemsViewModel _receivedVm;
@@ -27,6 +30,7 @@ public sealed partial class MainWindow : Window
     {
         _folderVm = App.Services.GetRequiredService<FolderDecodeViewModel>();
         _dialogs = App.Services.GetRequiredService<DialogService>();
+        _settingsView = new SettingsView(App.Services.GetRequiredService<SettingsViewModel>());
         InitializeComponent();
 
         _liveView = new LiveCaptureView(
@@ -47,7 +51,7 @@ public sealed partial class MainWindow : Window
         Ambient.Attach(this);
 
         _hwnd = WindowNative.GetWindowHandle(this);
-        FluxRead.WinUI.Interop.TaskbarProgress.Current.Attach(_hwnd);
+        Flux.Ui.WinUI.Interop.TaskbarProgress.Current.Attach(_hwnd);
 
         // Unpackaged WinUI pickers have no implicit parent window, so each one is bound to our HWND.
         _folderVm.PickFolderAsync = PickFolderAsync;

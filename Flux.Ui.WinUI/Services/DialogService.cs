@@ -1,9 +1,9 @@
 using System.Diagnostics;
-using FluxRead.WinUI.Views;
+using Flux.Ui.WinUI.Views;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 
-namespace FluxRead.WinUI.Services;
+namespace Flux.Ui.WinUI.Services;
 
 /// <summary>Hosts the themed dialogs on the shell's XamlRoot, one at a time.</summary>
 public sealed class DialogService

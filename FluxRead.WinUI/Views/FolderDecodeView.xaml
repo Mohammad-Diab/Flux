@@ -3,7 +3,7 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:services="using:FluxRead.Services"
-    xmlns:controls="using:FluxRead.WinUI.Controls">
+    xmlns:controls="using:Flux.Ui.WinUI.Controls">
 
     <Grid Margin="24,8,24,24" RowDefinitions="Auto,Auto,*,Auto">
 

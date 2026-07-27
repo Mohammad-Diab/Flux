@@ -1,8 +1,8 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using Flux.Ui.Services;
-using FluxRead.WinUI.Controls;
+using Flux.Ui.WinUI.Controls;
 
-namespace FluxRead.WinUI.ViewModels;
+namespace Flux.Ui.WinUI.ViewModels;
 
 /// <summary>Settings screen: appearance and performance, each applied live and saved immediately.</summary>
 public sealed class SettingsViewModel : ObservableObject

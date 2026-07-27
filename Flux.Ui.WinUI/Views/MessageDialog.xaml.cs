@@ -1,7 +1,7 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 
-namespace FluxRead.WinUI.Views;
+namespace Flux.Ui.WinUI.Views;
 
 /// <summary>Themed replacement for the native message box: a title, a message, and one or two buttons.</summary>
 public sealed partial class MessageDialog : FluxDialog

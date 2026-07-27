@@ -24,12 +24,12 @@ public partial class App : Application
         services.AddSingleton(_ => new CompressionService());
         services.AddSingleton(p => new DecodePipelineService(p.GetRequiredService<CompressionService>()));
         services.AddSingleton<ViewModels.FolderDecodeViewModel>();
-        services.AddSingleton<Services.DialogService>();
+        services.AddSingleton<Flux.Ui.WinUI.Services.DialogService>();
         services.AddSingleton(_ => new ReceptionHistoryService());
         services.AddSingleton<ViewModels.ReceivedItemsViewModel>();
         services.AddSingleton(settings);
         services.AddSingleton(model);
-        services.AddSingleton(_ => new ViewModels.SettingsViewModel(
+        services.AddSingleton(_ => new Flux.Ui.WinUI.ViewModels.SettingsViewModel(
             settings, model, mode => _window?.ApplyTheme(mode)));
         Services = services.BuildServiceProvider();
 

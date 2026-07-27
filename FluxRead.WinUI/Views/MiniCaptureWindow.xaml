@@ -2,7 +2,7 @@
     x:Class="FluxRead.WinUI.Views.MiniCaptureWindow"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:controls="using:FluxRead.WinUI.Controls">
+    xmlns:controls="using:Flux.Ui.WinUI.Controls">
 
     <Grid Background="{ThemeResource BgBrush}" RowDefinitions="48,*">
 

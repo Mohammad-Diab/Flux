@@ -1,14 +1,14 @@
-<local:FluxDialog
+<ui:FluxDialog
     x:Class="FluxRead.WinUI.Views.FramePickerDialog"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:local="using:FluxRead.WinUI.Views"
+    xmlns:ui="using:Flux.Ui.WinUI.Views"
     Title="Multiple frames found">
 
-    <local:FluxDialog.Resources>
+    <ui:FluxDialog.Resources>
         <x:Double x:Key="ContentDialogMinWidth">360</x:Double>
         <x:Double x:Key="ContentDialogMaxWidth">900</x:Double>
-    </local:FluxDialog.Resources>
+    </ui:FluxDialog.Resources>
 
     <Grid RowDefinitions="Auto,*,Auto">
         <TextBlock Text="Pick the one to capture." Style="{StaticResource SubtleText}" Margin="0,0,0,16"/>
@@ -41,4 +41,4 @@
         <Button Grid.Row="2" Content="Cancel" HorizontalAlignment="Right" Margin="0,16,0,0"
                 Style="{StaticResource SecondaryButton}" MinWidth="96" Click="OnCancel"/>
     </Grid>
-</local:FluxDialog>
+</ui:FluxDialog>
