@@ -13,6 +13,11 @@
             <SolidColorBrush x:Key="HoverOverlayBrush" Color="#14FFFFFF"/>
             <SolidColorBrush x:Key="AltRowBrush" Color="#0DFFFFFF"/>
             <SolidColorBrush x:Key="CaptionGlyphBrush" Color="#D6DAE3"/>
+            <!-- ContentDialog retints through its own keys; a flat top overlay makes the card one surface. -->
+            <StaticResource x:Key="ContentDialogBackground" ResourceKey="SurfaceBrush"/>
+            <StaticResource x:Key="ContentDialogForeground" ResourceKey="TextPrimaryBrush"/>
+            <StaticResource x:Key="ContentDialogBorderBrush" ResourceKey="FluxBorderBrush"/>
+            <SolidColorBrush x:Key="ContentDialogTopOverlay" Color="Transparent"/>
             <LinearGradientBrush x:Key="BgBrush" StartPoint="0,0" EndPoint="1,1">
                 <GradientStop Color="#0C0E14" Offset="0"/>
                 <GradientStop Color="#12151F" Offset="0.55"/>
@@ -28,6 +33,10 @@
             <SolidColorBrush x:Key="HoverOverlayBrush" Color="#0F000000"/>
             <SolidColorBrush x:Key="AltRowBrush" Color="#08000000"/>
             <SolidColorBrush x:Key="CaptionGlyphBrush" Color="#2A3140"/>
+            <StaticResource x:Key="ContentDialogBackground" ResourceKey="SurfaceBrush"/>
+            <StaticResource x:Key="ContentDialogForeground" ResourceKey="TextPrimaryBrush"/>
+            <StaticResource x:Key="ContentDialogBorderBrush" ResourceKey="FluxBorderBrush"/>
+            <SolidColorBrush x:Key="ContentDialogTopOverlay" Color="Transparent"/>
             <LinearGradientBrush x:Key="BgBrush" StartPoint="0,0" EndPoint="1,1">
                 <GradientStop Color="#F7F9FC" Offset="0"/>
                 <GradientStop Color="#EEF1F7" Offset="0.55"/>
@@ -62,6 +71,15 @@
     </LinearGradientBrush>
 
     <x:Double x:Key="ControlHeight">40</x:Double>
+
+    <!-- Dialogs size to their content and draw their own buttons, so the stock floor and rule go. -->
+    <x:Double x:Key="ContentDialogMinHeight">0</x:Double>
+    <Thickness x:Key="ContentDialogSeparatorThickness">0</Thickness>
+
+    <!-- The scrim behind a dialog: the base brush every light-dismiss overlay aliases. Theme-invariant on
+         purpose — the hosting popup sits outside the window's ElementTheme, so a per-theme brush would
+         resolve against Windows' theme and wash a dark dialog out with white. -->
+    <SolidColorBrush x:Key="SystemControlPageBackgroundMediumAltMediumBrush" Color="#4D000000"/>
 
     <Style x:Key="HeadingText" TargetType="TextBlock">
         <Setter Property="FontFamily" Value="Segoe UI Variable Display, Segoe UI"/>
@@ -164,6 +182,12 @@
         <Setter Property="BorderBrush" Value="{ThemeResource FluxBorderBrush}"/>
         <Setter Property="BorderThickness" Value="1"/>
         <Setter Property="CornerRadius" Value="14"/>
+    </Style>
+
+    <Style x:Key="DialogHintText" TargetType="TextBlock" BasedOn="{StaticResource SubtleText}">
+        <Setter Property="FontSize" Value="11"/>
+        <Setter Property="Margin" Value="2,4,0,0"/>
+        <Setter Property="TextWrapping" Value="Wrap"/>
     </Style>
 
     <!-- Red text at rest, solid red with white text on hover. -->

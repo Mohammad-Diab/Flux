@@ -33,8 +33,9 @@ FluxCore tests keep working untouched.
 ## Theme port status
 
 Ported and rendered: typography (Display/Heading/Brand/Subtle), Primary/Secondary/Danger buttons
-with hover, press and disabled states, DangerGhostButton, Card, TextBox, ComboBox, ToggleSwitch, and
-the tall readout bar. Verified against a throwaway gallery window, since removed.
+with hover, press and disabled states, DangerGhostButton, Card, TextBox, ComboBox, ToggleSwitch, the
+tall readout bar, and the ContentDialog surface (flat card, no top overlay or separator rule).
+Verified against a throwaway gallery window, since removed.
 
 These WinUI mechanisms replace WPF ones, and all are confirmed working:
 
@@ -46,6 +47,7 @@ These WinUI mechanisms replace WPF ones, and all are confirmed working:
 | `element.BeginAnimation(prop, animation)` | a `Storyboard` with `Storyboard.SetTarget`/`SetTargetProperty` |
 | `AddHandler(ToggleButton.CheckedEvent, …)` on a parent | no such routed event — subscribe each child's `Checked` |
 | `SetResourceReference` | read the resource and assign (no freezing to worry about) |
+| modal `Window` + `ShowDialog()` | `ContentDialog.ShowAsync()` — needs a `XamlRoot`, and only one at a time |
 
 ⚠️ **Animating a layout property silently does nothing** unless the `DoubleAnimation` sets
 `EnableDependentAnimation="True"`. The tab pill animates `Width`, so it needs the flag; `TranslateTransform.X`
@@ -87,9 +89,19 @@ here, so verify the returned rectangle by hand before wiring the capture loop to
 - ~~The pill tab style is only half of a tab bar~~ — **closed.** `Controls/SlidingTabBar.cs` is ported and
   the checked label reads correctly in both themes. Carries the WPF fix from `7f7c120`: the pill follows
   whichever tab is *checked*, not the event source.
+- **The dim behind a `ContentDialog` is not `ContentDialogSmokeFill`.** In desktop WinUI the dialog is
+  hosted in a popup whose overlay paints `SystemControlPageBackgroundMediumAltMediumBrush` directly;
+  overriding the `*LightDismissOverlayBackground` keys that alias it does nothing (tried both the Popup
+  and ContentDialog ones — a colour probe found the base brush). And the popup sits *outside* the window's
+  `ElementTheme`, so it resolves Windows' theme: a dark dialog on a light Windows was washed out with
+  white 60% (`#99FFFFFF`). Fixed by overriding the base brush theme-invariantly in `Theme.xaml`.
+- Dialogs draw their own buttons rather than using `PrimaryButtonText`/`CloseButtonText`: the stock ones
+  stretch across the command space, and setting `DefaultButton` overwrites the button `Style` with
+  `AccentButtonStyle` from a visual state. With no button text the `NoneVisible` state collapses the
+  command space, and Escape still dismisses — each dialog's choice property just stays at its default.
+- ContentDialog's open/close scale-and-fade is a `VisualTransition` in the stock template, so the motion
+  gate clears the template root's transitions in `OnApplyTemplate` (`Views/FluxDialog`).
 - Not yet attempted, and the expensive part of the real port: `TransitionHost` (genie/zoom needs
   Composition — WinUI has no `VisualBrush`), `RevealHost` (no `LayoutTransform`), `AmbientBackground`,
   `WindowChromeAnimator` (window open/close/minimise animation), `MiniCaptureWindow`, and the
   remaining ~700 lines of `Theme.xaml`.
-- `FluxRead/Interop/` was not touched. The P/Invoke (GDI capture, SendInput, DPI, hotkey) should port
-  as-is; only the pieces typed against WPF `Window` need adapting.
