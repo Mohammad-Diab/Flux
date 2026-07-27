@@ -1,5 +1,6 @@
 using Flux.Ui.Services;
 using FluxCore.Compression;
+using FluxCore.Transfer;
 using FluxRead.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Xaml;
@@ -24,6 +25,7 @@ public partial class App : Application
         services.AddSingleton(p => new DecodePipelineService(p.GetRequiredService<CompressionService>()));
         services.AddSingleton<ViewModels.FolderDecodeViewModel>();
         services.AddSingleton<Services.DialogService>();
+        services.AddSingleton(_ => new ReceptionHistoryService());
         services.AddSingleton(settings);
         services.AddSingleton(model);
         services.AddSingleton(_ => new ViewModels.SettingsViewModel(

@@ -18,6 +18,10 @@
             <StaticResource x:Key="ContentDialogForeground" ResourceKey="TextPrimaryBrush"/>
             <StaticResource x:Key="ContentDialogBorderBrush" ResourceKey="FluxBorderBrush"/>
             <SolidColorBrush x:Key="ContentDialogTopOverlay" Color="Transparent"/>
+            <!-- Setup steps read as quiet text links, not system-blue hyperlinks. -->
+            <StaticResource x:Key="HyperlinkButtonForeground" ResourceKey="TextSecondaryBrush"/>
+            <StaticResource x:Key="HyperlinkButtonForegroundPointerOver" ResourceKey="TextPrimaryBrush"/>
+            <StaticResource x:Key="HyperlinkButtonForegroundPressed" ResourceKey="TextSecondaryBrush"/>
             <LinearGradientBrush x:Key="BgBrush" StartPoint="0,0" EndPoint="1,1">
                 <GradientStop Color="#0C0E14" Offset="0"/>
                 <GradientStop Color="#12151F" Offset="0.55"/>
@@ -37,6 +41,10 @@
             <StaticResource x:Key="ContentDialogForeground" ResourceKey="TextPrimaryBrush"/>
             <StaticResource x:Key="ContentDialogBorderBrush" ResourceKey="FluxBorderBrush"/>
             <SolidColorBrush x:Key="ContentDialogTopOverlay" Color="Transparent"/>
+            <!-- Setup steps read as quiet text links, not system-blue hyperlinks. -->
+            <StaticResource x:Key="HyperlinkButtonForeground" ResourceKey="TextSecondaryBrush"/>
+            <StaticResource x:Key="HyperlinkButtonForegroundPointerOver" ResourceKey="TextPrimaryBrush"/>
+            <StaticResource x:Key="HyperlinkButtonForegroundPressed" ResourceKey="TextSecondaryBrush"/>
             <LinearGradientBrush x:Key="BgBrush" StartPoint="0,0" EndPoint="1,1">
                 <GradientStop Color="#F7F9FC" Offset="0"/>
                 <GradientStop Color="#EEF1F7" Offset="0.55"/>

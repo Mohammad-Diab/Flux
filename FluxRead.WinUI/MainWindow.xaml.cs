@@ -17,6 +17,7 @@ public sealed partial class MainWindow : Window
     private readonly DialogService _dialogs;
     private readonly FolderDecodeView _folderView = new();
     private readonly SettingsView _settingsView = new();
+    private readonly LiveCaptureView _liveView;
     private bool _revertingTab;
 
     public MainWindow()
@@ -24,6 +25,12 @@ public sealed partial class MainWindow : Window
         _folderVm = App.Services.GetRequiredService<FolderDecodeViewModel>();
         _dialogs = App.Services.GetRequiredService<DialogService>();
         InitializeComponent();
+
+        _liveView = new LiveCaptureView(
+            this,
+            App.Services.GetRequiredService<FluxRead.Services.DecodePipelineService>(),
+            _dialogs,
+            App.Services.GetRequiredService<FluxCore.Transfer.ReceptionHistoryService>());
 
         Title = "FluxRead";
         ExtendsContentIntoTitleBar = true;
@@ -34,6 +41,8 @@ public sealed partial class MainWindow : Window
         // Unpackaged WinUI pickers have no implicit parent window, so each one is bound to our HWND.
         _folderVm.PickFolderAsync = PickFolderAsync;
         _folderVm.PickSaveFileAsync = PickSaveTargetAsync;
+        _dialogs.PickFolderAsync = PickFolderAsync;
+        _dialogs.PickSaveFileAsync = PickSaveTargetAsync;
         _dialogs.XamlRootSource = () => Content?.XamlRoot;
 
         ModeHost.Content = _folderView;
@@ -57,9 +66,9 @@ public sealed partial class MainWindow : Window
     }
 
     private void ShowActiveTab() =>
-        ModeHost.Content = FolderTab.IsChecked == true
-            ? _folderView
-            : Placeholder(LiveTab.IsChecked == true ? "Live optical capture" : "Received");
+        ModeHost.Content = FolderTab.IsChecked == true ? _folderView
+            : LiveTab.IsChecked == true ? _liveView
+            : Placeholder("Received");
 
     // Leaving the tab hides the only view of a running decode, so make the user choose: the decode
     // is cancelled, or the switch is.

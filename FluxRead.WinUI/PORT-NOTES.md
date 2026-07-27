@@ -124,3 +124,10 @@ unchanged. The rest was rewritten:
   alive and restore the old procedure on dispose.
 - `WindowPlacement` still drives `SetWindowPos` directly — no need for `AppWindow.Move`, and it stays in
   physical pixels for the mixed-DPI case.
+- Minimise/restore around a full-screen scan is `(Window.AppWindow.Presenter as OverlappedPresenter)`,
+  WinUI's stand-in for `WindowState`.
+- The capture loop runs on a worker thread but its stall and resume prompts are `ContentDialog`s, so each
+  one hops back through `DispatcherQueue.TryEnqueue` wrapped in a `TaskCompletionSource`. WPF's
+  `Dispatcher.InvokeAsync(...).Task.Unwrap()` has no direct equivalent.
+- `Flux.Ui.ByteFormat` joined the source-linked files; `ShellViewModel.SessionRoot` became
+  `Services/ReceptionPaths`, pointing at the same folder so a reception can move between the two apps.

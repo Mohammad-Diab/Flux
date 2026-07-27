@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using FluxRead.WinUI.Views;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -11,6 +12,31 @@ public sealed class DialogService
 
     /// <summary>Set by the shell: a ContentDialog needs a XamlRoot, which only exists once loaded.</summary>
     public Func<XamlRoot?>? XamlRootSource { get; set; }
+
+    /// <summary>Set by the shell: unpackaged WinUI pickers must each be bound to the window handle.</summary>
+    public Func<string, Task<string?>> PickFolderAsync { get; set; } = _ => Task.FromResult<string?>(null);
+
+    /// <summary>Set by the shell: unpackaged WinUI pickers must each be bound to the window handle.</summary>
+    public Func<string, string, Task<string?>> PickSaveFileAsync { get; set; } = (_, _) => Task.FromResult<string?>(null);
+
+    /// <summary>
+    /// Reveals a saved result in File Explorer — selects the file if <paramref name="path"/> is a
+    /// file, or opens the folder if it's a directory. Best-effort; failures are ignored.
+    /// </summary>
+    public void OpenInExplorer(string path)
+    {
+        try
+        {
+            if (File.Exists(path))
+                Process.Start(new ProcessStartInfo("explorer.exe", $"/select,\"{path}\"") { UseShellExecute = true });
+            else if (Directory.Exists(path))
+                Process.Start(new ProcessStartInfo("explorer.exe", $"\"{path}\"") { UseShellExecute = true });
+        }
+        catch
+        {
+            // Opening Explorer is a convenience; don't fail the save over it.
+        }
+    }
 
     /// <summary>Shows a yes/no confirmation; returns true only if the user confirmed.</summary>
     /// <param name="title">Dialog heading.</param>
