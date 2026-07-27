@@ -1,4 +1,5 @@
 using Flux.Ui.Services;
+using FluxRead.WinUI.Services;
 using FluxRead.WinUI.ViewModels;
 using FluxRead.WinUI.Views;
 using Microsoft.Extensions.DependencyInjection;
@@ -13,12 +14,15 @@ public sealed partial class MainWindow : Window
 {
     private readonly IntPtr _hwnd;
     private readonly FolderDecodeViewModel _folderVm;
+    private readonly DialogService _dialogs;
     private readonly FolderDecodeView _folderView = new();
     private readonly SettingsView _settingsView = new();
+    private bool _revertingTab;
 
     public MainWindow()
     {
         _folderVm = App.Services.GetRequiredService<FolderDecodeViewModel>();
+        _dialogs = App.Services.GetRequiredService<DialogService>();
         InitializeComponent();
 
         Title = "FluxRead";
@@ -30,18 +34,55 @@ public sealed partial class MainWindow : Window
         // Unpackaged WinUI pickers have no implicit parent window, so each one is bound to our HWND.
         _folderVm.PickFolderAsync = PickFolderAsync;
         _folderVm.PickSaveFileAsync = PickSaveTargetAsync;
+        _dialogs.XamlRootSource = () => Content?.XamlRoot;
 
         ModeHost.Content = _folderView;
     }
 
-    private void OnTabChanged(object sender, RoutedEventArgs e)
+    private async void OnTabChanged(object sender, RoutedEventArgs e)
     {
-        if (ModeHost is null)
+        if (ModeHost is null || _revertingTab)
             return;
 
+        if (!ReferenceEquals(sender, FolderTab) && !await ConfirmLeavingDecodeAsync())
+        {
+            _revertingTab = true;
+            FolderTab.IsChecked = true;
+            _revertingTab = false;
+            TabBar.SnapToChecked();
+            return;
+        }
+
+        ShowActiveTab();
+    }
+
+    private void ShowActiveTab() =>
         ModeHost.Content = FolderTab.IsChecked == true
             ? _folderView
             : Placeholder(LiveTab.IsChecked == true ? "Live optical capture" : "Received");
+
+    // Leaving the tab hides the only view of a running decode, so make the user choose: the decode
+    // is cancelled, or the switch is.
+    private async Task<bool> ConfirmLeavingDecodeAsync()
+    {
+        if (!_folderVm.IsDecoding)
+            return true;
+
+        // Hold the decode while the prompt is up, so it can't run to completion behind the dialog.
+        bool wasPaused = _folderVm.IsPaused;
+        _folderVm.SetPaused(true);
+
+        bool cancel = await _dialogs.ConfirmAsync(
+            "Decode in progress",
+            "Leaving this tab will stop decoding the frames folder. Cancel the decode?",
+            destructive: true);
+
+        if (cancel)
+            _folderVm.CancelDecode();
+        else if (!wasPaused)
+            _folderVm.SetPaused(false);
+
+        return cancel;
     }
 
     private static UIElement Placeholder(string title) => new StackPanel
@@ -112,6 +153,6 @@ public sealed partial class MainWindow : Window
         TabStrip.Visibility = Visibility.Visible;
         SettingsButton.Visibility = Visibility.Visible;
         BackButton.Visibility = Visibility.Collapsed;
-        OnTabChanged(sender, e);
+        ShowActiveTab();
     }
 }

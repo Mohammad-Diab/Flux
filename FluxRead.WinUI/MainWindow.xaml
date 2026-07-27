@@ -27,7 +27,7 @@
         </Grid>
 
         <Border x:Name="TabStrip" Grid.Row="1" Padding="24,8,24,2">
-            <controls:SlidingTabBar HorizontalAlignment="Left">
+            <controls:SlidingTabBar x:Name="TabBar" HorizontalAlignment="Left">
                 <RadioButton x:Name="LiveTab" Content="Live optical capture" GroupName="Mode"
                              Style="{StaticResource TabRadio}" Checked="OnTabChanged"/>
                 <RadioButton x:Name="FolderTab" Content="Folder decode" GroupName="Mode"

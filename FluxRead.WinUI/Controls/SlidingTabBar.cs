@@ -16,6 +16,7 @@ public class SlidingTabBar : Panel
     private readonly Border _pill;
     private readonly TranslateTransform _offset = new();
     private readonly HashSet<ToggleButton> _hooked = [];
+    private Storyboard? _running;
     private bool _ready;
 
     public SlidingTabBar()
@@ -62,6 +63,15 @@ public class SlidingTabBar : Panel
     {
         get => (double)GetValue(PillCornerRadiusProperty);
         set => SetValue(PillCornerRadiusProperty, value);
+    }
+
+    /// <summary>Puts the pill on the checked tab with no animation — for reverting a rejected tab switch,
+    /// which would otherwise slide out and back.</summary>
+    public void SnapToChecked()
+    {
+        _running?.Stop();
+        _running = null;
+        MovePill(FindCheckedTab(), animate: false);
     }
 
     protected override Size MeasureOverride(Size availableSize)
@@ -167,6 +177,7 @@ public class SlidingTabBar : Panel
         var board = new Storyboard();
         board.Children.Add(slide);
         board.Children.Add(grow);
+        _running = board;
         board.Begin();
     }
 }

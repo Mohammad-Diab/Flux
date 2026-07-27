@@ -23,6 +23,7 @@ public partial class App : Application
         services.AddSingleton(_ => new CompressionService());
         services.AddSingleton(p => new DecodePipelineService(p.GetRequiredService<CompressionService>()));
         services.AddSingleton<ViewModels.FolderDecodeViewModel>();
+        services.AddSingleton<Services.DialogService>();
         services.AddSingleton(settings);
         services.AddSingleton(model);
         services.AddSingleton(_ => new ViewModels.SettingsViewModel(
