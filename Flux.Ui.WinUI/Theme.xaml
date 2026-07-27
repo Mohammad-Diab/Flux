@@ -59,6 +59,7 @@
     <SolidColorBrush x:Key="AccentBrush" Color="#7C5CFF"/>
     <SolidColorBrush x:Key="DangerBrush" Color="#FF5C6C"/>
     <SolidColorBrush x:Key="SuccessBrush" Color="#38D39F"/>
+    <SolidColorBrush x:Key="WarningBrush" Color="#F0A93B"/>
     <SolidColorBrush x:Key="DangerSelectionBrush" Color="#33FF5C6C"/>
 
     <!-- Stock controls recolour through named lightweight-styling brushes, not a retemplate. -->
@@ -272,7 +273,7 @@
                         <TextBlock x:Name="Txt" Text="{TemplateBinding Content}"
                                    FontSize="{TemplateBinding FontSize}"
                                    FontWeight="{TemplateBinding FontWeight}"
-                                   VerticalAlignment="Center"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center"
                                    Foreground="{ThemeResource TextSecondaryBrush}"/>
                         <VisualStateManager.VisualStateGroups>
                             <VisualStateGroup x:Name="CommonStates">
@@ -310,6 +311,13 @@
                 </ControlTemplate>
             </Setter.Value>
         </Setter>
+    </Style>
+
+    <!-- The mode segments: same pill as the tabs, sized to share the strip equally. -->
+    <Style x:Key="SegmentToggle" TargetType="RadioButton" BasedOn="{StaticResource TabRadio}">
+        <Setter Property="HorizontalAlignment" Value="Stretch"/>
+        <Setter Property="Margin" Value="0"/>
+        <Setter Property="FontSize" Value="13"/>
     </Style>
 
     <!-- Resting look only; WinUI drives hover and focus from its own lightweight-styling resources. -->

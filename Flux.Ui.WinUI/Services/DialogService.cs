@@ -14,6 +14,9 @@ public sealed class DialogService
     public Func<XamlRoot?>? XamlRootSource { get; set; }
 
     /// <summary>Set by the shell: unpackaged WinUI pickers must each be bound to the window handle.</summary>
+    public Func<string, Task<string?>> PickFileAsync { get; set; } = _ => Task.FromResult<string?>(null);
+
+    /// <summary>Set by the shell: unpackaged WinUI pickers must each be bound to the window handle.</summary>
     public Func<string, Task<string?>> PickFolderAsync { get; set; } = _ => Task.FromResult<string?>(null);
 
     /// <summary>Set by the shell: unpackaged WinUI pickers must each be bound to the window handle.</summary>
