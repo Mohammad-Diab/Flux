@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.IO;
+using Flux.Ui.Services;
 using FluxCore.Decoding;
 using FluxCore.Imaging;
 using FluxCore.Transfer;
@@ -31,6 +32,8 @@ public sealed partial class LiveCaptureView : UserControl
     private readonly DecodePipelineService _pipeline;
     private readonly DialogService _dialogs;
     private readonly ReceptionHistoryService _history;
+    private readonly SettingsService _settings;
+    private readonly FluxSettings _settingsModel;
     private readonly ScreenRegionCapture _previewCapture = new();
     private readonly DispatcherTimer _previewTimer;
     private readonly DispatcherTimer _elapsedTimer;
@@ -43,16 +46,20 @@ public sealed partial class LiveCaptureView : UserControl
     private PointNextClicker? _clicker;
     private CaptureLoopService? _loop;
     private CancellationTokenSource? _cts;
+    private MiniCaptureWindow? _mini;
 
     public LiveCaptureViewModel Vm { get; } = new();
 
     public LiveCaptureView(
-        Window owner, DecodePipelineService pipeline, DialogService dialogs, ReceptionHistoryService history)
+        Window owner, DecodePipelineService pipeline, DialogService dialogs, ReceptionHistoryService history,
+        SettingsService settings, FluxSettings settingsModel)
     {
         _owner = owner;
         _pipeline = pipeline;
         _dialogs = dialogs;
         _history = history;
+        _settings = settings;
+        _settingsModel = settingsModel;
         _hwnd = WindowNative.GetWindowHandle(owner);
         InitializeComponent();
 
@@ -276,6 +283,20 @@ public sealed partial class LiveCaptureView : UserControl
             assemblerFactory: metadata => _history.OpenAssembler(ReceptionPaths.SessionRoot, metadata));
         var progress = new Progress<LoopStatus>(Vm.Apply);
 
+        // Default: expanded on multi-monitor, collapsed on single — until the user picks and we save it.
+        bool expanded = _settingsModel.MiniCaptureExpanded
+            ?? FluxRead.Interop.NativeMethods.GetSystemMetrics(FluxRead.Interop.NativeMethods.SM_CMONITORS) > 1;
+        _mini = new MiniCaptureWindow(Vm, _hwnd, TogglePause, () => _cts?.Cancel(), expanded, OnMiniExpandedChanged);
+        if (_owner.Content is FrameworkElement shellRoot)
+            _mini.ApplyTheme(shellRoot.RequestedTheme);
+
+        // The shell is about to be hidden, and a dialog on its XamlRoot would be hidden with it.
+        var shellDialogRoot = _dialogs.XamlRootSource;
+        _dialogs.XamlRootSource = () => _mini?.Content?.XamlRoot ?? shellDialogRoot?.Invoke();
+
+        _owner.AppWindow.Hide();
+        _mini.Activate();
+
         try
         {
             var report = await Task.Run(() => _loop.RunAsync(progress, ResolveStallAsync, _cts.Token, ResolveResumeAsync));
@@ -294,10 +315,23 @@ public sealed partial class LiveCaptureView : UserControl
             _loop = null;
             _clicker = null;
             _captureSource = null;
+            _mini?.Close();
+            _mini = null;
+            _dialogs.XamlRootSource = shellDialogRoot;
+            _owner.AppWindow.Show();
+            _owner.Activate();
         }
     }
 
-    private void OnTogglePause(object sender, RoutedEventArgs e)
+    private void OnMiniExpandedChanged(bool expanded)
+    {
+        _settingsModel.MiniCaptureExpanded = expanded;
+        _settings.Save(_settingsModel);
+    }
+
+    private void OnTogglePause(object sender, RoutedEventArgs e) => TogglePause();
+
+    private void TogglePause()
     {
         if (_loop is null)
             return;
@@ -432,9 +466,10 @@ public sealed partial class LiveCaptureView : UserControl
         return shot;
     }
 
-    private void Minimize() => (_owner.AppWindow.Presenter as OverlappedPresenter)?.Minimize();
+    // During a transfer the shell is hidden and the mini window is the one in the way.
+    private void Minimize() => ((_mini ?? _owner).AppWindow.Presenter as OverlappedPresenter)?.Minimize();
 
-    private void Restore() => (_owner.AppWindow.Presenter as OverlappedPresenter)?.Restore();
+    private void Restore() => ((_mini ?? _owner).AppWindow.Presenter as OverlappedPresenter)?.Restore();
 
     private async Task RecalibrateNextAsync()
     {

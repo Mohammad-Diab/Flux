@@ -30,7 +30,9 @@ public sealed partial class MainWindow : Window
             this,
             App.Services.GetRequiredService<FluxRead.Services.DecodePipelineService>(),
             _dialogs,
-            App.Services.GetRequiredService<FluxCore.Transfer.ReceptionHistoryService>());
+            App.Services.GetRequiredService<FluxCore.Transfer.ReceptionHistoryService>(),
+            App.Services.GetRequiredService<SettingsService>(),
+            App.Services.GetRequiredService<FluxSettings>());
 
         Title = "FluxRead";
         ExtendsContentIntoTitleBar = true;
@@ -106,7 +108,7 @@ public sealed partial class MainWindow : Window
             },
             new TextBlock
             {
-                Text = "Ported in phase 3 — needs the Interop layer.",
+                Text = "Not ported yet — the list of received transfers lands here.",
                 Style = (Style)Application.Current.Resources["SubtleText"],
                 Margin = new Thickness(0, 8, 0, 0),
             },

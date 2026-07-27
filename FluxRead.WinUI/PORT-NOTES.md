@@ -131,3 +131,20 @@ unchanged. The rest was rewritten:
   `Dispatcher.InvokeAsync(...).Task.Unwrap()` has no direct equivalent.
 - `Flux.Ui.ByteFormat` joined the source-linked files; `ShellViewModel.SessionRoot` became
   `Services/ReceptionPaths`, pointing at the same folder so a reception can move between the two apps.
+
+## Second windows (MiniCaptureWindow)
+
+- A second `Window` inherits neither the shell's `ElementTheme` nor its dialogs. It needs its own
+  `RequestedTheme` copied over, and while the shell is hidden the `DialogService` has to be re-pointed at
+  the new window's `XamlRoot` — a `ContentDialog` on a hidden window's root never appears.
+- `Topmost`, `ResizeMode` and `WindowState` are all `OverlappedPresenter` properties now
+  (`IsAlwaysOnTop`, `IsResizable`, `Minimize`/`Restore`). Hiding a window is `AppWindow.Hide()`.
+- **No animatable window size.** `AppWindow.MoveAndResize` takes physical pixels and nothing binds to it,
+  so the collapse is tweened by hand on a 16 ms `DispatcherTimer` behind the motion gate. Resize from the
+  pinned corner by recomputing the top from the fixed bottom edge, as the WPF version did.
+- **A `Geometry` cannot be re-parented.** `XamlReader.Load`-ing a `Path` to lift its `Data` out and assign
+  it elsewhere throws "Value does not fall within the expected range" — WinUI has no `Geometry.Parse`.
+  Declare each icon state as its own `Path` in XAML and toggle `Visibility`.
+- With `ExtendsContentIntoTitleBar`, the native caption buttons still draw over the content, so a custom
+  close button doubles up. The mini window keeps the native close and hooks `AppWindow.Closing` to stop
+  the transfer; header buttons need a right margin to clear the caption strip.
