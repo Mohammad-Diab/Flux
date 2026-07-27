@@ -1,4 +1,5 @@
 using System.Runtime.InteropServices;
+using Windows.Graphics;
 
 namespace FluxRead.WinUI.Interop;
 
@@ -8,10 +9,34 @@ public sealed class RegionSelectOverlay
 {
     /// <summary>Shows the overlay and blocks until the user drags a rectangle or presses Escape.</summary>
     /// <returns>The chosen rectangle in physical screen pixels, or null if cancelled.</returns>
-    public static (int X, int Y, int Width, int Height)? Select()
+    public static RectInt32? Select()
     {
         var instance = new RegionSelectOverlay();
         return instance.Run();
+    }
+
+    /// <summary>Runs the overlay on its own STA thread — it pumps its own message loop, which would
+    /// otherwise block the WinUI dispatcher.</summary>
+    public static Task<RectInt32?> SelectAsync()
+    {
+        var completion = new TaskCompletionSource<RectInt32?>();
+        var thread = new Thread(() =>
+        {
+            try
+            {
+                completion.SetResult(Select());
+            }
+            catch (Exception ex)
+            {
+                completion.SetException(ex);
+            }
+        })
+        {
+            IsBackground = true,
+        };
+        thread.SetApartmentState(ApartmentState.STA);
+        thread.Start();
+        return completion.Task;
     }
 
     private const int WsExLayered = 0x00080000;
@@ -38,9 +63,9 @@ public sealed class RegionSelectOverlay
     private int _originX, _originY;
     private int _startX, _startY, _curX, _curY;
     private bool _dragging, _done;
-    private (int X, int Y, int Width, int Height)? _result;
+    private RectInt32? _result;
 
-    private (int X, int Y, int Width, int Height)? Run()
+    private RectInt32? Run()
     {
         _originX = GetSystemMetrics(SmXVirtualScreen);
         _originY = GetSystemMetrics(SmYVirtualScreen);
@@ -107,7 +132,7 @@ public sealed class RegionSelectOverlay
                     int x = Math.Min(_startX, _curX), y = Math.Min(_startY, _curY);
                     int w = Math.Abs(_curX - _startX), h = Math.Abs(_curY - _startY);
                     if (w > 4 && h > 4)
-                        _result = (_originX + x, _originY + y, w, h);
+                        _result = new RectInt32(_originX + x, _originY + y, w, h);
                     _done = true;
                     PostQuitMessage(0);
                 }

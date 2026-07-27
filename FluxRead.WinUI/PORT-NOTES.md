@@ -105,3 +105,22 @@ here, so verify the returned rectangle by hand before wiring the capture loop to
   Composition — WinUI has no `VisualBrush`), `RevealHost` (no `LayoutTransform`), `AmbientBackground`,
   `WindowChromeAnimator` (window open/close/minimise animation), `MiniCaptureWindow`, and the
   remaining ~700 lines of `Theme.xaml`.
+
+## Interop
+
+`NativeMethods`, `MouseClicker` and `OcrNextLocator` are **shared by source link** — no WPF in them, and
+an unpackaged WinUI app gets the same WinRT projections, so `Windows.Media.Ocr` and `AsBuffer` work
+unchanged. The rest was rewritten:
+
+- **`Int32Rect` → `Windows.Graphics.RectInt32`** throughout, including `RegionSelectOverlay`'s return.
+  WPF's `DipToPhysical`/`DipRectToPhysical` are gone with the XAML region selector that needed them —
+  the Win32 overlay already works in physical pixels.
+- **`ScreenRegionCapture` is GDI `BitBlt` into a top-down 32-bit DIB**, not `Graphics.CopyFromScreen`, so
+  the app needs no System.Drawing package. Two gotchas: ask for a *negative* `biHeight` or the rows come
+  back bottom-up, and force the alpha byte to 255 — BitBlt copies whatever alpha was on screen (usually
+  0), which a premultiplied `SKBitmap` reads back as black. Verified byte-identical to the WPF path.
+- **`HotkeyListener` chains the window procedure.** WinUI has no `HwndSource.AddHook`; `SetWindowLongPtr`
+  + `CallWindowProc` needs no comctl32-v6 manifest entry, unlike `SetWindowSubclass`. Keep the delegate
+  alive and restore the old procedure on dispose.
+- `WindowPlacement` still drives `SetWindowPos` directly — no need for `AppWindow.Move`, and it stays in
+  physical pixels for the mixed-DPI case.
