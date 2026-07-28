@@ -8,12 +8,17 @@ Flux moves a file/folder across a display-only channel by encoding it into error
 colored-tile frames (FFv3: RS(255,k) over GF(256), QR-style corner fiducials + homography
 registration). Grid, tile size, and palette are per-transfer settings carried in frame 0 and
 adopted by the receiver; 160×90 tiles at 8 px / 256 colors is the default and the frame-0
-bootstrap anchor. Two WPF apps on .NET 10 (`net10.0-windows`) over shared libraries:
+bootstrap anchor. Two apps on .NET 10 over shared libraries:
 
 - **FluxCast** — sender: file/folder → 7z compress → encode to frames → present one frame
   at a time with manual Back/Next navigation.
 - **FluxRead** — receiver: folder-decode, plus live optical capture (screen region → decode →
   click Next → verify frame-id advanced → reassemble → SHA-256 verify → save).
+
+**Each app exists twice: the original WPF pair and a WinUI 3 port of both** (`FluxCast.WinUI`,
+`FluxRead.WinUI`, over `Flux.Ui.WinUI`). The WPF pair is still the proven one — the WinUI apps have
+not yet completed an optical transfer on real hardware. Both stacks share FluxCore and the same
+settings and session files, so a transfer can move between them.
 
 See README.md for the full frame-format spec, ECC-level table, and usage flow.
 
@@ -24,6 +29,20 @@ dotnet build Flux.sln -c Debug
 dotnet test FluxCore.Tests/FluxCore.Tests.csproj
 dotnet test FluxCore.Tests/FluxCore.Tests.csproj --filter "FullyQualifiedName~SomeTestName"
 ```
+
+The WinUI side lives in its own solution and **cannot be built by `dotnet build`**: the Windows App
+SDK's PRI generation needs a task that ships with Visual Studio. Run each target separately, from the
+repo root, or `MSB1009` follows:
+
+```
+& "C:\Program Files\Microsoft Visual Studio8\Community\MSBuild\Current\Binmd64\MSBuild.exe" `
+    Flux.WinUI.sln /t:Restore /p:Configuration=Debug /p:Platform=x64
+& "C:\Program Files\Microsoft Visual Studio8\Community\MSBuild\Current\Binmd64\MSBuild.exe" `
+    Flux.WinUI.sln /t:Build /p:Configuration=Debug /p:Platform=x64
+```
+
+`Flux.sln` deliberately excludes the WinUI projects, so the `dotnet` build and the test loop keep
+working for everyone.
 
 - Expect 365 passing tests; keep them green. The golden round-trip + degradation suite pins the
   codec — Medium ECC must survive JPEG q85, High q75, at 0.8×/1.0×/1.25× scale.
@@ -52,6 +71,14 @@ dotnet test FluxCore.Tests/FluxCore.Tests.csproj --filter "FullyQualifiedName~So
 - **FluxCast / FluxRead** — app-specific views/VMs/App.xaml.cs only. FluxRead's `Interop/`
   holds the Win32 capture, click, DPI, hotkey, and window-placement helpers (Windows-specific
   code stays out of FluxCore).
+- **Flux.Ui.WinUI** — the WinUI 3 mirror of Flux.Ui: the ONE WinUI `Theme.xaml`, motion gate and
+  curves, ReadoutBar, SlidingTabBar, TransitionHost, RevealHost, AmbientBackground, FluxDialog +
+  MessageDialog, SettingsView, DialogService, and `ITaskbarList3` progress.
+- **FluxCast.WinUI / FluxRead.WinUI** — the ported apps. Anything platform-neutral is **shared by
+  source link** rather than forked (`NativeMethods`, `MouseClicker`, `OcrNextLocator`,
+  `DecodePipelineService`, `PauseGate`, `SourceValidator`, `SettingsService`, `ByteFormat`,
+  `TimeFormat`), so a fix lands in both stacks. `FluxRead.WinUI/PORT-NOTES.md` records every WinUI
+  mechanism that replaces a WPF one, and the traps found on the way.
 
 ## Key mechanisms
 

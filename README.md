@@ -13,7 +13,8 @@ decoder that survives scaling / offset / screen recompression, and a manual-adva
 moving your *own* files off a screen-only or air-gapped setup, and research into visual/optical
 data channels. Please use it only for your own data, on systems you're authorized to use.
 
-It is two Windows (WPF) apps over a shared, UI-agnostic core:
+It is two Windows apps over a shared, UI-agnostic core — each built twice, once in WPF and once
+in WinUI 3:
 
 - **FluxCast** (sender) — runs on the source machine. Pick a file/folder → 7z-compress →
   encode to frames → display them one at a time with large **Back / Next** buttons.
@@ -198,6 +199,10 @@ coordinates are physical pixels.
 - `FluxCast/` — WPF sender (setup / progress / presenter / recent casts).
 - `FluxRead/` — WPF receiver (folder-decode + live optical + received items; `Interop/` holds the
   Win32 capture, click, DPI, hotkey, and window-placement helpers).
+- `Flux.Ui.WinUI/`, `FluxCast.WinUI/`, `FluxRead.WinUI/` — the WinUI 3 port of the same three, in
+  `Flux.WinUI.sln`. It needs Visual Studio's MSBuild (the Windows App SDK's PRI task does not ship
+  with the .NET SDK), which is why `Flux.sln` leaves it out. The WPF pair remains the proven one
+  until the WinUI apps complete an optical transfer on real hardware.
 
 ## Accepted v1 limitations
 

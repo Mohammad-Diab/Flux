@@ -7,6 +7,7 @@ using FluxCast.Services;
 using FluxCast.WinUI.Services;
 using FluxCast.WinUI.ViewModels;
 using FluxCast.WinUI.Views;
+using FluxCore.Compression;
 using FluxCore.Ecc;
 using FluxCore.Framing;
 using FluxCore.Imaging;
@@ -31,6 +32,7 @@ public sealed partial class MainWindow : Window
     private readonly SettingsView _settingsView;
 
     private object? _castScreen;
+    private RecentCastsView? _historyScreen;
     private bool _isSettingsOpen;
     private int _lastNavIndex;
 
@@ -140,8 +142,32 @@ public sealed partial class MainWindow : Window
 
     private void OnTabChanged(object sender, RoutedEventArgs e)
     {
-        if (ContentHost is not null)
+        if (ContentHost is null)
+            return;
+
+        if (HistoryTab.IsChecked == true)
+            ShowHistory();
+        else
             UpdateCurrent();
+    }
+
+    private void ShowHistory()
+    {
+        _historyScreen ??= new RecentCastsView(new RecentCastsViewModel(
+            App.Services.GetRequiredService<CastHistoryService>(), _dialogs,
+            App.Services.GetRequiredService<CompressionService>(), SessionRoot, ResumeCast));
+        _historyScreen.Vm.Refresh();
+        UpdateCurrent();
+    }
+
+    private void ResumeCast(CastHistoryEntry entry)
+    {
+        var session = App.Services.GetRequiredService<CastHistoryService>()
+            .OpenForPresenting(entry.SessionDirectory);
+        _castScreen = new PresenterView(new PresenterViewModel(session, ShowSetup, _dialogs));
+        _isSettingsOpen = false;
+        CastTab.IsChecked = true;
+        UpdateCurrent();
     }
 
     private void OnOpenSettings(object sender, RoutedEventArgs e)
@@ -176,7 +202,9 @@ public sealed partial class MainWindow : Window
         ContentHost.ZoomSlide = navIndex != _lastNavIndex && navIndex != 2 && _lastNavIndex != 2;
         _lastNavIndex = navIndex;
 
-        ContentHost.Page = _isSettingsOpen ? _settingsView : _castScreen;
+        ContentHost.Page = _isSettingsOpen ? _settingsView
+            : HistoryTab.IsChecked == true ? _historyScreen
+            : _castScreen;
     }
 
     private async Task<string?> PickFileAsync(string _)
