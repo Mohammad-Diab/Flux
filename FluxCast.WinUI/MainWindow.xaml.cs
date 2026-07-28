@@ -20,11 +20,8 @@ using WinRT.Interop;
 
 namespace FluxCast.WinUI;
 
-/// <summary>
-/// Owns navigation across the Cast and History tabs, the setup/progress/presenter flow within Cast,
-/// and the title-bar Settings page. WPF drove this from a ShellViewModel over typed DataTemplates;
-/// WinUI has no implicit template-by-type, so the shell holds the views directly.
-/// </summary>
+/// <summary>Owns navigation across the Cast and History tabs, the setup/progress/presenter flow, and
+/// the Settings page. WinUI has no implicit DataTemplate-by-type, so the shell holds the views.</summary>
 public sealed partial class MainWindow : Window
 {
     private readonly IntPtr _hwnd;

@@ -7,12 +7,9 @@ using Windows.System;
 
 namespace FluxCast.WinUI.Views;
 
-/// <summary>
-/// Presenter view. The frame is laid out at exactly its own device pixels rather than scaled to fit:
-/// WinUI offers no nearest-neighbour resampling, and a resampled frame loses the tile edges the
-/// decoder reads. Sizing to <c>pixels / RasterizationScale</c> lands on whole device pixels, because
-/// WinUI's layout rounding is device-pixel aware.
-/// </summary>
+/// <summary>Presenter view. The frame is laid out at its own device pixels rather than scaled to fit:
+/// WinUI has no nearest-neighbour resampling, and resampling loses the tile edges the decoder reads.
+/// <c>pixels / RasterizationScale</c> lands on whole pixels, layout rounding being device-pixel aware.</summary>
 public sealed partial class PresenterView : UserControl
 {
     public PresenterViewModel Vm { get; }

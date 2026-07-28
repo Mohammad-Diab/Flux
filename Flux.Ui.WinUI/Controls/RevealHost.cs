@@ -5,11 +5,8 @@ using Windows.Foundation;
 
 namespace Flux.Ui.WinUI.Controls;
 
-/// <summary>
-/// Reveals or hides its content by animating height, so the surrounding layout reflows as it opens.
-/// WinUI has no <c>LayoutTransform</c>, so the height itself is animated — which needs
-/// <c>EnableDependentAnimation</c>, unlike a render transform.
-/// </summary>
+/// <summary>Reveals or hides its content by animating height, so the layout reflows as it opens.
+/// WinUI has no <c>LayoutTransform</c>, so the height itself animates.</summary>
 public class RevealHost : ContentControl
 {
     private static readonly TimeSpan Duration = TimeSpan.FromMilliseconds(260);

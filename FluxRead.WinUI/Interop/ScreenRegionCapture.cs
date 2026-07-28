@@ -62,8 +62,7 @@ public sealed class ScreenRegionCapture
         var buffer = new byte[length];
         Marshal.Copy(pixels, buffer, 0, length);
 
-        // BitBlt leaves the alpha byte at whatever was on screen (usually 0), which a premultiplied
-        // bitmap would read back as black.
+        // BitBlt copies whatever alpha was on screen, which premultiplied reads back as black.
         for (int i = 3; i < length; i += 4)
             buffer[i] = 0xFF;
 

@@ -2,10 +2,8 @@ using System.Runtime.InteropServices;
 
 namespace Flux.Ui.WinUI.Interop;
 
-/// <summary>
-/// Drives the taskbar button's progress bar. WinUI has no <c>TaskbarItemInfo</c>, so this talks to
-/// the shell's <c>ITaskbarList3</c> directly; the window handle is set once by the shell.
-/// </summary>
+/// <summary>Drives the taskbar button's progress bar. WinUI has no <c>TaskbarItemInfo</c> to bind, so
+/// this calls <c>ITaskbarList3</c> directly against the handle the shell hands it.</summary>
 public sealed class TaskbarProgress
 {
     private const uint NoProgress = 0x0;

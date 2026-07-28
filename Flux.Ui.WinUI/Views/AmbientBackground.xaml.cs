@@ -68,8 +68,7 @@ public sealed partial class AmbientBackground : UserControl
         }
     }
 
-    // Nothing off-screen needs to drift: pause the orbs whenever the window is inactive, so an idle or
-    // background app draws no GPU for them.
+    // Nothing off-screen needs to drift, so an inactive window costs no GPU.
     private void SyncDrift(bool active)
     {
         if (!_running)

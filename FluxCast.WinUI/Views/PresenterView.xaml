@@ -54,8 +54,7 @@
                        Foreground="White" FontSize="12.5" HorizontalAlignment="Center" TextAlignment="Center"/>
         </Border>
 
-        <!-- Stretch="None" with an explicit size: WinUI cannot resample without blurring the tiles, so the
-             frame is laid out at exactly its own device pixels. -->
+        <!-- Sized in code-behind: the frame must land on whole device pixels, never be resampled. -->
         <Grid x:Name="FrameArea" Grid.Row="2" Margin="10">
             <Image x:Name="FrameImage" Source="{x:Bind Vm.CurrentFrame, Mode=OneWay}" Stretch="None"
                    ImageOpened="OnFrameOpened" HorizontalAlignment="Center" VerticalAlignment="Center"/>

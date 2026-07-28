@@ -74,8 +74,7 @@ public class TransitionHost : Grid
         _running?.Stop();
         _running = null;
 
-        // A page can only live in one tree, so it has to leave the incoming presenter before the
-        // outgoing one can show it. That is also why no page snapshot is needed here, unlike WPF.
+        // A page lives in one tree at a time, so it must leave this presenter before the other shows it.
         _incoming.Content = null;
 
         if (previous is null || !MotionSettings.Current.AnimationsEnabled)

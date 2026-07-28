@@ -112,8 +112,7 @@ public sealed partial class MiniCaptureWindow : Window
         Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(CollapseButton, label);
     }
 
-    // Grow/shrink from the pinned bottom-right corner: the bottom edge stays put, so the top moves
-    // opposite to the height. An AppWindow has no animatable Height, so this is tweened by hand.
+    // The bottom edge stays put, and an AppWindow has no animatable height, so this tweens by hand.
     private void ResizeToState()
     {
         double scale = Content.XamlRoot?.RasterizationScale ?? 1;

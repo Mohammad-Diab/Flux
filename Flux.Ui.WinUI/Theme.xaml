@@ -87,9 +87,8 @@
     <x:Double x:Key="ContentDialogMinHeight">0</x:Double>
     <Thickness x:Key="ContentDialogSeparatorThickness">0</Thickness>
 
-    <!-- The scrim behind a dialog: the base brush every light-dismiss overlay aliases. Theme-invariant on
-         purpose — the hosting popup sits outside the window's ElementTheme, so a per-theme brush would
-         resolve against Windows' theme and wash a dark dialog out with white. -->
+    <!-- The scrim behind a dialog: the base brush every light-dismiss overlay aliases. Theme-invariant
+         because the hosting popup resolves outside the window's ElementTheme. -->
     <SolidColorBrush x:Key="SystemControlPageBackgroundMediumAltMediumBrush" Color="#4D000000"/>
 
     <Style x:Key="HeadingText" TargetType="TextBlock">
