@@ -1,4 +1,6 @@
-using System.IO;
+﻿using System.IO;
+using Flux.Ui;
+using Flux.Ui.Controls;
 using Flux.Ui.Services;
 using Flux.Ui.ViewModels;
 using Flux.Ui.Views;
@@ -49,6 +51,10 @@ public sealed partial class MainWindow : Window
         InitializeComponent();
 
         Title = "FluxCast";
+        VersionText.Text = $"v{AppVersion.Current}";
+        MotionIcon.Attach(SettingsButton, SettingsAnimatedIcon);
+        MotionIcon.Attach(BackButton, BackAnimatedIcon);
+        VersionChip.Visibility = AppVersion.Current.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
         ExtendsContentIntoTitleBar = true;
         SetTitleBar(TitleBarStrip);
         Ambient.Attach(this);

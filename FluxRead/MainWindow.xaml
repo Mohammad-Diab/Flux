@@ -1,31 +1,62 @@
-<Window
+﻿<Window
     x:Class="FluxRead.MainWindow"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:controls="using:Flux.Ui.Controls"
-    xmlns:views="using:Flux.Ui.Views">
+    xmlns:views="using:Flux.Ui.Views"
+    xmlns:animatedvisuals="using:Microsoft.UI.Xaml.Controls.AnimatedVisuals">
 
     <Grid Background="{ThemeResource BgBrush}" RowDefinitions="48,Auto,*">
 
         <views:AmbientBackground x:Name="Ambient" Grid.RowSpan="3"/>
 
-        <!-- SetTitleBar takes this as the drag region, replacing WPF's WindowChrome. -->
-        <Grid x:Name="TitleBarStrip" Grid.Row="0" Padding="16,0">
-            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Spacing="10">
-                <Border Width="22" Height="22" CornerRadius="6" Background="{StaticResource AccentGradient}"/>
-                <TextBlock Text="FluxRead" Style="{StaticResource BrandTitle}" FontSize="13"
-                           VerticalAlignment="Center"/>
-                <TextBlock Text="Optical receiver" FontSize="12"
-                           Foreground="{ThemeResource TextSecondaryBrush}" VerticalAlignment="Center"/>
-            </StackPanel>
-            <!-- Clear of the native caption buttons, which own the right edge of the drag region. -->
-            <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Right"
-                        VerticalAlignment="Center" Margin="0,0,148,0">
-                <Button x:Name="BackButton" Content="Back" Style="{StaticResource SecondaryButton}"
-                        MinHeight="30" Padding="12,0" FontSize="12" Visibility="Collapsed"
-                        Click="OnCloseSettings"/>
-                <Button x:Name="SettingsButton" Content="Settings" Style="{StaticResource SecondaryButton}"
-                        MinHeight="30" Padding="12,0" FontSize="12" Click="OnOpenSettings"/>
+        <!-- Only the middle column goes to SetTitleBar: a control inside the caption drag region
+             receives the pointer only intermittently, so the buttons stay outside it. -->
+        <Grid Grid.Row="0" Padding="16,0" ColumnDefinitions="Auto,*,Auto">
+            <Button x:Name="BackButton" Grid.Column="0" Style="{StaticResource CaptionIconButton}" Width="32"
+                    Visibility="Collapsed" Click="OnCloseSettings" AutomationProperties.Name="Back"
+                    ToolTipService.ToolTip="Back" Margin="0,0,10,0">
+                <AnimatedIcon x:Name="BackAnimatedIcon" Width="16" Height="16">
+                    <animatedvisuals:AnimatedBackVisualSource/>
+                    <AnimatedIcon.FallbackIconSource>
+                        <FontIconSource Glyph="&#xE72B;" FontSize="14"/>
+                    </AnimatedIcon.FallbackIconSource>
+                </AnimatedIcon>
+            </Button>
+
+            <Grid x:Name="TitleBarStrip" Grid.Column="1">
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Spacing="10">
+                    <!-- Gradient square + the app's arrow, as vectors: crisp at any scale. -->
+                    <Grid Width="22" Height="22">
+                        <Border CornerRadius="6" Background="{StaticResource AccentGradient}"/>
+                        <Viewbox Width="12" Height="12" HorizontalAlignment="Center" VerticalAlignment="Center">
+                            <Path Data="M7,13 L13,7 L9.5,7 L9.5,1 L4.5,1 L4.5,7 L1,7 Z" Fill="White"/>
+                        </Viewbox>
+                    </Grid>
+                    <TextBlock Text="FluxRead" FontSize="13" FontWeight="SemiBold"
+                               Foreground="{ThemeResource TextPrimaryBrush}" VerticalAlignment="Center"/>
+                    <TextBlock Text="Optical receiver" FontSize="12"
+                               Foreground="{ThemeResource TextSecondaryBrush}" VerticalAlignment="Center"/>
+                    <Border x:Name="VersionChip" Padding="6,1" CornerRadius="4" VerticalAlignment="Center"
+                            Background="{ThemeResource HoverOverlayBrush}">
+                        <TextBlock x:Name="VersionText" FontSize="11"
+                                   Foreground="{ThemeResource TextSecondaryBrush}"/>
+                    </Border>
+                </StackPanel>
+            </Grid>
+
+            <!-- Clear of the native caption buttons, which own the right edge. -->
+            <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,148,0">
+                <Button x:Name="SettingsButton" Style="{StaticResource CaptionIconButton}"
+                        Click="OnOpenSettings" AutomationProperties.Name="Settings"
+                        ToolTipService.ToolTip="Settings">
+                    <AnimatedIcon x:Name="SettingsAnimatedIcon" Width="16" Height="16">
+                        <animatedvisuals:AnimatedSettingsVisualSource/>
+                        <AnimatedIcon.FallbackIconSource>
+                            <FontIconSource Glyph="&#xE713;" FontSize="15"/>
+                        </AnimatedIcon.FallbackIconSource>
+                    </AnimatedIcon>
+                </Button>
             </StackPanel>
         </Grid>
 
