@@ -4,15 +4,16 @@ Branch `winui-port`. Target chosen 2026-07-26: **WinUI 3 (Windows App SDK), Wind
 backlog's cross-platform goal is explicitly deferred — WinUI 3 does not deliver it, and modernising
 the Windows UI was the priority.
 
-`FluxRead.WinUI` is a vertical spike, not a product: one screen (folder decode) end to end, to price
-the real port. It is deliberately **not in `Flux.sln`**, so `dotnet build Flux.sln` and the 365
-FluxCore tests keep working untouched.
+It started as a vertical spike — one screen (folder decode) end to end, to price the real port. Both
+apps are now ported, the WPF pair is removed from this branch, and `Flux.sln` holds FluxCore, the
+tests and the three WinUI projects. These notes cover all three projects; they stay here rather than
+at the repo root because that is where they were written.
 
 ## Proven working
 
 - Unpackaged, self-contained WinUI 3 exe — launches like the WPF apps, no Windows App Runtime install.
-- **FluxCore is reused verbatim.** So are `DecodePipelineService` and `PauseGate`, shared by source
-  link — they never had a WPF dependency.
+- **FluxCore is reused verbatim.** So are `DecodePipelineService` and `PauseGate` — they never had a
+  WPF dependency, so they were shared by source link during the port and moved here when it ended.
 - Custom title bar via `ExtendsContentIntoTitleBar` + `SetTitleBar`.
 - Live theming via `ThemeDictionaries` + `ElementTheme` — *simpler* than the WPF DynamicResource
   token-swap, and it needs no `ThemeService`.
@@ -23,7 +24,10 @@ FluxCore tests keep working untouched.
 ## Build requirement (important)
 
 `dotnet build` **cannot** build this project: the Windows App SDK's PRI generation needs
-`Microsoft.Build.Packaging.Pri.Tasks.dll`, which ships with Visual Studio, not the .NET SDK. Use:
+`Microsoft.Build.Packaging.Pri.Tasks.dll`, which ships with Visual Studio, not the .NET SDK. The
+combined form below only works on an **already-restored** tree; on a fresh clone run `/t:Restore`
+and `/t:Build` as two invocations, or the XAML compiler targets are not loaded yet and every
+`InitializeComponent` goes missing. Whole solution: `Flux.sln` in place of the project path.
 
 ```
 & "C:\Program Files\Microsoft Visual Studio\18\Community\MSBuild\Current\Bin\amd64\MSBuild.exe" `
@@ -103,16 +107,15 @@ here, so verify the returned rectangle by hand before wiring the capture loop to
   command space, and Escape still dismisses — each dialog's choice property just stays at its default.
 - ContentDialog's open/close scale-and-fade is a `VisualTransition` in the stock template, so the motion
   gate clears the template root's transitions in `OnApplyTemplate` (`Views/FluxDialog`).
-- Not yet attempted, and the expensive part of the real port: `TransitionHost` (genie/zoom needs
-  Composition — WinUI has no `VisualBrush`), `RevealHost` (no `LayoutTransform`), `AmbientBackground`,
-  `WindowChromeAnimator` (window open/close/minimise animation), `MiniCaptureWindow`, and the
-  remaining ~700 lines of `Theme.xaml`.
+- ~~Not yet attempted, the expensive part of the real port~~ — **all landed since:** `TransitionHost`
+  (minus the genie), `RevealHost`, `AmbientBackground`, `MiniCaptureWindow` and the rest of
+  `Theme.xaml`. `WindowChromeAnimator` turned out to be unnecessary (see Motion and polish).
 
 ## Interop
 
-`NativeMethods`, `MouseClicker` and `OcrNextLocator` are **shared by source link** — no WPF in them, and
-an unpackaged WinUI app gets the same WinRT projections, so `Windows.Media.Ocr` and `AsBuffer` work
-unchanged. The rest was rewritten:
+`NativeMethods`, `MouseClicker` and `OcrNextLocator` came over **unchanged** — no WPF in them, and an
+unpackaged WinUI app gets the same WinRT projections, so `Windows.Media.Ocr` and `AsBuffer` work as
+they did. The rest was rewritten:
 
 - **`Int32Rect` → `Windows.Graphics.RectInt32`** throughout, including `RegionSelectOverlay`'s return.
   WPF's `DipToPhysical`/`DipRectToPhysical` are gone with the XAML region selector that needed them —
@@ -131,8 +134,10 @@ unchanged. The rest was rewritten:
 - The capture loop runs on a worker thread but its stall and resume prompts are `ContentDialog`s, so each
   one hops back through `DispatcherQueue.TryEnqueue` wrapped in a `TaskCompletionSource`. WPF's
   `Dispatcher.InvokeAsync(...).Task.Unwrap()` has no direct equivalent.
-- `Flux.Ui.ByteFormat` joined the source-linked files; `ShellViewModel.SessionRoot` became
-  `Services/ReceptionPaths`, pointing at the same folder so a reception can move between the two apps.
+- `ByteFormat`, `TimeFormat` and `SettingsService` live in `Flux.Ui.WinUI` but keep their old
+  `Flux.Ui.*` namespaces, so the settings file stays byte-compatible with the WPF apps;
+  `ShellViewModel.SessionRoot` became `Services/ReceptionPaths`, pointing at the same folder so a
+  reception can move between the two stacks.
 
 ## Motion and polish
 

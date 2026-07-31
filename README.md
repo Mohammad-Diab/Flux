@@ -13,8 +13,7 @@ decoder that survives scaling / offset / screen recompression, and a manual-adva
 moving your *own* files off a screen-only or air-gapped setup, and research into visual/optical
 data channels. Please use it only for your own data, on systems you're authorized to use.
 
-It is two Windows apps over a shared, UI-agnostic core — each built twice, once in WPF and once
-in WinUI 3:
+It is two Windows apps in WinUI 3 over a shared, UI-agnostic core:
 
 - **FluxCast** (sender) — runs on the source machine. Pick a file/folder → 7z-compress →
   encode to frames → display them one at a time with large **Back / Next** buttons.
@@ -23,13 +22,13 @@ in WinUI 3:
   frame id incremented → repeat → reassemble → verify → save.
 - **FluxCore** — shared library: frame format, Reed–Solomon ECC, palette/rendering, capture-
   tolerant decoder, compression, hashing, and the optical capture-loop state machine. No UI or
-  Win32 dependencies; the Windows-specific capture code lives in FluxRead.
+  Win32 dependencies; the Windows-specific capture code lives in FluxRead.WinUI.
 
 Targets **.NET 10** (Windows). Windows-only by design — screen capture and the automated
 frame-advance (via the OS input APIs) are Windows-specific.
 
-Both apps share one interface library: custom borderless window chrome with Windows 11 rounded
-corners, a blue→violet→magenta spectrum accent, light / dark / system theming that switches live,
+Both apps share one interface library: a custom title bar over the window's own Windows 11 chrome,
+a blue→violet→magenta spectrum accent, light / dark / system theming that switches live,
 animated window and view transitions, a reduce-motion performance mode, taskbar progress, and
 distinct per-app icons (▲ send / ▼ receive).
 
@@ -178,8 +177,20 @@ fast-forwards to the first missing frame instead of restarting.
 
 ## Build & test
 
+The apps need Visual Studio's MSBuild — the Windows App SDK's PRI task does not ship with the
+.NET SDK, so `dotnet build` cannot build them. Run Restore and Build as two invocations:
+
 ```
-dotnet build Flux.sln
+& "C:\Program Files\Microsoft Visual Studio\18\Community\MSBuild\Current\Bin\amd64\MSBuild.exe" `
+    Flux.sln /t:Restore /p:Configuration=Debug /p:Platform=x64
+& "C:\Program Files\Microsoft Visual Studio\18\Community\MSBuild\Current\Bin\amd64\MSBuild.exe" `
+    Flux.sln /t:Build /p:Configuration=Debug /p:Platform=x64
+```
+
+The core and its tests need no Visual Studio:
+
+```
+dotnet build FluxCore/FluxCore.csproj
 dotnet test FluxCore.Tests/FluxCore.Tests.csproj
 ```
 
@@ -194,15 +205,12 @@ coordinates are physical pixels.
   decoder, assembler), `Compression/`, `Hashing/`, `Transfer/` (content signature, encode service,
   capture loop).
 - `FluxCore.Tests/` — 365 xUnit tests incl. the golden round-trip and degradation matrix.
-- `Flux.Ui/` — the shared WPF library: the single theme, window chrome and transitions, motion and
-  theme settings, and the views both apps embed.
-- `FluxCast/` — WPF sender (setup / progress / presenter / recent casts).
-- `FluxRead/` — WPF receiver (folder-decode + live optical + received items; `Interop/` holds the
-  Win32 capture, click, DPI, hotkey, and window-placement helpers).
-- `Flux.Ui.WinUI/`, `FluxCast.WinUI/`, `FluxRead.WinUI/` — the WinUI 3 port of the same three, in
-  `Flux.WinUI.sln`. It needs Visual Studio's MSBuild (the Windows App SDK's PRI task does not ship
-  with the .NET SDK), which is why `Flux.sln` leaves it out. The WPF pair remains the proven one
-  until the WinUI apps complete an optical transfer on real hardware.
+- `Flux.Ui.WinUI/` — the shared interface library: the single theme, transitions, motion and theme
+  settings, dialogs, and the views both apps embed.
+- `FluxCast.WinUI/` — the sender (setup / progress / presenter / recent casts).
+- `FluxRead.WinUI/` — the receiver (folder-decode + live optical + received items; `Interop/` holds
+  the Win32 capture, click, DPI, hotkey, region-overlay and window-placement helpers).
+  `PORT-NOTES.md` there records the WinUI mechanisms and the traps behind them.
 
 ## Accepted v1 limitations
 

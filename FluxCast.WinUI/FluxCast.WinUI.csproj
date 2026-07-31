@@ -6,12 +6,17 @@
 		<TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
 		<RootNamespace>FluxCast.WinUI</RootNamespace>
 		<ApplicationManifest>app.manifest</ApplicationManifest>
+		<ApplicationIcon>Assets\AppIcon.ico</ApplicationIcon>
 		<Platforms>x64</Platforms>
 		<RuntimeIdentifier>win-x64</RuntimeIdentifier>
 		<UseWinUI>true</UseWinUI>
 		<Nullable>enable</Nullable>
 		<ImplicitUsings>enable</ImplicitUsings>
-		<!-- Unpackaged, self-contained: launches as a plain exe like the WPF apps. -->
+		<Version>0.10.0-beta</Version>
+		<Product>Flux</Product>
+		<Authors>Mohammad Diab</Authors>
+		<Description>FluxCast — sender for Flux, an optical data channel (renders files as error-corrected on-screen frames).</Description>
+		<!-- Unpackaged, self-contained: launches as a plain exe. -->
 		<WindowsPackageType>None</WindowsPackageType>
 		<WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
 		<SelfContained>true</SelfContained>
@@ -27,13 +32,12 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<ProjectReference Include="..\FluxCore\FluxCore.csproj" />
-		<ProjectReference Include="..\Flux.Ui.WinUI\Flux.Ui.WinUI.csproj" />
+		<Content Include="Assets\AppIcon.ico" CopyToOutputDirectory="PreserveNewest" />
 	</ItemGroup>
 
-	<!-- Source validation carries no WPF dependency, so it is shared rather than forked. -->
 	<ItemGroup>
-		<Compile Include="..\FluxCast\Services\SourceValidator.cs" Link="Services\SourceValidator.cs" />
+		<ProjectReference Include="..\FluxCore\FluxCore.csproj" />
+		<ProjectReference Include="..\Flux.Ui.WinUI\Flux.Ui.WinUI.csproj" />
 	</ItemGroup>
 
 </Project>

@@ -8,48 +8,50 @@ Flux moves a file/folder across a display-only channel by encoding it into error
 colored-tile frames (FFv3: RS(255,k) over GF(256), QR-style corner fiducials + homography
 registration). Grid, tile size, and palette are per-transfer settings carried in frame 0 and
 adopted by the receiver; 160×90 tiles at 8 px / 256 colors is the default and the frame-0
-bootstrap anchor. Two apps on .NET 10 over shared libraries:
+bootstrap anchor. Two WinUI 3 apps on .NET 10 over shared libraries:
 
-- **FluxCast** — sender: file/folder → 7z compress → encode to frames → present one frame
+- **FluxCast.WinUI** — sender: file/folder → 7z compress → encode to frames → present one frame
   at a time with manual Back/Next navigation.
-- **FluxRead** — receiver: folder-decode, plus live optical capture (screen region → decode →
+- **FluxRead.WinUI** — receiver: folder-decode, plus live optical capture (screen region → decode →
   click Next → verify frame-id advanced → reassemble → SHA-256 verify → save).
 
-**Each app exists twice: the original WPF pair and a WinUI 3 port of both** (`FluxCast.WinUI`,
-`FluxRead.WinUI`, over `Flux.Ui.WinUI`). The WPF pair is still the proven one — the WinUI apps have
-not yet completed an optical transfer on real hardware. Both stacks share FluxCore and the same
-settings and session files, so a transfer can move between them.
+The original WPF pair (`FluxCast`, `FluxRead`, `Flux.Ui`) was **removed on this branch** once the
+WinUI apps stood alone; recover it from `master` or from the last commit that had it. A 0.10.0-beta
+Release publish of both WPF apps is kept in `dist/wpf-reference-0.10.0-beta/` as the proven sender
+and receiver until the WinUI apps complete an optical transfer on real hardware — they read the same
+settings and session files, so a transfer can still move between the two stacks.
 
 See README.md for the full frame-format spec, ECC-level table, and usage flow.
 
 ## Build & test
 
+`Flux.sln` holds FluxCore, the tests, and the three WinUI projects. It **cannot be built by
+`dotnet build`**: the Windows App SDK's PRI generation needs a task that ships with Visual Studio.
+Run Restore and Build as two separate invocations from the repo root — a combined `/t:Restore,Build`
+fails on a not-yet-restored tree, because the XAML compiler targets aren't loaded yet and every
+`InitializeComponent` goes missing:
+
 ```
-dotnet build Flux.sln -c Debug
+& "C:\Program Files\Microsoft Visual Studio\18\Community\MSBuild\Current\Bin\amd64\MSBuild.exe" `
+    Flux.sln /t:Restore /p:Configuration=Debug /p:Platform=x64
+& "C:\Program Files\Microsoft Visual Studio\18\Community\MSBuild\Current\Bin\amd64\MSBuild.exe" `
+    Flux.sln /t:Build /p:Configuration=Debug /p:Platform=x64
+```
+
+The core and the test loop need no Visual Studio:
+
+```
+dotnet build FluxCore/FluxCore.csproj -c Debug
 dotnet test FluxCore.Tests/FluxCore.Tests.csproj
 dotnet test FluxCore.Tests/FluxCore.Tests.csproj --filter "FullyQualifiedName~SomeTestName"
 ```
-
-The WinUI side lives in its own solution and **cannot be built by `dotnet build`**: the Windows App
-SDK's PRI generation needs a task that ships with Visual Studio. Run each target separately, from the
-repo root, or `MSB1009` follows:
-
-```
-& "C:\Program Files\Microsoft Visual Studio8\Community\MSBuild\Current\Binmd64\MSBuild.exe" `
-    Flux.WinUI.sln /t:Restore /p:Configuration=Debug /p:Platform=x64
-& "C:\Program Files\Microsoft Visual Studio8\Community\MSBuild\Current\Binmd64\MSBuild.exe" `
-    Flux.WinUI.sln /t:Build /p:Configuration=Debug /p:Platform=x64
-```
-
-`Flux.sln` deliberately excludes the WinUI projects, so the `dotnet` build and the test loop keep
-working for everyone.
 
 - Expect 365 passing tests; keep them green. The golden round-trip + degradation suite pins the
   codec — Medium ECC must survive JPEG q85, High q75, at 0.8×/1.0×/1.25× scale.
 - Pre-existing/expected warnings: CompressionService CS8604 and a few FluxCore.Tests nullable
   warnings. Don't chase them; don't add new ones.
-- Kill leftover FluxCast/FluxRead processes before rebuilding, or the Flux.Ui.dll copy fails
-  (file locked).
+- Kill leftover FluxCast.WinUI/FluxRead.WinUI processes before rebuilding, or the Flux.Ui.WinUI.dll
+  copy fails (file locked).
 - UI smoke-test procedure: launch the exe, screenshot the window (GetWindowRect + CopyFromScreen),
   then kill it. No synthesized clicks — never send global mouse clicks that could land on other
   windows. UIA Invoke/Select and cursor-hover-with-restore are acceptable; the real optical loop
@@ -63,35 +65,34 @@ working for everyone.
   assembler), `Compression/`, `Hashing/`, `Transfer/` (content signature, encode service,
   capture-loop state machine).
 - **FluxCore.Tests** — xUnit.
-- **Flux.Ui** — shared WPF library (`UseWPF`), namespaces `Flux.Ui.*`. Holds the ONE Theme.xaml,
-  window-chrome/animation controls (WindowChromeAnimator, TransitionHost, Motion, NativeChrome,
-  Win11Corners), MotionSettings, TaskbarProgress, WindowsThemeWatcher, ThemeService,
-  SettingsService, and shared views (AmbientBackground, TitleBar, BrandMark, MessageDialog,
-  SettingsView, SettingsViewModel). Both apps reference it.
-- **FluxCast / FluxRead** — app-specific views/VMs/App.xaml.cs only. FluxRead's `Interop/`
-  holds the Win32 capture, click, DPI, hotkey, and window-placement helpers (Windows-specific
-  code stays out of FluxCore).
-- **Flux.Ui.WinUI** — the WinUI 3 mirror of Flux.Ui: the ONE WinUI `Theme.xaml`, motion gate and
-  curves, ReadoutBar, SlidingTabBar, TransitionHost, RevealHost, AmbientBackground, FluxDialog +
-  MessageDialog, SettingsView, DialogService, and `ITaskbarList3` progress.
-- **FluxCast.WinUI / FluxRead.WinUI** — the ported apps. Anything platform-neutral is **shared by
-  source link** rather than forked (`NativeMethods`, `MouseClicker`, `OcrNextLocator`,
-  `DecodePipelineService`, `PauseGate`, `SourceValidator`, `SettingsService`, `ByteFormat`,
-  `TimeFormat`), so a fix lands in both stacks. `FluxRead.WinUI/PORT-NOTES.md` records every WinUI
-  mechanism that replaces a WPF one, and the traps found on the way.
+- **Flux.Ui.WinUI** — the shared UI library, namespaces `Flux.Ui.WinUI.*`. Holds the ONE
+  `Theme.xaml`, the motion gate and curves (MotionSettings, MotionCurves), ReadoutBar,
+  SlidingTabBar, TransitionHost, RevealHost, AmbientBackground, FluxDialog + MessageDialog,
+  SettingsView, DialogService, `ITaskbarList3` progress, and `SettingsService` / `ByteFormat` /
+  `TimeFormat` (still in the `Flux.Ui.*` namespaces, so the settings file stays compatible with
+  the WPF apps).
+- **FluxCast.WinUI / FluxRead.WinUI** — app-specific views/VMs/App.xaml.cs. Both shells navigate in
+  code-behind: WinUI has no implicit DataTemplate-by-type, so WPF's ShellViewModel + typed templates
+  have no twin. FluxRead's `Interop/` holds the Win32 capture, click, DPI, hotkey, region-overlay and
+  window-placement helpers (Windows-specific code stays out of FluxCore).
+  `FluxRead.WinUI/PORT-NOTES.md` records every WinUI mechanism that replaced a WPF one, and the traps
+  found on the way — read it before touching theming, dialogs, animation or interop.
 
 ## Key mechanisms
 
-- **Live theming (no restart):** theme brushes bind their `Color` via DynamicResource to Color
-  tokens; ThemeService swaps the tokens. Never mutate brushes in place — BAML freezes them.
-  Both apps default to the System theme.
+- **Live theming (no restart):** `ThemeDictionaries` + `ElementTheme` on the window root — no
+  ThemeService and no token swapping. A second Window inherits neither the theme nor the dialogs,
+  so copy `RequestedTheme` over. Both apps default to the System theme.
 - **Motion gating:** MotionSettings (shared singleton, app resource `"MotionSettings"`) gates
-  ALL animation — user preference AND `SystemParameters.ClientAreaAnimation`. Declarative
-  animations use MultiTriggers on the attached `controls:Motion.Enabled` with an animated and
-  an instant branch. The reduce-motion setting is a performance/accessibility feature; describe
-  it only in those terms everywhere (code, commits, docs, UI strings).
-- **Taskbar progress:** a TaskbarProgress singleton (app resource `"TaskbarProgress"`) drives
-  each Window's TaskbarItemInfo.
+  ALL animation — user preference AND `UISettings.AnimationsEnabled`. Animations are written in
+  code with Storyboards; a layout property (Width/Height) needs `EnableDependentAnimation`, a
+  `TranslateTransform` does not. The reduce-motion setting is a performance/accessibility feature;
+  describe it only in those terms everywhere (code, commits, docs, UI strings).
+- **Taskbar progress:** `Interop/TaskbarProgress` talks to `ITaskbarList3` directly (no
+  TaskbarItemInfo in WinUI), attached once to the shell HWND.
+- **Pixel-exact presentation:** the presenter sets `Stretch="None"` and sizes the image to
+  `pixelWidth / XamlRoot.RasterizationScale`, recomputed on `SizeChanged`. Never let WinUI resample
+  a frame — it blurs the tile edges the decoder reads; too-large frames warn instead of scaling.
 - **Format params ride in frame 0.** `FrameLayout` is parametric (grid, tile px, bits/tile);
   `PaletteGenerator.Generate(count, kind)` derives the palette so no colour list crosses the wire.
   Frame 0 is always `FrameLayout.Default` + cube corners — the bootstrap anchor, never user-driven.
@@ -103,9 +104,11 @@ working for everyone.
   new settings reuses the compressed payload. The wire still carries one combined signature.
 - **Capture-loop correctness:** the loop confirms a Next click worked by the decoded frame id
   incrementing — never a timer. Skipped frames are gap-recovered, not lost.
-- **Dialogs:** never give a MessageDialog button `IsCancel="True"` — it closes the window instantly
-  and races the close animation; route buttons through the animated `CloseWith`. Close-during-cast
-  is a `confirmClose` veto passed into `WindowChromeAnimator.Attach`, not a second Closing handler.
+- **Dialogs:** every dialog is a `ContentDialog` drawing its own buttons (the stock
+  Primary/Close buttons stretch across the command space and `DefaultButton` overwrites the style),
+  shown through `DialogService`, which serialises them — WinUI allows one open at a time — on the
+  active window's `XamlRoot`. Re-point that root while the shell is hidden behind the mini window,
+  or the dialog never appears.
 - External 7-Zip (`7z.exe`) is preferred for compression; falls back to bundled SharpCompress.
   Both apps declare Per-Monitor-V2 DPI awareness so screen coordinates are physical pixels.
 
@@ -113,5 +116,5 @@ working for everyone.
 
 - Minimal comments: at most one short line, only for a non-obvious "why". Clear names instead
   of comments (see CODING_GUIDELINES.md for naming).
-- Keep FluxCore platform-neutral; UI/orchestration lives in the apps and Flux.Ui.
+- Keep FluxCore platform-neutral; UI/orchestration lives in the apps and Flux.Ui.WinUI.
 - Commit only when explicitly asked.

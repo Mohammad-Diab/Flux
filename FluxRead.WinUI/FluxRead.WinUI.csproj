@@ -6,13 +6,18 @@
 		<TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
 		<RootNamespace>FluxRead.WinUI</RootNamespace>
 		<ApplicationManifest>app.manifest</ApplicationManifest>
+		<ApplicationIcon>Assets\AppIcon.ico</ApplicationIcon>
 		<Platforms>x64</Platforms>
 		<RuntimeIdentifier>win-x64</RuntimeIdentifier>
 		<UseWinUI>true</UseWinUI>
 		<Nullable>enable</Nullable>
 		<ImplicitUsings>enable</ImplicitUsings>
-		<!-- Unpackaged, self-contained: launches as a plain exe like the WPF apps, and needs no
-		     machine-wide Windows App Runtime install. -->
+		<Version>0.10.0-beta</Version>
+		<Product>Flux</Product>
+		<Authors>Mohammad Diab</Authors>
+		<Description>FluxRead — receiver for Flux, an optical data channel (screen capture + computer-vision decode).</Description>
+		<!-- Unpackaged, self-contained: launches as a plain exe, and needs no machine-wide
+		     Windows App Runtime install. -->
 		<WindowsPackageType>None</WindowsPackageType>
 		<WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
 		<SelfContained>true</SelfContained>
@@ -27,19 +32,12 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<ProjectReference Include="..\FluxCore\FluxCore.csproj" />
-		<ProjectReference Include="..\Flux.Ui.WinUI\Flux.Ui.WinUI.csproj" />
+		<Content Include="Assets\AppIcon.ico" CopyToOutputDirectory="PreserveNewest" />
 	</ItemGroup>
 
-	<!-- The decode pipeline and pause gate carry no WPF dependency, so the spike shares the source
-	     rather than forking it. They move to a neutral project if the port goes ahead. -->
 	<ItemGroup>
-		<Compile Include="..\FluxRead\Services\DecodePipelineService.cs" Link="Services\DecodePipelineService.cs" />
-		<Compile Include="..\FluxRead\Services\PauseGate.cs" Link="Services\PauseGate.cs" />
-		<!-- Interop that is pure P/Invoke or WinRT: shared as-is, only the WPF-typed pieces were rewritten. -->
-		<Compile Include="..\FluxRead\Interop\NativeMethods.cs" Link="Interop\NativeMethods.cs" />
-		<Compile Include="..\FluxRead\Interop\MouseClicker.cs" Link="Interop\MouseClicker.cs" />
-		<Compile Include="..\FluxRead\Interop\OcrNextLocator.cs" Link="Interop\OcrNextLocator.cs" />
+		<ProjectReference Include="..\FluxCore\FluxCore.csproj" />
+		<ProjectReference Include="..\Flux.Ui.WinUI\Flux.Ui.WinUI.csproj" />
 	</ItemGroup>
 
 </Project>

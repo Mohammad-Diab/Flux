@@ -21,11 +21,4 @@
 		<ProjectReference Include="..\FluxCore\FluxCore.csproj" />
 	</ItemGroup>
 
-	<!-- Shared with the WPF apps so both read and write the same settings.json, and format text alike. -->
-	<ItemGroup>
-		<Compile Include="..\Flux.Ui\Services\SettingsService.cs" Link="Services\SettingsService.cs" />
-		<Compile Include="..\Flux.Ui\ByteFormat.cs" Link="ByteFormat.cs" />
-		<Compile Include="..\Flux.Ui\TimeFormat.cs" Link="TimeFormat.cs" />
-	</ItemGroup>
-
 </Project>

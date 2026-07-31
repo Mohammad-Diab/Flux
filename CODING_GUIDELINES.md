@@ -1,6 +1,7 @@
 ﻿# Coding Rules and Engineering Guidelines
 
-Applies to projects: `FluxCore`, `Flux.Ui`, `FluxCast`, `FluxRead` (.NET 10, WPF).
+Applies to projects: `FluxCore`, `Flux.Ui.WinUI`, `FluxCast.WinUI`, `FluxRead.WinUI`
+(.NET 10, WinUI 3).
 
 ---
 
