@@ -14,6 +14,7 @@ using FluxCore.Imaging;
 using FluxCore.Transfer;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Windows.Storage.Pickers;
 using WinRT.Interop;
@@ -32,6 +33,7 @@ public sealed partial class MainWindow : Window
     private RecentCastsView? _historyScreen;
     private bool _isSettingsOpen;
     private int _lastNavIndex;
+    private bool _closeConfirmed;
 
     /// <summary>Gets the root directory for encode sessions.</summary>
     public static string SessionRoot { get; } = Path.Combine(
@@ -62,7 +64,36 @@ public sealed partial class MainWindow : Window
         _dialogs.XamlRootSource = () => Content?.XamlRoot;
 
         _settingsView = new SettingsView(App.Services.GetRequiredService<SettingsViewModel>());
+        AppWindow.Closing += OnClosing;
         ShowSetup();
+    }
+
+    // A Closing handler cannot await, so an in-progress cast vetoes the first close, then closes
+    // itself once the prompt comes back confirmed.
+    private void OnClosing(AppWindow sender, AppWindowClosingEventArgs args)
+    {
+        if (_closeConfirmed || ClosePrompt() is not { } prompt)
+            return;
+
+        args.Cancel = true;
+        _ = ConfirmThenCloseAsync(prompt.Title, prompt.Message);
+    }
+
+    private (string Title, string Message)? ClosePrompt() => _castScreen switch
+    {
+        EncodeProgressView => ("Stop encoding?",
+            "Frames are still being generated. Close FluxCast and discard this cast?"),
+        PresenterView => ("End cast?", "A cast is in progress. Close FluxCast?"),
+        _ => null,
+    };
+
+    private async Task ConfirmThenCloseAsync(string title, string message)
+    {
+        if (!await _dialogs.ConfirmAsync(title, message, destructive: true))
+            return;
+
+        _closeConfirmed = true;
+        Close();
     }
 
     /// <summary>Applies the saved appearance preference; System defers to Windows.</summary>
