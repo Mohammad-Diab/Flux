@@ -93,6 +93,11 @@ here, so verify the returned rectangle by hand before wiring the capture loop to
   `ReceivedItemsView` is cards over an `ItemsControl`, exactly as in WPF.
 - Icon glyphs stay vector `Path`s throughout (Segoe MDL2 is tofu here). Note `Path` clips anything at
   negative coordinates, so keep the geometry inside a 0-origin box.
+  - **Correction (2026-07-31):** a `FontIcon` renders fine — the title-bar gear (`&#xE713;`) and back
+    arrow (`&#xE72B;`) draw correctly from WinUI's default `Segoe Fluent Icons`. What was tofu was
+    setting `FontFamily="Segoe MDL2 Assets"` on a `TextBlock`, as the WPF styles did. Use `FontIcon`
+    for stock glyphs; keep vector `Path`s where the shape is the brand's own (the mark, the
+    empty-state and file/folder icons).
 - ~~The pill tab style is only half of a tab bar~~ — **closed.** `Controls/SlidingTabBar.cs` is ported and
   the checked label reads correctly in both themes. Carries the WPF fix from `7f7c120`: the pill follows
   whichever tab is *checked*, not the event source.
@@ -109,7 +114,7 @@ here, so verify the returned rectangle by hand before wiring the capture loop to
 - ContentDialog's open/close scale-and-fade is a `VisualTransition` in the stock template, so the motion
   gate clears the template root's transitions in `OnApplyTemplate` (`Views/FluxDialog`).
 - ~~Not yet attempted, the expensive part of the real port~~ — **all landed since:** `TransitionHost`
-  (minus the genie), `RevealHost`, `AmbientBackground`, `MiniCaptureWindow` and the rest of
+  (the genie included), `RevealHost`, `AmbientBackground`, `MiniCaptureWindow` and the rest of
   `Theme.xaml`. `WindowChromeAnimator` turned out to be unnecessary (see Motion and polish).
 
 ## Interop
@@ -144,8 +149,22 @@ they did. The rest was rewritten:
 - **`TransitionHost` needs no Composition.** WPF snapshotted the outgoing page into a `VisualBrush`
   because it could; WinUI can simply keep both real pages on two layers and animate them. The only rule
   is that a page lives in one tree at a time, so it must leave the incoming presenter before the
-  outgoing one can show it. **The genie is dropped** — its 120-strip warp would need a
-  `CompositionVisualSurface` per strip, and the zoom-slide covers settings open/close well enough.
+  outgoing one can show it.
+- ~~The genie is dropped — its 120-strip warp would need a `CompositionVisualSurface` per strip~~ —
+  **wrong, and now closed.** WPF's own snapshot was a `RenderTargetBitmap`, which WinUI has; no
+  Composition is involved. One sheet is captured and each strip shows it shifted and clipped, so the
+  warp costs a single bitmap. The traps, all three found the hard way:
+  - **`RenderTargetBitmap` captures an element's *drawn* bounds, not its layout slot**, and the size
+    arguments scale those bounds to fill the surface. A page inset by a `Margin` therefore comes back
+    cropped of its margin and stretched to fill — the stretched, left-shifted sheet. Give the presenter
+    a brush (`Transparent` is enough) so its drawn bounds are the slot, then ask for exactly the slot.
+    The argument-less overload is no escape: it returns the drawn bounds as its own size.
+  - **Measure after the shell's own layout change, not before.** Opening settings collapses the tab
+    strip, which grows this host — but only on the next pass, which lands mid-`await`. `UpdateLayout()`
+    before reading `ActualWidth`/`ActualHeight`, or the sheet is captured at one size and laid out at
+    another. Without it the size guard in `BuildStrips` rejected every sheet and the genie silently
+    never played.
+  - A `SizeChanged` mid-warp still aborts to the live page: a captured sheet cannot follow a resize.
 - `Timeline.DesiredFrameRate` does not exist, and the ambient drift does not miss it: it animates
   `TranslateTransform`, which runs on the compositor rather than the UI thread.
 - No `TaskbarItemInfo`. `Interop/TaskbarProgress` calls `ITaskbarList3` directly — declare the
