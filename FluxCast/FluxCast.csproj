@@ -1,0 +1,43 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<OutputType>WinExe</OutputType>
+		<TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+		<TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
+		<RootNamespace>FluxCast</RootNamespace>
+		<ApplicationManifest>app.manifest</ApplicationManifest>
+		<ApplicationIcon>Assets\AppIcon.ico</ApplicationIcon>
+		<Platforms>x64</Platforms>
+		<RuntimeIdentifier>win-x64</RuntimeIdentifier>
+		<UseWinUI>true</UseWinUI>
+		<Nullable>enable</Nullable>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Version>0.10.0-beta</Version>
+		<Product>Flux</Product>
+		<Authors>Mohammad Diab</Authors>
+		<Description>FluxCast — sender for Flux, an optical data channel (renders files as error-corrected on-screen frames).</Description>
+		<!-- Unpackaged, self-contained: launches as a plain exe. -->
+		<WindowsPackageType>None</WindowsPackageType>
+		<WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
+		<SelfContained>true</SelfContained>
+		<EnableMsixTooling>false</EnableMsixTooling>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<PackageReference Include="Microsoft.WindowsAppSDK" Version="1.7.250606001" />
+		<PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.26100.1742" />
+		<PackageReference Include="CommunityToolkit.Mvvm" Version="8.3.2" />
+		<PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.0" />
+		<PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.0" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<Content Include="Assets\AppIcon.ico" CopyToOutputDirectory="PreserveNewest" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\FluxCore\FluxCore.csproj" />
+		<ProjectReference Include="..\Flux.Ui\Flux.Ui.csproj" />
+	</ItemGroup>
+
+</Project>

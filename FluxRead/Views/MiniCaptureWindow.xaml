@@ -1,0 +1,177 @@
+<Window
+    x:Class="FluxRead.Views.MiniCaptureWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="using:Flux.Ui.Controls">
+
+    <Grid Background="{ThemeResource BgBrush}" RowDefinitions="48,*">
+
+        <Grid.Resources>
+            <Style x:Key="MiniIconButton" TargetType="Button">
+                <Setter Property="Width" Value="34"/>
+                <Setter Property="Height" Value="34"/>
+                <Setter Property="Padding" Value="0"/>
+                <Setter Property="Foreground" Value="{ThemeResource CaptionGlyphBrush}"/>
+                <Setter Property="Background" Value="Transparent"/>
+                <Setter Property="BorderThickness" Value="0"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Button">
+                            <Border x:Name="Bd" CornerRadius="9" Background="Transparent">
+                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                <VisualStateManager.VisualStateGroups>
+                                    <VisualStateGroup x:Name="CommonStates">
+                                        <VisualState x:Name="Normal"/>
+                                        <VisualState x:Name="PointerOver">
+                                            <VisualState.Setters>
+                                                <Setter Target="Bd.Background" Value="{ThemeResource HoverOverlayBrush}"/>
+                                            </VisualState.Setters>
+                                        </VisualState>
+                                        <VisualState x:Name="Pressed">
+                                            <VisualState.Setters>
+                                                <Setter Target="Bd.Opacity" Value="0.7"/>
+                                            </VisualState.Setters>
+                                        </VisualState>
+                                    </VisualStateGroup>
+                                </VisualStateManager.VisualStateGroups>
+                            </Border>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+        </Grid.Resources>
+
+        <!-- Header doubles as the drag region; WinUI keeps its interactive children clickable. -->
+        <Grid x:Name="HeaderBar" Grid.Row="0" Margin="14,0,8,0">
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Spacing="10">
+                <Border Width="20" Height="20" CornerRadius="6" Background="{StaticResource AccentGradient}"/>
+                <TextBlock Text="FluxRead" VerticalAlignment="Center" FontSize="13" FontWeight="SemiBold"
+                           Foreground="{ThemeResource TextPrimaryBrush}"/>
+                <TextBlock Text="{x:Bind Vm.StateText, Mode=OneWay}" VerticalAlignment="Center" FontSize="12"
+                           Foreground="{ThemeResource TextSecondaryBrush}" TextTrimming="CharacterEllipsis"/>
+            </StackPanel>
+            <!-- Clear of the native close button, which owns the right edge of the drag region. -->
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center"
+                        Margin="0,0,46,0">
+                <Button x:Name="CollapseButton" Style="{StaticResource MiniIconButton}" Click="OnToggleSize">
+                    <Grid>
+                        <Path x:Name="ChevronUpIcon" Data="M1,7 L6,2 L11,7" StrokeThickness="1.6"
+                              StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round"
+                              Stroke="{ThemeResource CaptionGlyphBrush}"/>
+                        <Path x:Name="ChevronDownIcon" Data="M1,3 L6,8 L11,3" StrokeThickness="1.6"
+                              StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round"
+                              Stroke="{ThemeResource CaptionGlyphBrush}"/>
+                    </Grid>
+                </Button>
+            </StackPanel>
+        </Grid>
+
+        <Grid Grid.Row="1">
+            <!-- Expanded: full status + last-frame preview. -->
+            <Grid x:Name="ExpandedBody" Margin="18,2,18,18" RowDefinitions="Auto,*,Auto">
+                <StackPanel Grid.Row="0">
+                    <StackPanel Orientation="Horizontal" Spacing="3">
+                        <TextBlock Text="{x:Bind Vm.ReceivedCountText, Mode=OneWay}" FontSize="24" FontWeight="Bold"
+                                   Foreground="{ThemeResource TextPrimaryBrush}" VerticalAlignment="Center"/>
+                        <TextBlock Text="{x:Bind Vm.ProgressText, Mode=OneWay}" Style="{StaticResource SubtleText}"
+                                   VerticalAlignment="Center"/>
+                        <TextBlock Text="{x:Bind Vm.RetryText, Mode=OneWay}" Style="{StaticResource SubtleText}"
+                                   Foreground="{StaticResource AccentBrush}" FontWeight="SemiBold"
+                                   VerticalAlignment="Center" Margin="8,0,0,0"/>
+                        <TextBlock Text="{x:Bind Vm.MissingCountText, Mode=OneWay}" Style="{StaticResource SubtleText}"
+                                   Foreground="{StaticResource DangerBrush}" FontWeight="SemiBold"
+                                   VerticalAlignment="Center" Margin="8,0,0,0"/>
+                    </StackPanel>
+                    <!-- ReadoutBar, not ProgressBar: the stock track height is baked in. -->
+                    <controls:ReadoutBar Height="8" Margin="0,8,0,0" BarCornerRadius="4"
+                                         Fraction="{x:Bind Vm.TransferProgress, Mode=OneWay}"
+                                         TrackBrush="{ThemeResource SurfaceAltBrush}"
+                                         FillBrush="{StaticResource AccentGradientHorizontal}"/>
+                    <StackPanel Orientation="Horizontal" Margin="0,6,0,0" Spacing="14">
+                        <TextBlock Text="{x:Bind Vm.ElapsedText, Mode=OneWay}" Style="{StaticResource SubtleText}" FontSize="11"/>
+                        <TextBlock Text="{x:Bind Vm.SpeedText, Mode=OneWay}" Style="{StaticResource SubtleText}" FontSize="11"/>
+                        <TextBlock Text="{x:Bind Vm.EtaText, Mode=OneWay}" Style="{StaticResource SubtleText}" FontSize="11"/>
+                    </StackPanel>
+                    <TextBlock Text="{x:Bind Vm.QualityText, Mode=OneWay}" Style="{StaticResource SubtleText}"
+                               FontSize="11" Margin="0,6,0,0" TextWrapping="Wrap"/>
+                    <controls:ReadoutBar Height="8" Margin="0,10,0,0" BarCornerRadius="4"
+                                         Fraction="{x:Bind Vm.DecompressProgress, Mode=OneWay}"
+                                         TrackBrush="{ThemeResource SurfaceAltBrush}"
+                                         FillBrush="{StaticResource AccentGradientHorizontal}"
+                                         Visibility="{x:Bind Vm.IsDecompressing, Mode=OneWay}"/>
+                </StackPanel>
+
+                <Grid Grid.Row="1" Margin="0,12,0,0">
+                    <Border Style="{StaticResource Card}" Padding="6">
+                        <Image Source="{x:Bind Vm.LastThumbnail, Mode=OneWay}" Stretch="Uniform"/>
+                    </Border>
+                    <Border Background="{ThemeResource SurfaceAltBrush}" CornerRadius="8" Padding="12"
+                            Visibility="{x:Bind Vm.IsRecovering, Mode=OneWay}">
+                        <StackPanel>
+                            <TextBlock Text="{x:Bind Vm.RecoveryTitle, Mode=OneWay}" FontSize="13" FontWeight="SemiBold"
+                                       Foreground="{ThemeResource TextPrimaryBrush}"/>
+                            <TextBlock Text="{x:Bind Vm.RecoveryHint, Mode=OneWay}" Style="{StaticResource SubtleText}"
+                                       FontSize="11" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                            <ScrollViewer MaxHeight="80" VerticalScrollBarVisibility="Auto" Margin="0,8,0,0">
+                                <TextBlock Text="{x:Bind Vm.MissingFramesText, Mode=OneWay}" FontFamily="Consolas"
+                                           FontSize="12" Foreground="{StaticResource AccentBrush}" TextWrapping="Wrap"/>
+                            </ScrollViewer>
+                        </StackPanel>
+                    </Border>
+                </Grid>
+
+                <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,14,0,0" Spacing="10">
+                    <Button Content="{x:Bind Vm.PauseLabel, Mode=OneWay}" Style="{StaticResource SecondaryButton}"
+                            MinWidth="96" Click="OnPauseToggle"/>
+                    <Button Content="Cancel" Style="{StaticResource DangerButton}" MinWidth="96" Click="OnCancel"/>
+                </StackPanel>
+            </Grid>
+
+            <!-- Collapsed: one row — a tall readout bar, then pause and stop. -->
+            <Grid x:Name="CollapsedBody" Margin="16,2,16,16" Visibility="Collapsed"
+                  ColumnDefinitions="*,Auto,Auto">
+                <controls:ReadoutBar Grid.Column="0" Height="56" BarCornerRadius="10"
+                                     Fraction="{x:Bind Vm.TransferProgress, Mode=OneWay}"
+                                     TrackBrush="{ThemeResource SurfaceAltBrush}"
+                                     FillBrush="#557C5CFF">
+                    <controls:ReadoutBar.Readout>
+                        <StackPanel Margin="14,0" VerticalAlignment="Center">
+                            <StackPanel Orientation="Horizontal" Spacing="3">
+                                <TextBlock Text="{x:Bind Vm.ReceivedCountText, Mode=OneWay}" FontSize="16"
+                                           FontWeight="Bold" Foreground="{ThemeResource TextPrimaryBrush}"
+                                           VerticalAlignment="Center"/>
+                                <TextBlock Text="{x:Bind Vm.ProgressText, Mode=OneWay}" Style="{StaticResource SubtleText}"
+                                           VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                                <TextBlock Text="{x:Bind Vm.RetryText, Mode=OneWay}" FontSize="11" FontWeight="SemiBold"
+                                           Foreground="{StaticResource AccentBrush}" VerticalAlignment="Center" Margin="8,0,0,0"/>
+                                <TextBlock Text="{x:Bind Vm.MissingCountText, Mode=OneWay}" FontSize="11" FontWeight="SemiBold"
+                                           Foreground="{StaticResource DangerBrush}" VerticalAlignment="Center" Margin="8,0,0,0"/>
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" Margin="0,3,0,0" Spacing="12">
+                                <TextBlock Text="{x:Bind Vm.ElapsedText, Mode=OneWay}" Style="{StaticResource SubtleText}" FontSize="11"/>
+                                <TextBlock Text="{x:Bind Vm.SpeedText, Mode=OneWay}" Style="{StaticResource SubtleText}" FontSize="11"/>
+                                <TextBlock Text="{x:Bind Vm.EtaText, Mode=OneWay}" Style="{StaticResource SubtleText}" FontSize="11"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </controls:ReadoutBar.Readout>
+                </controls:ReadoutBar>
+
+                <Button Grid.Column="1" Style="{StaticResource MiniIconButton}" Width="44" Height="44"
+                        Margin="10,0,0,0" Click="OnPauseToggle"
+                        AutomationProperties.Name="{x:Bind Vm.PauseLabel, Mode=OneWay}">
+                    <Grid>
+                        <Path x:Name="PauseIcon" Data="M1,1 L4,1 L4,11 L1,11 Z M8,1 L11,1 L11,11 L8,11 Z"
+                              Fill="{ThemeResource CaptionGlyphBrush}"/>
+                        <Path x:Name="PlayIcon" Data="M2,1 L11,6 L2,11 Z"
+                              Fill="{ThemeResource CaptionGlyphBrush}"/>
+                    </Grid>
+                </Button>
+                <Button Grid.Column="2" Style="{StaticResource MiniIconButton}" Width="44" Height="44"
+                        Margin="8,0,0,0" Click="OnCancel" ToolTipService.ToolTip="Stop"
+                        AutomationProperties.Name="Stop">
+                    <Path Data="M1,1 L11,1 L11,11 L1,11 Z" Fill="{StaticResource DangerBrush}"/>
+                </Button>
+            </Grid>
+        </Grid>
+    </Grid>
+</Window>

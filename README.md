@@ -22,7 +22,7 @@ It is two Windows apps in WinUI 3 over a shared, UI-agnostic core:
   frame id incremented → repeat → reassemble → verify → save.
 - **FluxCore** — shared library: frame format, Reed–Solomon ECC, palette/rendering, capture-
   tolerant decoder, compression, hashing, and the optical capture-loop state machine. No UI or
-  Win32 dependencies; the Windows-specific capture code lives in FluxRead.WinUI.
+  Win32 dependencies; the Windows-specific capture code lives in FluxRead.
 
 Targets **.NET 10** (Windows). Windows-only by design — screen capture and the automated
 frame-advance (via the OS input APIs) are Windows-specific.
@@ -205,10 +205,10 @@ coordinates are physical pixels.
   decoder, assembler), `Compression/`, `Hashing/`, `Transfer/` (content signature, encode service,
   capture loop).
 - `FluxCore.Tests/` — 365 xUnit tests incl. the golden round-trip and degradation matrix.
-- `Flux.Ui.WinUI/` — the shared interface library: the single theme, transitions, motion and theme
+- `Flux.Ui/` — the shared interface library: the single theme, transitions, motion and theme
   settings, dialogs, and the views both apps embed.
-- `FluxCast.WinUI/` — the sender (setup / progress / presenter / recent casts).
-- `FluxRead.WinUI/` — the receiver (folder-decode + live optical + received items; `Interop/` holds
+- `FluxCast/` — the sender (setup / progress / presenter / recent casts).
+- `FluxRead/` — the receiver (folder-decode + live optical + received items; `Interop/` holds
   the Win32 capture, click, DPI, hotkey, region-overlay and window-placement helpers).
   `PORT-NOTES.md` there records the WinUI mechanisms and the traps behind them.
 

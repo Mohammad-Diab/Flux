@@ -10,16 +10,17 @@ registration). Grid, tile size, and palette are per-transfer settings carried in
 adopted by the receiver; 160×90 tiles at 8 px / 256 colors is the default and the frame-0
 bootstrap anchor. Two WinUI 3 apps on .NET 10 over shared libraries:
 
-- **FluxCast.WinUI** — sender: file/folder → 7z compress → encode to frames → present one frame
+- **FluxCast** — sender: file/folder → 7z compress → encode to frames → present one frame
   at a time with manual Back/Next navigation.
-- **FluxRead.WinUI** — receiver: folder-decode, plus live optical capture (screen region → decode →
+- **FluxRead** — receiver: folder-decode, plus live optical capture (screen region → decode →
   click Next → verify frame-id advanced → reassemble → SHA-256 verify → save).
 
-The original WPF pair (`FluxCast`, `FluxRead`, `Flux.Ui`) was **removed on this branch** once the
-WinUI apps stood alone; recover it from `master` or from the last commit that had it. A 0.10.0-beta
-Release publish of both WPF apps is kept in `dist/wpf-reference-0.10.0-beta/` as the proven sender
-and receiver until the WinUI apps complete an optical transfer on real hardware — they read the same
-settings and session files, so a transfer can still move between the two stacks.
+These three projects were WPF until this branch, and the WinUI ports carried a `.WinUI` suffix while
+both stacks coexisted. The WPF apps are now **removed** and the suffix dropped, so `FluxCast`,
+`FluxRead` and `Flux.Ui` mean the WinUI ones — `master` still has the WPF originals under the same
+names. A 0.10.0-beta Release publish of the WPF pair is kept in `dist/wpf-reference-0.10.0-beta/`
+as the proven sender and receiver until these apps complete an optical transfer on real hardware;
+it reads the same settings and session files, so a transfer can still cross between the two.
 
 See README.md for the full frame-format spec, ECC-level table, and usage flow.
 
@@ -50,7 +51,7 @@ dotnet test FluxCore.Tests/FluxCore.Tests.csproj --filter "FullyQualifiedName~So
   codec — Medium ECC must survive JPEG q85, High q75, at 0.8×/1.0×/1.25× scale.
 - Pre-existing/expected warnings: CompressionService CS8604 and a few FluxCore.Tests nullable
   warnings. Don't chase them; don't add new ones.
-- Kill leftover FluxCast.WinUI/FluxRead.WinUI processes before rebuilding, or the Flux.Ui.WinUI.dll
+- Kill leftover FluxCast/FluxRead processes before rebuilding, or the Flux.Ui.dll
   copy fails (file locked).
 - UI smoke-test procedure: launch the exe, screenshot the window (GetWindowRect + CopyFromScreen),
   then kill it. No synthesized clicks — never send global mouse clicks that could land on other
@@ -65,17 +66,17 @@ dotnet test FluxCore.Tests/FluxCore.Tests.csproj --filter "FullyQualifiedName~So
   assembler), `Compression/`, `Hashing/`, `Transfer/` (content signature, encode service,
   capture-loop state machine).
 - **FluxCore.Tests** — xUnit.
-- **Flux.Ui.WinUI** — the shared UI library, namespaces `Flux.Ui.WinUI.*`. Holds the ONE
+- **Flux.Ui** — the shared UI library, namespaces `Flux.Ui.*`. Holds the ONE
   `Theme.xaml`, the motion gate and curves (MotionSettings, MotionCurves), ReadoutBar,
   SlidingTabBar, TransitionHost, RevealHost, AmbientBackground, FluxDialog + MessageDialog,
   SettingsView, DialogService, `ITaskbarList3` progress, and `SettingsService` / `ByteFormat` /
-  `TimeFormat` (still in the `Flux.Ui.*` namespaces, so the settings file stays compatible with
-  the WPF apps).
-- **FluxCast.WinUI / FluxRead.WinUI** — app-specific views/VMs/App.xaml.cs. Both shells navigate in
+  `TimeFormat` — settings.json keeps the WPF app's format, so the reference build in `dist/` reads
+  and writes the same file.
+- **FluxCast / FluxRead** — app-specific views/VMs/App.xaml.cs. Both shells navigate in
   code-behind: WinUI has no implicit DataTemplate-by-type, so WPF's ShellViewModel + typed templates
   have no twin. FluxRead's `Interop/` holds the Win32 capture, click, DPI, hotkey, region-overlay and
   window-placement helpers (Windows-specific code stays out of FluxCore).
-  `FluxRead.WinUI/PORT-NOTES.md` records every WinUI mechanism that replaced a WPF one, and the traps
+  `FluxRead/PORT-NOTES.md` records every WinUI mechanism that replaced a WPF one, and the traps
   found on the way — read it before touching theming, dialogs, animation or interop.
 
 ## Key mechanisms
@@ -116,5 +117,5 @@ dotnet test FluxCore.Tests/FluxCore.Tests.csproj --filter "FullyQualifiedName~So
 
 - Minimal comments: at most one short line, only for a non-obvious "why". Clear names instead
   of comments (see CODING_GUIDELINES.md for naming).
-- Keep FluxCore platform-neutral; UI/orchestration lives in the apps and Flux.Ui.WinUI.
+- Keep FluxCore platform-neutral; UI/orchestration lives in the apps and Flux.Ui.
 - Commit only when explicitly asked.
