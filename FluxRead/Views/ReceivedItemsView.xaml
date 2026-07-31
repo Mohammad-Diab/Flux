@@ -1,4 +1,4 @@
-<UserControl
+﻿<UserControl
     x:Class="FluxRead.Views.ReceivedItemsView"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -14,13 +14,10 @@
 
         <StackPanel Grid.Row="1" VerticalAlignment="Center" HorizontalAlignment="Center"
                     Visibility="{x:Bind Vm.IsEmpty, Mode=OneWay}">
-            <!-- Segoe MDL2 renders as tofu here, so the empty-state glyph is a vector inbox arrow. -->
-            <Path Data="M20,2 L20,24 M12,16 L20,24 L28,16 M2,28 L2,38 L38,38 L38,28"
-                  Stroke="{ThemeResource TextSecondaryBrush}" StrokeThickness="2.5"
-                  StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round"
-                  HorizontalAlignment="Center"/>
+            <FontIcon Glyph="&#xE896;" FontSize="42" Foreground="{ThemeResource TextSecondaryBrush}"
+                      HorizontalAlignment="Center"/>
             <TextBlock Text="Nothing received yet" FontSize="16" FontWeight="SemiBold"
-                       Foreground="{ThemeResource TextPrimaryBrush}" HorizontalAlignment="Center" Margin="0,16,0,0"/>
+                       Foreground="{ThemeResource TextPrimaryBrush}" HorizontalAlignment="Center" Margin="0,12,0,0"/>
             <TextBlock Text="Receive a transfer and it'll show up here." Style="{StaticResource SubtleText}"
                        HorizontalAlignment="Center" Margin="0,4,0,0"/>
         </StackPanel>

@@ -1,4 +1,4 @@
-<UserControl
+﻿<UserControl
     x:Class="FluxCast.Views.RecentCastsView"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -14,11 +14,10 @@
 
         <StackPanel Grid.Row="1" VerticalAlignment="Center" HorizontalAlignment="Center"
                     Visibility="{x:Bind Vm.IsEmpty, Mode=OneWay}">
-            <!-- Segoe MDL2 renders as tofu here, so the empty-state glyph is a vector frame stack. -->
-            <Path Data="M4,8 L28,8 L28,26 L4,26 Z M10,2 L34,2 L34,20" Stroke="{ThemeResource TextSecondaryBrush}"
-                  StrokeThickness="2.5" StrokeLineJoin="Round" HorizontalAlignment="Center"/>
+            <FontIcon Glyph="&#xE81C;" FontSize="42" Foreground="{ThemeResource TextSecondaryBrush}"
+                      HorizontalAlignment="Center"/>
             <TextBlock Text="No casts yet" FontSize="16" FontWeight="SemiBold"
-                       Foreground="{ThemeResource TextPrimaryBrush}" HorizontalAlignment="Center" Margin="0,16,0,0"/>
+                       Foreground="{ThemeResource TextPrimaryBrush}" HorizontalAlignment="Center" Margin="0,12,0,0"/>
             <TextBlock Text="Cast a file or folder and it'll show up here." Style="{StaticResource SubtleText}"
                        HorizontalAlignment="Center" Margin="0,4,0,0"/>
         </StackPanel>
@@ -80,9 +79,7 @@
                                             Padding="12,8" ToolTipService.ToolTip="More actions"
                                             AutomationProperties.Name="More actions">
                                         <Button.Content>
-                                            <Path Data="M2,7 A1.6,1.6 0 1 1 2,7.01 M7,7 A1.6,1.6 0 1 1 7,7.01 M12,7 A1.6,1.6 0 1 1 12,7.01"
-                                                  Stroke="{ThemeResource TextPrimaryBrush}" StrokeThickness="3.2"
-                                                  StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
+                                            <FontIcon Glyph="&#xE712;" FontSize="14"/>
                                         </Button.Content>
                                         <Button.Flyout>
                                             <MenuFlyout Placement="Bottom">
@@ -112,7 +109,7 @@
                                Foreground="{ThemeResource TextPrimaryBrush}" TextTrimming="CharacterEllipsis"/>
                     <TextBlock Text="The frame PNGs are copied into a subfolder you choose, alongside a manifest with a per-frame checksum."
                                Style="{StaticResource SubtleText}" FontSize="13" TextWrapping="Wrap" Margin="0,8,0,0"/>
-                    <CheckBox Content="Compress to a single .7z (maximum compression)"
+                    <CheckBox Content="Compress to a single .7z (maximum compression)" FontSize="13"
                               IsChecked="{x:Bind Vm.CompressExport, Mode=TwoWay}" Margin="0,18,0,0"/>
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,24,0,0" Spacing="10">
                         <Button Content="Cancel" Style="{StaticResource SecondaryButton}"

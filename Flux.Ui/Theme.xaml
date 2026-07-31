@@ -1,6 +1,7 @@
-<ResourceDictionary
+﻿<ResourceDictionary
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="using:Flux.Ui.Controls">
 
     <!-- ThemeDictionaries retint live from ElementTheme, so no WPF-style token swapping is needed. -->
     <ResourceDictionary.ThemeDictionaries>
@@ -11,6 +12,7 @@
             <SolidColorBrush x:Key="SurfaceBrush" Color="#181C27"/>
             <SolidColorBrush x:Key="SurfaceAltBrush" Color="#1F2434"/>
             <SolidColorBrush x:Key="HoverOverlayBrush" Color="#14FFFFFF"/>
+            <SolidColorBrush x:Key="HoverOverlayStrongBrush" Color="#22FFFFFF"/>
             <SolidColorBrush x:Key="AltRowBrush" Color="#0DFFFFFF"/>
             <SolidColorBrush x:Key="CaptionGlyphBrush" Color="#D6DAE3"/>
             <!-- ContentDialog retints through its own keys; a flat top overlay makes the card one surface. -->
@@ -36,6 +38,7 @@
             <SolidColorBrush x:Key="SurfaceBrush" Color="#FFFFFF"/>
             <SolidColorBrush x:Key="SurfaceAltBrush" Color="#EEF1F6"/>
             <SolidColorBrush x:Key="HoverOverlayBrush" Color="#0F000000"/>
+            <SolidColorBrush x:Key="HoverOverlayStrongBrush" Color="#1F000000"/>
             <SolidColorBrush x:Key="AltRowBrush" Color="#08000000"/>
             <SolidColorBrush x:Key="CaptionGlyphBrush" Color="#2A3140"/>
             <StaticResource x:Key="ContentDialogBackground" ResourceKey="SurfaceBrush"/>
@@ -82,6 +85,7 @@
     </LinearGradientBrush>
 
     <x:Double x:Key="ControlHeight">40</x:Double>
+    <x:Double x:Key="CtaHeight">46</x:Double>
 
     <!-- Dialogs size to their content and draw their own buttons, so the stock floor and rule go. -->
     <x:Double x:Key="ContentDialogMinHeight">0</x:Double>
@@ -93,7 +97,7 @@
 
     <Style x:Key="HeadingText" TargetType="TextBlock">
         <Setter Property="FontFamily" Value="Segoe UI Variable Display, Segoe UI"/>
-        <Setter Property="FontSize" Value="28"/>
+        <Setter Property="FontSize" Value="22"/>
         <Setter Property="FontWeight" Value="SemiBold"/>
         <Setter Property="Foreground" Value="{ThemeResource TextPrimaryBrush}"/>
     </Style>
@@ -126,7 +130,7 @@
                                 BorderBrush="{TemplateBinding BorderBrush}"
                                 BorderThickness="{TemplateBinding BorderThickness}"/>
                         <Border x:Name="Overlay" CornerRadius="10" Background="#FFFFFF" Opacity="0"/>
-                        <ContentPresenter
+                        <ContentPresenter x:Name="Label"
                             Margin="{TemplateBinding Padding}"
                             HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
                             VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
@@ -156,10 +160,24 @@
                                     </Storyboard>
                                 </VisualState>
                                 <VisualState x:Name="Disabled">
+                                    <!-- Flat muted fill reads as disabled better than a faded gradient. -->
                                     <Storyboard>
-                                        <DoubleAnimation Storyboard.TargetName="Root"
-                                                         Storyboard.TargetProperty="Opacity"
-                                                         To="0.45" Duration="0"/>
+                                        <ObjectAnimationUsingKeyFrames Storyboard.TargetName="Bd"
+                                                                       Storyboard.TargetProperty="Background">
+                                            <DiscreteObjectKeyFrame KeyTime="0" Value="{ThemeResource SurfaceAltBrush}"/>
+                                        </ObjectAnimationUsingKeyFrames>
+                                        <ObjectAnimationUsingKeyFrames Storyboard.TargetName="Bd"
+                                                                       Storyboard.TargetProperty="BorderBrush">
+                                            <DiscreteObjectKeyFrame KeyTime="0" Value="{ThemeResource FluxBorderBrush}"/>
+                                        </ObjectAnimationUsingKeyFrames>
+                                        <ObjectAnimationUsingKeyFrames Storyboard.TargetName="Bd"
+                                                                       Storyboard.TargetProperty="BorderThickness">
+                                            <DiscreteObjectKeyFrame KeyTime="0" Value="1"/>
+                                        </ObjectAnimationUsingKeyFrames>
+                                        <ObjectAnimationUsingKeyFrames Storyboard.TargetName="Label"
+                                                                       Storyboard.TargetProperty="Foreground">
+                                            <DiscreteObjectKeyFrame KeyTime="0" Value="{ThemeResource TextSecondaryBrush}"/>
+                                        </ObjectAnimationUsingKeyFrames>
                                     </Storyboard>
                                 </VisualState>
                             </VisualStateGroup>
@@ -171,8 +189,13 @@
     </Style>
 
     <Style x:Key="PrimaryButton" TargetType="Button" BasedOn="{StaticResource FluxButtonBase}">
-        <Setter Property="Background" Value="{StaticResource AccentGradientHorizontal}"/>
+        <!-- The call to action is the diagonal gradient at the taller CTA metric, as in WPF; the
+             horizontal variant belongs to the tab pill and the brand wordmark. -->
+        <Setter Property="Background" Value="{StaticResource AccentGradient}"/>
         <Setter Property="Foreground" Value="White"/>
+        <Setter Property="FontSize" Value="15"/>
+        <Setter Property="Padding" Value="26,0"/>
+        <Setter Property="MinHeight" Value="{StaticResource CtaHeight}"/>
     </Style>
 
     <Style x:Key="SecondaryButton" TargetType="Button" BasedOn="{StaticResource FluxButtonBase}">
@@ -192,6 +215,7 @@
         <Setter Property="BorderBrush" Value="{ThemeResource FluxBorderBrush}"/>
         <Setter Property="BorderThickness" Value="1"/>
         <Setter Property="CornerRadius" Value="14"/>
+        <Setter Property="Padding" Value="16"/>
     </Style>
 
     <Style x:Key="DialogHintText" TargetType="TextBlock" BasedOn="{StaticResource SubtleText}">
@@ -268,8 +292,12 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="RadioButton">
-                    <Border x:Name="Bd" Padding="16,9" CornerRadius="9" Background="Transparent">
-                        <TextBlock x:Name="Txt" Text="{TemplateBinding Content}"
+                    <!-- Two state groups must never write the same property: leaving PointerOver clears
+                         its value and takes the Checked one with it. Hover owns a layer, CheckStates the
+                         label; CheckStates hides that layer so only an unchecked tab shows hover. -->
+                    <Grid Background="Transparent">
+                        <Border x:Name="Hover" CornerRadius="9" Background="Transparent"/>
+                        <TextBlock x:Name="Txt" Text="{TemplateBinding Content}" Margin="16,9"
                                    FontSize="{TemplateBinding FontSize}"
                                    FontWeight="{TemplateBinding FontWeight}"
                                    HorizontalAlignment="Center" VerticalAlignment="Center"
@@ -279,34 +307,39 @@
                                 <VisualState x:Name="Normal"/>
                                 <VisualState x:Name="PointerOver">
                                     <Storyboard>
-                                        <ObjectAnimationUsingKeyFrames Storyboard.TargetName="Bd"
+                                        <ObjectAnimationUsingKeyFrames Storyboard.TargetName="Hover"
                                                                        Storyboard.TargetProperty="Background">
                                             <DiscreteObjectKeyFrame KeyTime="0" Value="{ThemeResource HoverOverlayBrush}"/>
-                                        </ObjectAnimationUsingKeyFrames>
-                                        <ObjectAnimationUsingKeyFrames Storyboard.TargetName="Txt"
-                                                                       Storyboard.TargetProperty="Foreground">
-                                            <DiscreteObjectKeyFrame KeyTime="0" Value="{ThemeResource TextPrimaryBrush}"/>
                                         </ObjectAnimationUsingKeyFrames>
                                     </Storyboard>
                                 </VisualState>
                             </VisualStateGroup>
                             <VisualStateGroup x:Name="CheckStates">
-                                <VisualState x:Name="Unchecked"/>
+                                <VisualState x:Name="Unchecked">
+                                    <Storyboard>
+                                        <ObjectAnimationUsingKeyFrames Storyboard.TargetName="Txt"
+                                                                       Storyboard.TargetProperty="Foreground">
+                                            <DiscreteObjectKeyFrame KeyTime="0" Value="{ThemeResource TextSecondaryBrush}"/>
+                                        </ObjectAnimationUsingKeyFrames>
+                                        <DoubleAnimation Storyboard.TargetName="Hover"
+                                                         Storyboard.TargetProperty="Opacity"
+                                                         To="1" Duration="0"/>
+                                    </Storyboard>
+                                </VisualState>
                                 <VisualState x:Name="Checked">
                                     <Storyboard>
                                         <ObjectAnimationUsingKeyFrames Storyboard.TargetName="Txt"
                                                                        Storyboard.TargetProperty="Foreground">
                                             <DiscreteObjectKeyFrame KeyTime="0" Value="White"/>
                                         </ObjectAnimationUsingKeyFrames>
-                                        <ObjectAnimationUsingKeyFrames Storyboard.TargetName="Bd"
-                                                                       Storyboard.TargetProperty="Background">
-                                            <DiscreteObjectKeyFrame KeyTime="0" Value="Transparent"/>
-                                        </ObjectAnimationUsingKeyFrames>
+                                        <DoubleAnimation Storyboard.TargetName="Hover"
+                                                         Storyboard.TargetProperty="Opacity"
+                                                         To="0" Duration="0"/>
                                     </Storyboard>
                                 </VisualState>
                             </VisualStateGroup>
                         </VisualStateManager.VisualStateGroups>
-                    </Border>
+                    </Grid>
                 </ControlTemplate>
             </Setter.Value>
         </Setter>
@@ -346,16 +379,66 @@
 
     <Style x:Key="DisplayText" TargetType="TextBlock">
         <Setter Property="FontFamily" Value="Segoe UI Variable Display, Segoe UI"/>
-        <Setter Property="FontSize" Value="40"/>
+        <Setter Property="FontSize" Value="30"/>
         <Setter Property="FontWeight" Value="Bold"/>
         <Setter Property="Foreground" Value="{ThemeResource TextPrimaryBrush}"/>
     </Style>
 
-    <Style x:Key="BrandTitle" TargetType="TextBlock">
-        <Setter Property="FontFamily" Value="Segoe UI Variable Display, Segoe UI"/>
-        <Setter Property="FontSize" Value="17"/>
-        <Setter Property="FontWeight" Value="SemiBold"/>
-        <Setter Property="Foreground" Value="{ThemeResource TextPrimaryBrush}"/>
+    <Style x:Key="BrandTitle" TargetType="TextBlock" BasedOn="{StaticResource DisplayText}">
+        <Setter Property="FontSize" Value="46"/>
+        <Setter Property="HorizontalAlignment" Value="Center"/>
+        <Setter Property="TextAlignment" Value="Center"/>
+        <Setter Property="Foreground" Value="{StaticResource AccentGradientHorizontal}"/>
+    </Style>
+
+    <!-- Title-bar glyph button: the native caption buttons own the right edge, these sit beside them. -->
+    <Style x:Key="CaptionIconButton" TargetType="Button">
+        <Setter Property="Width" Value="38"/>
+        <Setter Property="Height" Value="32"/>
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="Foreground" Value="{ThemeResource TextSecondaryBrush}"/>
+        <Setter Property="Padding" Value="0"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <!-- States carry instant values and the transitions time them, so the motion gate
+                         can strip the transitions and leave the look intact. -->
+                    <Grid controls:Motion.GateTransitions="True">
+                        <Border x:Name="Bd" CornerRadius="6" Opacity="0"
+                                Background="{ThemeResource HoverOverlayStrongBrush}"/>
+                        <ContentPresenter x:Name="Glyph" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                          Content="{TemplateBinding Content}"
+                                          Foreground="{TemplateBinding Foreground}"/>
+                        <VisualStateManager.VisualStateGroups>
+                            <VisualStateGroup x:Name="CommonStates">
+                                <VisualStateGroup.Transitions>
+                                    <VisualTransition GeneratedDuration="0:0:0.12"/>
+                                </VisualStateGroup.Transitions>
+                                <VisualState x:Name="Normal"/>
+                                <VisualState x:Name="PointerOver">
+                                    <VisualState.Setters>
+                                        <Setter Target="Bd.Opacity" Value="1"/>
+                                        <Setter Target="Glyph.Foreground" Value="{ThemeResource TextPrimaryBrush}"/>
+                                    </VisualState.Setters>
+                                </VisualState>
+                                <VisualState x:Name="Pressed">
+                                    <VisualState.Setters>
+                                        <Setter Target="Bd.Opacity" Value="1"/>
+                                        <Setter Target="Glyph.Foreground" Value="{ThemeResource TextPrimaryBrush}"/>
+                                    </VisualState.Setters>
+                                </VisualState>
+                                <VisualState x:Name="Disabled">
+                                    <VisualState.Setters>
+                                        <Setter Target="Glyph.Opacity" Value="0.4"/>
+                                    </VisualState.Setters>
+                                </VisualState>
+                            </VisualStateGroup>
+                        </VisualStateManager.VisualStateGroups>
+                    </Grid>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
     </Style>
 
 </ResourceDictionary>

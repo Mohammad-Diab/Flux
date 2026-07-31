@@ -106,7 +106,13 @@ public class SlidingTabBar : Panel
         {
             double segment = finalSize.Width / tabs.Count;
             for (int i = 0; i < tabs.Count; i++)
+            {
+                // A tab whose style leaves it left-aligned would keep its content width and sit at the
+                // start of its slot, leaving gaps — an equal share means filling the slot.
+                if (tabs[i] is FrameworkElement tab)
+                    tab.HorizontalAlignment = HorizontalAlignment.Stretch;
                 tabs[i].Arrange(new Rect(i * segment, 0, segment, finalSize.Height));
+            }
         }
         else
         {

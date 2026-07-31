@@ -11,11 +11,11 @@
             <TextBlock Text="APPEARANCE" Style="{StaticResource SubtleText}" FontSize="11" FontWeight="SemiBold"/>
             <Border Style="{StaticResource Card}" Padding="4" HorizontalAlignment="Left" CornerRadius="11">
                 <controls:SlidingTabBar Stretch="True" PillCornerRadius="7" Width="330">
-                    <RadioButton Content="System" GroupName="Theme" Style="{StaticResource TabRadio}"
+                    <RadioButton Content="System" GroupName="Theme" Style="{StaticResource SegmentToggle}"
                                  IsChecked="{x:Bind Vm.IsSystem, Mode=TwoWay}"/>
-                    <RadioButton Content="Light" GroupName="Theme" Style="{StaticResource TabRadio}"
+                    <RadioButton Content="Light" GroupName="Theme" Style="{StaticResource SegmentToggle}"
                                  IsChecked="{x:Bind Vm.IsLight, Mode=TwoWay}"/>
-                    <RadioButton Content="Dark" GroupName="Theme" Style="{StaticResource TabRadio}"
+                    <RadioButton Content="Dark" GroupName="Theme" Style="{StaticResource SegmentToggle}"
                                  IsChecked="{x:Bind Vm.IsDark, Mode=TwoWay}"/>
                 </controls:SlidingTabBar>
             </Border>
