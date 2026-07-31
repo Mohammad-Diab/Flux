@@ -69,7 +69,23 @@ public sealed partial class MainWindow : Window
 
         _settingsView = new SettingsView(App.Services.GetRequiredService<SettingsViewModel>());
         AppWindow.Closing += OnClosing;
+
+        // Measure the genie's funnel point while the gear is still visible, as the WPF shell did.
+        SettingsButton.Loaded += (_, _) => UpdateGenieTarget();
+        SettingsButton.SizeChanged += (_, _) => UpdateGenieTarget();
+        if (Content is FrameworkElement root)
+            root.SizeChanged += (_, _) => UpdateGenieTarget();
+
         ShowSetup();
+    }
+
+    private void UpdateGenieTarget()
+    {
+        if (SettingsButton.ActualWidth <= 0 || ContentHost is null)
+            return;
+
+        ContentHost.GenieTarget = SettingsButton.TransformToVisual(ContentHost).TransformPoint(
+            new Windows.Foundation.Point(SettingsButton.ActualWidth / 2, SettingsButton.ActualHeight / 2));
     }
 
     // A Closing handler cannot await, so an in-progress cast vetoes the first close, then closes
@@ -232,6 +248,10 @@ public sealed partial class MainWindow : Window
         int navIndex = _isSettingsOpen ? 2 : HistoryTab.IsChecked == true ? 1 : 0;
         ContentHost.SlideFrom = navIndex >= _lastNavIndex ? 36 : -36;
         ContentHost.ZoomSlide = navIndex != _lastNavIndex && navIndex != 2 && _lastNavIndex != 2;
+        // Settings pours out of the gear and is sucked back into it; tabs keep the slide.
+        ContentHost.Genie = navIndex == 2 && _lastNavIndex != 2 ? GenieMode.Opening
+            : _lastNavIndex == 2 && navIndex != 2 ? GenieMode.Closing
+            : GenieMode.None;
         _lastNavIndex = navIndex;
 
         ContentHost.Page = _isSettingsOpen ? _settingsView

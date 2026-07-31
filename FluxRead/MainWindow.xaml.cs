@@ -65,7 +65,22 @@ public sealed partial class MainWindow : Window
         _dialogs.PickSaveFileAsync = PickSaveTargetAsync;
         _dialogs.XamlRootSource = () => Content?.XamlRoot;
 
+        // Measure the genie's funnel point while the gear is still visible, as the WPF shell did.
+        SettingsButton.Loaded += (_, _) => UpdateGenieTarget();
+        SettingsButton.SizeChanged += (_, _) => UpdateGenieTarget();
+        if (Content is FrameworkElement root)
+            root.SizeChanged += (_, _) => UpdateGenieTarget();
+
         ModeHost.Page = _folderView;
+    }
+
+    private void UpdateGenieTarget()
+    {
+        if (SettingsButton.ActualWidth <= 0 || ModeHost is null)
+            return;
+
+        ModeHost.GenieTarget = SettingsButton.TransformToVisual(ModeHost).TransformPoint(
+            new Windows.Foundation.Point(SettingsButton.ActualWidth / 2, SettingsButton.ActualHeight / 2));
     }
 
     private async void OnTabChanged(object sender, RoutedEventArgs e)
@@ -85,8 +100,9 @@ public sealed partial class MainWindow : Window
         ShowActiveTab();
     }
 
-    private void ShowActiveTab()
+    private void ShowActiveTab(GenieMode genie = GenieMode.None)
     {
+        ModeHost.Genie = genie;
         if (ReceivedTab.IsChecked == true)
             _receivedVm.Refresh();
 
@@ -163,6 +179,8 @@ public sealed partial class MainWindow : Window
     private void OnOpenSettings(object sender, RoutedEventArgs e)
     {
         ModeHost.SlideFrom = 36;
+        // Settings pours out of the gear, and is sucked back into it on the way out.
+        ModeHost.Genie = GenieMode.Opening;
         ModeHost.Page = _settingsView;
         TabStrip.Visibility = Visibility.Collapsed;
         SettingsButton.Visibility = Visibility.Collapsed;
@@ -175,6 +193,6 @@ public sealed partial class MainWindow : Window
         SettingsButton.Visibility = Visibility.Visible;
         BackButton.Visibility = Visibility.Collapsed;
         ModeHost.SlideFrom = -36;
-        ShowActiveTab();
+        ShowActiveTab(GenieMode.Closing);
     }
 }
