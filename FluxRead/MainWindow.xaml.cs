@@ -182,7 +182,10 @@ public sealed partial class MainWindow : Window
         // Settings pours out of the gear, and is sucked back into it on the way out.
         ModeHost.Genie = GenieMode.Opening;
         ModeHost.Page = _settingsView;
-        TabStrip.Visibility = Visibility.Collapsed;
+        // Blank, not collapsed: collapsing hands the strip's row height to the content row, and the
+        // page visibly climbs on the way in and drops on the way out.
+        TabStrip.Opacity = 0;
+        TabStrip.IsHitTestVisible = false;
         SettingsButton.Visibility = Visibility.Collapsed;
         BackButton.Visibility = Visibility.Visible;
     }
@@ -194,7 +197,8 @@ public sealed partial class MainWindow : Window
         void Once(object? _, EventArgs __)
         {
             ModeHost.Settled -= Once;
-            TabStrip.Visibility = Visibility.Visible;
+            TabStrip.Opacity = 1;
+            TabStrip.IsHitTestVisible = true;
             SettingsButton.Visibility = Visibility.Visible;
             BackButton.Visibility = Visibility.Collapsed;
         }

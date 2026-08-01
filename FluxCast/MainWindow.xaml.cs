@@ -244,7 +244,12 @@ public sealed partial class MainWindow : Window
 
         void ApplyChrome()
         {
-            TabStrip.Visibility = _isSettingsOpen || presenting ? Visibility.Collapsed : Visibility.Visible;
+            // Settings leaves the strip's row occupied but blank. Collapsing it hands that height to the
+            // content row, and the page visibly climbs on the way in and drops on the way out. The
+            // presenter is the one screen that really wants the space.
+            TabStrip.Visibility = presenting ? Visibility.Collapsed : Visibility.Visible;
+            TabStrip.Opacity = _isSettingsOpen ? 0 : 1;
+            TabStrip.IsHitTestVisible = !_isSettingsOpen;
             SettingsButton.Visibility = _isSettingsOpen || presenting ? Visibility.Collapsed : Visibility.Visible;
             BackButton.Visibility = _isSettingsOpen || presenting ? Visibility.Visible : Visibility.Collapsed;
         }
