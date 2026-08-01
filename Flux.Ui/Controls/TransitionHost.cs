@@ -23,15 +23,14 @@ public class TransitionHost : Grid
     private const double ZoomOut = 0.94;
 
     // Genie ("magic lamp") — the strip warp toward the trigger, ported from the WPF control.
-    private static readonly TimeSpan GenieOpen = TimeSpan.FromMilliseconds(340);
-    private static readonly TimeSpan GenieClose = TimeSpan.FromMilliseconds(280);
+    private static readonly TimeSpan GenieOpen = TimeSpan.FromMilliseconds(480);
+    private static readonly TimeSpan GenieClose = TimeSpan.FromMilliseconds(400);
     private const double GenieStagger = 0.55;    // how strongly trigger-side strips lead (taffy stretch)
     private const double GenieStripPx = 6;       // target strip width; thinner = smoother curve
     private const int GenieMaxStrips = 120;
     private const double GenieBendPhase = 0.45;  // portion of the timeline the funnel bend ramps in over
     private const double GenieNeckRatio = 0.06;  // strip height at the neck, as a fraction of full
     private const double GenieAboveContent = 74; // the trigger sits this far above the content top
-    private static readonly TimeSpan FrameInterval = TimeSpan.FromMilliseconds(16);
 
     private readonly ContentPresenter _incoming = new();
     private readonly ContentPresenter _outgoing = new() { IsHitTestVisible = false, Opacity = 0 };
@@ -42,7 +41,7 @@ public class TransitionHost : Grid
     private readonly Canvas _genieLayer = new() { IsHitTestVisible = false, Visibility = Visibility.Collapsed };
     private readonly List<Strip> _strips = [];
     private Storyboard? _running;
-    private DispatcherTimer? _genieTimer;
+    private EventHandler<object>? _genieFrame;
     private double _genieWidth, _genieHeight, _genieTargetX, _genieTargetY;
     private int _generation;
 
@@ -61,7 +60,7 @@ public class TransitionHost : Grid
             // RenderTargetBitmap captures an element's drawn bounds, not its layout slot, so a page
             // whose content is inset by a margin would be snapshotted cropped and stretched to fill.
             // A brush over the whole presenter makes those bounds the slot.
-            presenter.Background = new SolidColorBrush(Microsoft.UI.Colors.Transparent);
+            presenter.Background = TransparentBrush();
             presenter.RenderTransformOrigin = new Point(0.5, 0.5);
             presenter.RenderTransform = new TransformGroup { Children = { scale, slide } };
             Children.Add(presenter);
@@ -77,12 +76,24 @@ public class TransitionHost : Grid
         };
     }
 
+    private static Brush TransparentBrush() => new SolidColorBrush(Microsoft.UI.Colors.Transparent);
+
+    private static Brush? OpaqueBackground() =>
+        Application.Current.Resources.TryGetValue("BgBrush", out var brush) ? brush as Brush : null;
+
+    private void DetachGenieFrame()
+    {
+        if (_genieFrame is null)
+            return;
+        CompositionTarget.Rendering -= _genieFrame;
+        _genieFrame = null;
+    }
+
     /// <summary>Drops a running warp and puts the live page back, whatever state it was left in.</summary>
     private void AbortGenie()
     {
         _generation++;
-        _genieTimer?.Stop();
-        _genieTimer = null;
+        DetachGenieFrame();
         ClearStrips();
         _incoming.Opacity = 1;
     }
@@ -200,52 +211,92 @@ public class TransitionHost : Grid
 
         if (mode == GenieMode.Closing)
         {
+            // The incoming presenter is the later child, so it draws over the outgoing one: leaving it
+            // visible across the await shows the destination fully formed before the page has warped
+            // away — the flicker on Back. Keep the page being left on top, and the destination dark
+            // until the strips are seated over it.
             _outgoing.Content = previous;
-            _incoming.Content = next;
             _outgoing.Opacity = 1;
+            Canvas.SetZIndex(_outgoing, 1);
+
+            _incoming.Content = next;
+            _incoming.Opacity = 0;
 
             var shot = await SnapshotAsync(_outgoing);
             if (generation != _generation)
+            {
+                Canvas.SetZIndex(_outgoing, 0);
                 return;
+            }
 
-            _outgoing.Opacity = 0;
-            _outgoing.Content = null;
+            // RunGenie seats frame 0 — the sheet at identity, covering the page — before anything else
+            // becomes visible, so the destination is never seen bare.
             if (shot is not null && BuildStrips(shot.Value.Image, shot.Value.Width, shot.Value.Height))
+            {
                 RunGenie(0, 1, GenieClose, generation);
+                _incoming.Opacity = 1;
+                Canvas.SetZIndex(_outgoing, 0);
+                _outgoing.Opacity = 0;
+                _outgoing.Content = null;
+            }
             else
+            {
+                Canvas.SetZIndex(_outgoing, 0);
+                _outgoing.Opacity = 0;
+                _outgoing.Content = null;
                 AbortGenie();
+            }
             return;
         }
+
+        // WPF's snapshot was synchronous, so the page it captured was never presented. RenderAsync
+        // yields, which would show the destination fully formed for a frame before the warp starts —
+        // the flicker. Keep the page being left on top until the sheet is in hand.
+        _outgoing.Content = previous;
+        _outgoing.Opacity = 1;
+        // A page paints no background of its own, so the cover needs one or the incoming page shows
+        // straight through it and both are on screen at once.
+        _outgoing.Background = OpaqueBackground() ?? _outgoing.Background;
+        Canvas.SetZIndex(_outgoing, 1);
 
         _incoming.Content = next;
         var opening = await SnapshotAsync(_incoming);
         if (generation != _generation)
-            return;
-
-        _outgoing.Content = null;
-        if (opening is null || !BuildStrips(opening.Value.Image, opening.Value.Width, opening.Value.Height))
         {
-            _incoming.Opacity = 1;
+            Canvas.SetZIndex(_outgoing, 0);
+            _outgoing.Background = TransparentBrush();
             return;
         }
 
+        // Hide the live page and seat the strips before dropping the cover, so no frame falls between.
         _incoming.Opacity = 0;
-        RunGenie(1, 0, GenieOpen, generation, revealIncoming: true);
+        bool built = opening is not null
+            && BuildStrips(opening.Value.Image, opening.Value.Width, opening.Value.Height);
+        if (built)
+            RunGenie(1, 0, GenieOpen, generation, revealIncoming: true);
+        else
+            _incoming.Opacity = 1;
+
+        Canvas.SetZIndex(_outgoing, 0);
+        _outgoing.Opacity = 0;
+        _outgoing.Content = null;
+        _outgoing.Background = TransparentBrush();
     }
 
     private void RunGenie(double from, double to, TimeSpan duration, int generation, bool revealIncoming = false)
     {
         ApplyGenieFrame(from);
 
-        // WinUI cannot animate a plain double into a callback, so the warp is stepped by hand — the
-        // same 16 ms tween the mini capture window uses for its resize.
+        // WinUI cannot animate a plain double into a callback, so the warp is stepped by hand. It steps
+        // on CompositionTarget.Rendering, not a DispatcherTimer: a 16 ms timer drifts against the
+        // refresh and lands two frames' worth of warp in one, which is the judder WPF never had.
         var clock = Stopwatch.StartNew();
-        var timer = new DispatcherTimer { Interval = FrameInterval };
-        timer.Tick += (_, _) =>
+        EventHandler<object>? onFrame = null;
+        onFrame = (_, _) =>
         {
             if (generation != _generation)
             {
-                timer.Stop();
+                CompositionTarget.Rendering -= onFrame;
                 return;   // a newer Swap already cleared the strips and reset the presenters
             }
 
@@ -255,13 +306,14 @@ public class TransitionHost : Grid
             if (t < 1)
                 return;
 
-            timer.Stop();
+            CompositionTarget.Rendering -= onFrame;
+            _genieFrame = null;
             ClearStrips();
             if (revealIncoming)
                 _incoming.Opacity = 1;
         };
-        _genieTimer = timer;
-        timer.Start();
+        _genieFrame = onFrame;
+        CompositionTarget.Rendering += onFrame;
     }
 
     private bool BuildStrips(ImageSource snapshot, double width, double height)
@@ -292,20 +344,28 @@ public class TransitionHost : Grid
         }
 
         int count = (int)Math.Round(Math.Clamp(_genieWidth / GenieStripPx, 16, GenieMaxStrips));
-        double stripW = _genieWidth / count;
-        var background = Application.Current.Resources.TryGetValue("BgBrush", out var brush) ? brush as Brush : null;
+
+        // Strips are semi-transparent as they travel, so WPF's overdraw would double-blend every seam
+        // into a visible bar. They abut exactly instead, on whole-physical-pixel boundaries so no
+        // strip edge lands mid-pixel and gets antialiased into a hairline.
+        double raster = XamlRoot?.RasterizationScale ?? 1;
+        var edges = new double[count + 1];
+        for (int i = 0; i <= count; i++)
+            edges[i] = Math.Round(i * _genieWidth * raster / count) / raster;
 
         for (int i = 0; i < count; i++)
         {
-            double left = i * stripW;
-            double drawWidth = stripW + 0.75;   // slight overdraw hides sub-pixel seams between strips
+            double left = edges[i];
+            double stripW = edges[i + 1] - left;
+            double drawWidth = stripW;
             var scale = new ScaleTransform();
             var translate = new TranslateTransform();
 
             // WinUI brushes have no viewbox, so each strip is the whole page shifted left and clipped.
+            // Nothing but the sheet goes in here: an opaque fill per strip would cover the neighbour's
+            // overdraw instead of blending with it, and that hard band is what reads as visible bars.
+            // The background is baked into the sheet at capture time, as WPF's snapshot did it.
             var sheet = new Grid { Width = _genieWidth, Height = _genieHeight };
-            if (background is not null)
-                sheet.Children.Add(new Border { Background = background });
             sheet.Children.Add(new Image
             {
                 Source = snapshot,
@@ -371,6 +431,13 @@ public class TransitionHost : Grid
         if (w <= 0 || h <= 0)
             return null;
 
+        // The page's own surface is transparent over the ambient background, so the sheet is composited
+        // over an opaque fill — otherwise a closing sheet is see-through and the destination shows
+        // through the warp. WPF drew this rectangle into the bitmap; here the presenter's own brush
+        // carries it, which doubles as the bounds fix above.
+        var restore = presenter.Background;
+        presenter.Background = OpaqueBackground() ?? restore;
+
         var bitmap = new RenderTargetBitmap();
         try
         {
@@ -383,13 +450,16 @@ public class TransitionHost : Grid
         {
             return null;   // a page that cannot be rendered just falls back to no transition
         }
+        finally
+        {
+            presenter.Background = restore;
+        }
         return (bitmap, w, h);
     }
 
     private void StopGenie()
     {
-        _genieTimer?.Stop();
-        _genieTimer = null;
+        DetachGenieFrame();
         ClearStrips();
         _incoming.Opacity = 1;
     }
