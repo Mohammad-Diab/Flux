@@ -96,7 +96,17 @@ public class TransitionHost : Grid
         DetachGenieFrame();
         ClearStrips();
         _incoming.Opacity = 1;
+        RaiseSettled();   // a warp abandoned by a resize must not leave the chrome waiting
     }
+
+    /// <summary>
+    /// Raised once a page change has finished animating, or straight away when it does not animate.
+    /// A shell whose chrome changes with the page waits for this: restoring it up front snaps the tab
+    /// strip back while the old page is still on screen, and the content jumps as the rows resize.
+    /// </summary>
+    public event EventHandler? Settled;
+
+    private void RaiseSettled() => Settled?.Invoke(this, EventArgs.Empty);
 
     /// <summary>The page on show. Assigning a different value plays the transition.</summary>
     public static readonly DependencyProperty PageProperty = DependencyProperty.Register(
@@ -164,6 +174,7 @@ public class TransitionHost : Grid
             _outgoing.Content = null;
             _incoming.Content = next;
             Reset();
+            RaiseSettled();
             return;
         }
 
@@ -198,6 +209,7 @@ public class TransitionHost : Grid
         {
             _outgoing.Content = null;
             Reset();
+            RaiseSettled();
         };
         _running = board;
         board.Begin();
@@ -311,6 +323,7 @@ public class TransitionHost : Grid
             ClearStrips();
             if (revealIncoming)
                 _incoming.Opacity = 1;
+            RaiseSettled();
         };
         _genieFrame = onFrame;
         CompositionTarget.Rendering += onFrame;

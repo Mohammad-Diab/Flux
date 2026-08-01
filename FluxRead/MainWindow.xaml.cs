@@ -189,9 +189,17 @@ public sealed partial class MainWindow : Window
 
     private void OnCloseSettings(object sender, RoutedEventArgs e)
     {
-        TabStrip.Visibility = Visibility.Visible;
-        SettingsButton.Visibility = Visibility.Visible;
-        BackButton.Visibility = Visibility.Collapsed;
+        // The tab strip takes its row back and shoves the content down, so it waits for the warp to
+        // finish — restoring it up front lands it while the settings page is still on screen.
+        void Once(object? _, EventArgs __)
+        {
+            ModeHost.Settled -= Once;
+            TabStrip.Visibility = Visibility.Visible;
+            SettingsButton.Visibility = Visibility.Visible;
+            BackButton.Visibility = Visibility.Collapsed;
+        }
+
+        ModeHost.Settled += Once;
         ModeHost.SlideFrom = -36;
         ShowActiveTab(GenieMode.Closing);
     }

@@ -240,9 +240,31 @@ public sealed partial class MainWindow : Window
     private void UpdateCurrent()
     {
         bool presenting = !_isSettingsOpen && HistoryTab.IsChecked != true && _castScreen is PresenterView;
-        TabStrip.Visibility = _isSettingsOpen || presenting ? Visibility.Collapsed : Visibility.Visible;
-        SettingsButton.Visibility = _isSettingsOpen || presenting ? Visibility.Collapsed : Visibility.Visible;
-        BackButton.Visibility = _isSettingsOpen || presenting ? Visibility.Visible : Visibility.Collapsed;
+        bool chromeReturning = !_isSettingsOpen && _lastNavIndex == 2;
+
+        void ApplyChrome()
+        {
+            TabStrip.Visibility = _isSettingsOpen || presenting ? Visibility.Collapsed : Visibility.Visible;
+            SettingsButton.Visibility = _isSettingsOpen || presenting ? Visibility.Collapsed : Visibility.Visible;
+            BackButton.Visibility = _isSettingsOpen || presenting ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        // Leaving settings, the tab strip takes its row back and shoves the content down. Doing that up
+        // front lands it while the settings page is still on screen, so it waits for the warp to finish.
+        if (chromeReturning)
+        {
+            void Once(object? _, EventArgs __)
+            {
+                ContentHost.Settled -= Once;
+                ApplyChrome();
+            }
+
+            ContentHost.Settled += Once;
+        }
+        else
+        {
+            ApplyChrome();
+        }
 
         // Cast(0) → History(1) → Settings(2): moving deeper slides in from the right, back from the left.
         int navIndex = _isSettingsOpen ? 2 : HistoryTab.IsChecked == true ? 1 : 0;
