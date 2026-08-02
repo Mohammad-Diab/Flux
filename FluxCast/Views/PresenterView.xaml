@@ -38,7 +38,6 @@
         <!-- The bars follow the theme; only the area around the frame stays dark, to hold the
              viewer's eye and the capture's contrast on the frame itself. -->
         <Border Grid.Row="0" Background="{ThemeResource SurfaceBrush}">
-          <Grid>
             <!-- Next keeps its text label: the receiver's OCR locates that button by the word "Next". -->
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="6">
                 <Button Command="{x:Bind Vm.FirstCommand}" IsTabStop="False" AutomationProperties.Name="First frame"
@@ -111,39 +110,6 @@
                 </Button>
             </StackPanel>
 
-            <!-- A badge rather than a bar: the warning is about the frame being short of room, so it
-                 must not take any. It sits in the chrome, never over the frame, which the receiver
-                 captures. Click to open, not hover — the pointer crosses here on its way to Next. -->
-            <Button x:Name="SizeWarning" Visibility="Collapsed"
-                    HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,18,0"
-                    Width="34" Height="34" Padding="0" CornerRadius="17" BorderThickness="0"
-                    Background="{StaticResource WarningBrush}" Foreground="#FF2A1C00"
-                    AutomationProperties.Name="Frame size warning"
-                    ToolTipService.ToolTip="The frame is below native size — open for detail">
-                <Button.Resources>
-                    <StaticResource x:Key="ButtonBackground" ResourceKey="WarningBrush"/>
-                    <StaticResource x:Key="ButtonBackgroundPointerOver" ResourceKey="WarningBrush"/>
-                    <StaticResource x:Key="ButtonBackgroundPressed" ResourceKey="WarningBrush"/>
-                    <StaticResource x:Key="ButtonForegroundPointerOver" ResourceKey="TextPrimaryBrush"/>
-                    <StaticResource x:Key="ButtonForegroundPressed" ResourceKey="TextPrimaryBrush"/>
-                    <SolidColorBrush x:Key="ButtonBorderBrush" Color="Transparent"/>
-                    <SolidColorBrush x:Key="ButtonBorderBrushPointerOver" Color="Transparent"/>
-                    <SolidColorBrush x:Key="ButtonBorderBrushPressed" Color="Transparent"/>
-                </Button.Resources>
-                <FontIcon Glyph="&#xE7BA;" FontSize="16"/>
-                <Button.Flyout>
-                    <Flyout Placement="Bottom">
-                        <StackPanel MaxWidth="330" Spacing="10">
-                            <TextBlock Text="Window is small" Style="{StaticResource HeadingText}" FontSize="16"/>
-                            <TextBlock TextWrapping="Wrap" Style="{StaticResource SubtleText}"
-                                       Text="The frame is showing below its native size, which costs the receiver detail. Enlarge the window to send it at full size."/>
-                            <Button Content="Got it" Click="OnDismissSizeWarning" HorizontalAlignment="Right"
-                                    Style="{StaticResource SecondaryButton}" MinHeight="34" FontSize="13"/>
-                        </StackPanel>
-                    </Flyout>
-                </Button.Flyout>
-            </Button>
-          </Grid>
         </Border>
 
         <!-- Sized in code-behind: the frame must land on whole device pixels, never be resampled.
@@ -158,9 +124,79 @@
                    ImageOpened="OnFrameOpened" HorizontalAlignment="Center" VerticalAlignment="Center"/>
         </Grid>
 
-        <Border Grid.Row="2" Background="{ThemeResource SurfaceBrush}" Padding="0,7">
+        <!-- Fixed height, so the warning appearing in here costs the frame nothing. -->
+        <Border Grid.Row="2" Height="34" Background="{ThemeResource SurfaceBrush}">
+          <Grid>
             <TextBlock Text="Keep this window still during transfer" FontSize="10.5"
-                       Foreground="{ThemeResource TextSecondaryBrush}" HorizontalAlignment="Center"/>
+                       VerticalAlignment="Center" HorizontalAlignment="Center"
+                       Foreground="{ThemeResource TextSecondaryBrush}"/>
+            <!-- A badge rather than a bar: the warning is about the frame being short of room, so it
+                 must not take any. It sits in the chrome, never over the frame, which the receiver
+                 captures. Click to open, not hover — the pointer crosses here on its way to Next. -->
+            <StackPanel x:Name="SizeWarning" Visibility="Collapsed" Canvas.ZIndex="1"
+                        Orientation="Horizontal" Spacing="9"
+                        HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,14,0">
+              <!-- The badge alone says something is wrong but not what, so a plain line sits beside it;
+                   the numbers behind it are in the flyout. It is laid out over the row rather than in
+                   it, so a narrow window makes it cover the note rather than squeeze it away. -->
+              <TextBlock x:Name="SizeWarningSummary" Text="Window size is too small"
+                         VerticalAlignment="Center" FontSize="11"
+                         Foreground="{ThemeResource TextSecondaryBrush}"/>
+              <Button x:Name="SizeWarningButton"
+                    VerticalAlignment="Center"
+                    Width="22" Height="22" Padding="0" CornerRadius="11" BorderThickness="0"
+                    Background="{StaticResource WarningBrush}" Foreground="#FF2A1C00"
+                    AutomationProperties.Name="Frame size warning"
+                    ToolTipService.ToolTip="The frame is below native size — open for detail">
+                <Button.Resources>
+                    <StaticResource x:Key="ButtonBackground" ResourceKey="WarningBrush"/>
+                    <StaticResource x:Key="ButtonBackgroundPointerOver" ResourceKey="WarningBrush"/>
+                    <StaticResource x:Key="ButtonBackgroundPressed" ResourceKey="WarningBrush"/>
+                    <StaticResource x:Key="ButtonForegroundPointerOver" ResourceKey="TextPrimaryBrush"/>
+                    <StaticResource x:Key="ButtonForegroundPressed" ResourceKey="TextPrimaryBrush"/>
+                    <SolidColorBrush x:Key="ButtonBorderBrush" Color="Transparent"/>
+                    <SolidColorBrush x:Key="ButtonBorderBrushPointerOver" Color="Transparent"/>
+                    <SolidColorBrush x:Key="ButtonBorderBrushPressed" Color="Transparent"/>
+                </Button.Resources>
+                <FontIcon Glyph="&#xE7BA;" FontSize="11"/>
+                <Button.Flyout>
+                    <Flyout Placement="Top" Opening="OnSizeWarningOpening">
+                        <Flyout.FlyoutPresenterStyle>
+                            <Style TargetType="FlyoutPresenter">
+                                <Setter Property="Background" Value="{ThemeResource SurfaceBrush}"/>
+                                <Setter Property="BorderBrush" Value="{ThemeResource FluxBorderBrush}"/>
+                                <Setter Property="BorderThickness" Value="1"/>
+                                <Setter Property="CornerRadius" Value="12"/>
+                                <Setter Property="Padding" Value="18"/>
+                                <Setter Property="MaxWidth" Value="400"/>
+                            </Style>
+                        </Flyout.FlyoutPresenterStyle>
+                        <StackPanel Width="330" Spacing="12">
+                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                <Border Width="26" Height="26" CornerRadius="13"
+                                        Background="{StaticResource WarningBrush}">
+                                    <FontIcon Glyph="&#xE7BA;" FontSize="13" Foreground="#FF2A1C00"/>
+                                </Border>
+                                <TextBlock Text="Window is small" FontSize="16" FontWeight="SemiBold"
+                                           VerticalAlignment="Center"
+                                           Foreground="{ThemeResource TextPrimaryBrush}"/>
+                            </StackPanel>
+                            <TextBlock TextWrapping="Wrap" Style="{StaticResource SubtleText}"
+                                       Text="The frame is drawn below its native size. Shrinking it blunts the tile edges the receiver reads, so a capture may need more retries or fail outright."/>
+                            <!-- The numbers behind the warning, so it is not just an assertion. -->
+                            <Border Background="{ThemeResource SurfaceAltBrush}" CornerRadius="8" Padding="11,9">
+                                <TextBlock x:Name="SizeWarningDetail" TextWrapping="Wrap" FontSize="12"
+                                           LineHeight="18"
+                                           Foreground="{ThemeResource TextSecondaryBrush}"/>
+                            </Border>
+                            <Button Content="Got it" Click="OnDismissSizeWarning" HorizontalAlignment="Right"
+                                    Style="{StaticResource SecondaryButton}" MinHeight="34" FontSize="13"/>
+                        </StackPanel>
+                    </Flyout>
+                </Button.Flyout>
+              </Button>
+            </StackPanel>
+          </Grid>
         </Border>
     </Grid>
 </UserControl>

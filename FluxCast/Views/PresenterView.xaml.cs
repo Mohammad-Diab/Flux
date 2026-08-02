@@ -1,4 +1,4 @@
-using FluxCast.ViewModels;
+﻿using FluxCast.ViewModels;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
@@ -73,7 +73,16 @@ public sealed partial class PresenterView : UserControl
         e.Handled = true;
     }
 
-    private void OnDismissSizeWarning(object sender, RoutedEventArgs e) => SizeWarning.Flyout?.Hide();
+    // The flyout's content is not built until it first opens, so the detail is held and applied there.
+    private string _sizeWarningDetail = "";
+
+    private void OnSizeWarningOpening(object sender, object e)
+    {
+        if (SizeWarningDetail is not null)
+            SizeWarningDetail.Text = _sizeWarningDetail;
+    }
+
+    private void OnDismissSizeWarning(object sender, RoutedEventArgs e) => SizeWarningButton.Flyout?.Hide();
 
     private void OnGotoKeyDown(object sender, KeyRoutedEventArgs e)
     {
@@ -113,6 +122,25 @@ public sealed partial class PresenterView : UserControl
 
         // Below native the frame loses detail the receiver needs, so that is worth saying; above it
         // the frame only gains pixels.
-        SizeWarning.Visibility = tileDevicePixels < tile ? Visibility.Visible : Visibility.Collapsed;
+        bool belowNative = tileDevicePixels < tile;
+        SizeWarning.Visibility = belowNative ? Visibility.Visible : Visibility.Collapsed;
+        if (belowNative)
+        {
+            // Everything in device pixels, and both axes, since either can be the one holding it back.
+            int haveWidth = (int)(availableWidth * raster), haveHeight = (int)(availableHeight * raster);
+            int needWidth = Math.Max(0, frame.PixelWidth - haveWidth);
+            int needHeight = Math.Max(0, frame.PixelHeight - haveHeight);
+            string more = (needWidth, needHeight) switch
+            {
+                (0, 0) => "A little more room would show it at full size.",
+                (> 0, 0) => $"About {needWidth} px more width would show it at full size.",
+                (0, > 0) => $"About {needHeight} px more height would show it at full size.",
+                _ => $"About {needWidth} px more width and {needHeight} px more height would show it at full size.",
+            };
+            _sizeWarningDetail =
+                $"Each tile is {tileDevicePixels} px wide instead of {tile}.\n" +
+                $"Frame is {frame.PixelWidth} × {frame.PixelHeight} px; this window can show " +
+                $"{haveWidth} × {haveHeight} px.\n" + more;
+        }
     }
 }
