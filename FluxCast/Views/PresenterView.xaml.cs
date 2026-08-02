@@ -54,14 +54,11 @@ public sealed partial class PresenterView : UserControl
 
     private void ApplyNativeSize()
     {
+        // Still decoding, so its shape is unknown. Leave the box exactly as it is and wait for
+        // ImageOpened: clearing it lets the frame fall to its natural size for a pass first, which is
+        // a blink on every step. Consecutive frames almost always share a shape, so the old box fits.
         if (FrameImage.Source is not BitmapImage frame || frame.PixelWidth == 0)
-        {
-            // Still decoding, so its shape is unknown: drop the box rather than stretch the new frame
-            // into the old one. ImageOpened sizes it once the dimensions arrive.
-            FrameImage.Width = double.NaN;
-            FrameImage.Height = double.NaN;
             return;
-        }
 
         double raster = XamlRoot?.RasterizationScale ?? 1;
         double availableWidth = FrameArea.ActualWidth, availableHeight = FrameArea.ActualHeight;
