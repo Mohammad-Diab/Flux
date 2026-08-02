@@ -65,22 +65,46 @@ public sealed partial class MainWindow : Window
         _dialogs.PickSaveFileAsync = PickSaveTargetAsync;
         _dialogs.XamlRootSource = () => Content?.XamlRoot;
 
+        ModeHost.AmbientSource = Ambient;
+
         // Measure the genie's funnel point while the gear is still visible, as the WPF shell did.
-        SettingsButton.Loaded += (_, _) => UpdateGenieTarget();
-        SettingsButton.SizeChanged += (_, _) => UpdateGenieTarget();
+        // Its distance from the right edge survives both the gear collapsing and window resizes.
+        SettingsButton.Loaded += (_, _) => MeasureGear();
+        SettingsButton.SizeChanged += (_, _) => MeasureGear();
         if (Content is FrameworkElement root)
-            root.SizeChanged += (_, _) => UpdateGenieTarget();
+        {
+            root.SizeChanged += (_, _) =>
+            {
+                MeasureGear();
+                UpdateGenieTarget();
+            };
+        }
 
         ModeHost.Page = _folderView;
     }
 
-    private void UpdateGenieTarget()
+    private double _gearFromRight = double.NaN, _gearCenterY;
+
+    private void MeasureGear()
     {
-        if (SettingsButton.ActualWidth <= 0 || ModeHost is null)
+        if (Content is not FrameworkElement root || SettingsButton.Visibility == Visibility.Collapsed
+            || SettingsButton.ActualWidth <= 0)
             return;
 
-        ModeHost.GenieTarget = SettingsButton.TransformToVisual(ModeHost).TransformPoint(
+        var center = SettingsButton.TransformToVisual(root).TransformPoint(
             new Windows.Foundation.Point(SettingsButton.ActualWidth / 2, SettingsButton.ActualHeight / 2));
+        _gearFromRight = root.ActualWidth - center.X;
+        _gearCenterY = center.Y;
+        UpdateGenieTarget();
+    }
+
+    private void UpdateGenieTarget()
+    {
+        if (double.IsNaN(_gearFromRight) || Content is not FrameworkElement root || ModeHost is null)
+            return;
+
+        ModeHost.GenieTarget = root.TransformToVisual(ModeHost).TransformPoint(
+            new Windows.Foundation.Point(root.ActualWidth - _gearFromRight, _gearCenterY));
     }
 
     private async void OnTabChanged(object sender, RoutedEventArgs e)
@@ -181,30 +205,46 @@ public sealed partial class MainWindow : Window
         ModeHost.SlideFrom = 36;
         // Settings pours out of the gear, and is sucked back into it on the way out.
         ModeHost.Genie = GenieMode.Opening;
+        DeferChromeToGenie(settingsOpen: true);
         ModeHost.Page = _settingsView;
-        // Blank, not collapsed: collapsing hands the strip's row height to the content row, and the
-        // page visibly climbs on the way in and drops on the way out.
-        TabStrip.Opacity = 0;
-        TabStrip.IsHitTestVisible = false;
-        SettingsButton.Visibility = Visibility.Collapsed;
-        BackButton.Visibility = Visibility.Visible;
     }
 
     private void OnCloseSettings(object sender, RoutedEventArgs e)
     {
-        // The tab strip takes its row back and shoves the content down, so it waits for the warp to
-        // finish — restoring it up front lands it while the settings page is still on screen.
-        void Once(object? _, EventArgs __)
+        ModeHost.SlideFrom = -36;
+        DeferChromeToGenie(settingsOpen: false);
+        ShowActiveTab(GenieMode.Closing);
+    }
+
+    // The genie picks the moment: it freezes the screen, raises GenieAnchored, and the chrome swaps
+    // under the warp where the strip row resizing cannot be seen. Settled is the fallback for a warp
+    // that never ran (reduced motion, capture failure, resize abort).
+    private void DeferChromeToGenie(bool settingsOpen)
+    {
+        void ApplyChrome()
         {
-            ModeHost.Settled -= Once;
-            TabStrip.Opacity = 1;
-            TabStrip.IsHitTestVisible = true;
-            SettingsButton.Visibility = Visibility.Visible;
-            BackButton.Visibility = Visibility.Collapsed;
+            TabStrip.Visibility = settingsOpen ? Visibility.Collapsed : Visibility.Visible;
+            SettingsButton.Visibility = settingsOpen ? Visibility.Collapsed : Visibility.Visible;
+            BackButton.Visibility = settingsOpen ? Visibility.Visible : Visibility.Collapsed;
         }
 
-        ModeHost.Settled += Once;
-        ModeHost.SlideFrom = -36;
-        ShowActiveTab(GenieMode.Closing);
+        bool applied = false;
+        void Apply(object? _, EventArgs __)
+        {
+            applied = true;
+            ApplyChrome();
+            (Content as FrameworkElement)?.UpdateLayout();
+            UpdateGenieTarget();
+        }
+        void Done(object? _, EventArgs __)
+        {
+            ModeHost.GenieAnchored -= Apply;
+            ModeHost.Settled -= Done;
+            if (!applied)
+                ApplyChrome();
+        }
+        ModeHost.GenieAnchored += Apply;
+        ModeHost.Settled += Done;
+        UpdateGenieTarget();   // closing latches the funnel point before the chrome moves the host
     }
 }

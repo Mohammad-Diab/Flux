@@ -70,22 +70,46 @@ public sealed partial class MainWindow : Window
         _settingsView = new SettingsView(App.Services.GetRequiredService<SettingsViewModel>());
         AppWindow.Closing += OnClosing;
 
+        ContentHost.AmbientSource = Ambient;
+
         // Measure the genie's funnel point while the gear is still visible, as the WPF shell did.
-        SettingsButton.Loaded += (_, _) => UpdateGenieTarget();
-        SettingsButton.SizeChanged += (_, _) => UpdateGenieTarget();
+        // Its distance from the right edge survives both the gear collapsing and window resizes.
+        SettingsButton.Loaded += (_, _) => MeasureGear();
+        SettingsButton.SizeChanged += (_, _) => MeasureGear();
         if (Content is FrameworkElement root)
-            root.SizeChanged += (_, _) => UpdateGenieTarget();
+        {
+            root.SizeChanged += (_, _) =>
+            {
+                MeasureGear();
+                UpdateGenieTarget();
+            };
+        }
 
         ShowSetup();
     }
 
-    private void UpdateGenieTarget()
+    private double _gearFromRight = double.NaN, _gearCenterY;
+
+    private void MeasureGear()
     {
-        if (SettingsButton.ActualWidth <= 0 || ContentHost is null)
+        if (Content is not FrameworkElement root || SettingsButton.Visibility == Visibility.Collapsed
+            || SettingsButton.ActualWidth <= 0)
             return;
 
-        ContentHost.GenieTarget = SettingsButton.TransformToVisual(ContentHost).TransformPoint(
+        var center = SettingsButton.TransformToVisual(root).TransformPoint(
             new Windows.Foundation.Point(SettingsButton.ActualWidth / 2, SettingsButton.ActualHeight / 2));
+        _gearFromRight = root.ActualWidth - center.X;
+        _gearCenterY = center.Y;
+        UpdateGenieTarget();
+    }
+
+    private void UpdateGenieTarget()
+    {
+        if (double.IsNaN(_gearFromRight) || Content is not FrameworkElement root || ContentHost is null)
+            return;
+
+        ContentHost.GenieTarget = root.TransformToVisual(ContentHost).TransformPoint(
+            new Windows.Foundation.Point(root.ActualWidth - _gearFromRight, _gearCenterY));
     }
 
     // A Closing handler cannot await, so an in-progress cast vetoes the first close, then closes
@@ -240,35 +264,15 @@ public sealed partial class MainWindow : Window
     private void UpdateCurrent()
     {
         bool presenting = !_isSettingsOpen && HistoryTab.IsChecked != true && _castScreen is PresenterView;
-        bool chromeReturning = !_isSettingsOpen && _lastNavIndex == 2;
+        bool settingsOpen = _isSettingsOpen;
 
         void ApplyChrome()
         {
-            // Settings leaves the strip's row occupied but blank. Collapsing it hands that height to the
-            // content row, and the page visibly climbs on the way in and drops on the way out. The
-            // presenter is the one screen that really wants the space.
-            TabStrip.Visibility = presenting ? Visibility.Collapsed : Visibility.Visible;
-            TabStrip.Opacity = _isSettingsOpen ? 0 : 1;
-            TabStrip.IsHitTestVisible = !_isSettingsOpen;
-            SettingsButton.Visibility = _isSettingsOpen || presenting ? Visibility.Collapsed : Visibility.Visible;
-            BackButton.Visibility = _isSettingsOpen || presenting ? Visibility.Visible : Visibility.Collapsed;
-        }
-
-        // Leaving settings, the tab strip takes its row back and shoves the content down. Doing that up
-        // front lands it while the settings page is still on screen, so it waits for the warp to finish.
-        if (chromeReturning)
-        {
-            void Once(object? _, EventArgs __)
-            {
-                ContentHost.Settled -= Once;
-                ApplyChrome();
-            }
-
-            ContentHost.Settled += Once;
-        }
-        else
-        {
-            ApplyChrome();
+            // Settings and the presenter both take the strip's row; the genie choreography below
+            // makes sure the resize is never seen.
+            TabStrip.Visibility = settingsOpen || presenting ? Visibility.Collapsed : Visibility.Visible;
+            SettingsButton.Visibility = settingsOpen || presenting ? Visibility.Collapsed : Visibility.Visible;
+            BackButton.Visibility = settingsOpen || presenting ? Visibility.Visible : Visibility.Collapsed;
         }
 
         // Cast(0) → History(1) → Settings(2): moving deeper slides in from the right, back from the left.
@@ -280,6 +284,36 @@ public sealed partial class MainWindow : Window
             : _lastNavIndex == 2 && navIndex != 2 ? GenieMode.Closing
             : GenieMode.None;
         _lastNavIndex = navIndex;
+
+        if (ContentHost.Genie == GenieMode.None)
+        {
+            ApplyChrome();
+        }
+        else
+        {
+            // The genie picks the moment: it freezes the screen, raises GenieAnchored, and the chrome
+            // swaps under the warp where the rows resizing cannot be seen. Settled is the fallback
+            // for a warp that never ran (reduced motion, capture failure, resize abort).
+            bool applied = false;
+            void Apply(object? _, EventArgs __)
+            {
+                applied = true;
+                ApplyChrome();
+                (Content as FrameworkElement)?.UpdateLayout();
+                UpdateGenieTarget();
+            }
+            void Done(object? _, EventArgs __)
+            {
+                ContentHost.GenieAnchored -= Apply;
+                ContentHost.Settled -= Done;
+                if (!applied)
+                    ApplyChrome();
+            }
+            ContentHost.GenieAnchored += Apply;
+            ContentHost.Settled += Done;
+        }
+
+        UpdateGenieTarget();   // closing latches the funnel point before the chrome moves the host
 
         ContentHost.Page = _isSettingsOpen ? _settingsView
             : HistoryTab.IsChecked == true ? _historyScreen

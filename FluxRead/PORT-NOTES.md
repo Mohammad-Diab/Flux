@@ -164,7 +164,32 @@ they did. The rest was rewritten:
     before reading `ActualWidth`/`ActualHeight`, or the sheet is captured at one size and laid out at
     another. Without it the size guard in `BuildStrips` rejected every sheet and the genie silently
     never played.
-  - A `SizeChanged` mid-warp still aborts to the live page: a captured sheet cannot follow a resize.
+  - A `SizeChanged` mid-warp still aborts to the live page: a captured sheet cannot follow a resize —
+    except the one resize the genie itself asks for (below), which it compensates instead.
+- **Genie polish, second pass** (background flash, visible bars, the blank strip row over settings):
+  - **Ask for the slot at physical resolution.** `RenderAsync(el, w, h)` in DIPs renders the sheet at
+    1/scale resolution and the stretch back up is what read as blur and seam hairlines. Pass
+    `slot × RasterizationScale`; with the transparent-brush bounds fix that is a pure resolution change.
+  - **Never flatten backdrop + page into one `RenderTargetBitmap`.** It renders the **union of drawn
+    bounds — `Clip` does not constrain it** — so window-pinned backdrop layers overflowing the slot came
+    back as a sheet with the page shifted down and squashed by exactly the overflow. The strips carry
+    the backdrop as live layers instead (gradient rect + ambient capture + page image); their clips cut
+    the overflow and nothing is ever re-rendered.
+  - **The sheet must carry the window's backdrop, not `BgBrush` re-resolved.** Pages are transparent
+    over the root gradient + ambient orbs. An app-resources `BgBrush` lookup resolves against the app
+    theme (not the window's `ElementTheme` — wrong palette after an in-app theme change), and painting
+    it at content size re-spans the gradient. Resolve from `ThemeDictionaries` by `ActualTheme` and pin
+    a window-sized rect at `-origin`; capture the ambient layer with a momentary `Clip` (its orbs
+    overflow, and RenderTargetBitmap would return the union) and pin it the same way.
+  - **`GenieAnchored` choreography** replaces "chrome now / chrome on Settled": the host freezes the
+    screen (old page over a backdrop cover), raises `GenieAnchored`, and the shell collapses/restores
+    the strip row *under* the warp. Opening: the row collapses before the incoming page is captured, so
+    settings gets the full height — no blank row above it. Closing: the sheet is seated first, then the
+    row returns beneath it and every strip is shifted up by the height the host lost (`_genieLift`,
+    carried in the per-strip transform), so the sheet never moves on screen. Settled stays the fallback
+    for a warp that never ran (reduced motion, capture failure, abort).
+  - Strips overdraw their neighbour by one physical pixel again (the sheet is opaque, so the overlap
+    cannot double-blend); without it, gaps opened between strips as they spread in flight.
 - `Timeline.DesiredFrameRate` does not exist, and the ambient drift does not miss it: it animates
   `TranslateTransform`, which runs on the compositor rather than the UI thread.
 - No `TaskbarItemInfo`. `Interop/TaskbarProgress` calls `ITaskbarList3` directly — declare the
