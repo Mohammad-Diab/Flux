@@ -129,7 +129,9 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="Button">
-                    <Grid x:Name="Root" Background="Transparent">
+                    <!-- States hold instant values; the transitions carry the timing so the motion
+                         gate can strip them and keep the look. -->
+                    <Grid x:Name="Root" Background="Transparent" controls:Motion.GateTransitions="True">
                         <Grid.RenderTransform>
                             <ScaleTransform x:Name="Scale" ScaleX="1" ScaleY="1"/>
                         </Grid.RenderTransform>
@@ -146,25 +148,29 @@
                             Foreground="{TemplateBinding Foreground}"/>
                         <VisualStateManager.VisualStateGroups>
                             <VisualStateGroup x:Name="CommonStates">
+                                <VisualStateGroup.Transitions>
+                                    <VisualTransition To="PointerOver" GeneratedDuration="0:0:0.12"/>
+                                    <VisualTransition To="Pressed" GeneratedDuration="0:0:0.06"/>
+                                </VisualStateGroup.Transitions>
                                 <VisualState x:Name="Normal"/>
                                 <VisualState x:Name="PointerOver">
                                     <Storyboard>
                                         <DoubleAnimation Storyboard.TargetName="Overlay"
                                                          Storyboard.TargetProperty="Opacity"
-                                                         To="0.10" Duration="0:0:0.12"/>
+                                                         To="0.10" Duration="0"/>
                                     </Storyboard>
                                 </VisualState>
                                 <VisualState x:Name="Pressed">
                                     <Storyboard>
                                         <DoubleAnimation Storyboard.TargetName="Overlay"
                                                          Storyboard.TargetProperty="Opacity"
-                                                         To="0.06" Duration="0:0:0.06"/>
+                                                         To="0.06" Duration="0"/>
                                         <DoubleAnimation Storyboard.TargetName="Scale"
                                                          Storyboard.TargetProperty="ScaleX"
-                                                         To="0.97" Duration="0:0:0.06"/>
+                                                         To="0.97" Duration="0"/>
                                         <DoubleAnimation Storyboard.TargetName="Scale"
                                                          Storyboard.TargetProperty="ScaleY"
-                                                         To="0.97" Duration="0:0:0.06"/>
+                                                         To="0.97" Duration="0"/>
                                     </Storyboard>
                                 </VisualState>
                                 <VisualState x:Name="Disabled">
@@ -245,7 +251,7 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="Button">
-                    <Grid>
+                    <Grid controls:Motion.GateTransitions="True">
                         <Border x:Name="Fill" CornerRadius="10" Background="{StaticResource DangerBrush}" Opacity="0"/>
                         <TextBlock x:Name="Txt" Text="{TemplateBinding Content}"
                                    Margin="{TemplateBinding Padding}"
@@ -255,15 +261,18 @@
                                    Foreground="{StaticResource DangerBrush}"/>
                         <VisualStateManager.VisualStateGroups>
                             <VisualStateGroup x:Name="CommonStates">
+                                <VisualStateGroup.Transitions>
+                                    <VisualTransition To="PointerOver" GeneratedDuration="0:0:0.15"/>
+                                </VisualStateGroup.Transitions>
                                 <VisualState x:Name="Normal"/>
                                 <VisualState x:Name="PointerOver">
                                     <Storyboard>
                                         <DoubleAnimation Storyboard.TargetName="Fill"
                                                          Storyboard.TargetProperty="Opacity"
-                                                         To="1" Duration="0:0:0.15"/>
+                                                         To="1" Duration="0"/>
                                         <ObjectAnimationUsingKeyFrames Storyboard.TargetName="Txt"
                                                                        Storyboard.TargetProperty="Foreground">
-                                            <DiscreteObjectKeyFrame KeyTime="0:0:0.15" Value="White"/>
+                                            <DiscreteObjectKeyFrame KeyTime="0" Value="White"/>
                                         </ObjectAnimationUsingKeyFrames>
                                     </Storyboard>
                                 </VisualState>
