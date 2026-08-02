@@ -1,8 +1,11 @@
-﻿using FluxCast.ViewModels;
+﻿using System.ComponentModel;
+using Flux.Ui.Controls;
+using FluxCast.ViewModels;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
+using Microsoft.UI.Xaml.Media.Animation;
 using Microsoft.UI.Xaml.Media.Imaging;
 using Windows.System;
 
@@ -25,6 +28,54 @@ public sealed partial class PresenterView : UserControl
         // previous frame's dimensions — frame 0 is not the payload's shape, so the two disagree.
         FrameImage.RegisterPropertyChangedCallback(Image.SourceProperty, (_, _) => OnFrameSourceChanged());
         KeyDown += OnKeyDown;
+
+        MotionSettings.Current.PropertyChanged += OnMotionChanged;
+        Unloaded += (_, _) =>
+        {
+            MotionSettings.Current.PropertyChanged -= OnMotionChanged;
+            _warningPulse?.Stop();
+        };
+    }
+
+    private void OnMotionChanged(object? sender, PropertyChangedEventArgs e) => UpdateWarningPulse();
+
+    private Storyboard? _warningPulse;
+
+    /// <summary>
+    /// Pulses the warning so it is noticed in the corner of the eye, and rests between beats so it is
+    /// not a distraction during a cast. Scale is a render transform, so it needs no dependent
+    /// animation, and the whole thing is off when motion is.
+    /// </summary>
+    private void UpdateWarningPulse()
+    {
+        _warningPulse?.Stop();
+        _warningPulse = null;
+        SizeWarningScale.ScaleX = SizeWarningScale.ScaleY = 1;
+
+        if (SizeWarningButton.Visibility != Visibility.Visible || !MotionSettings.Current.AnimationsEnabled)
+            return;
+
+        var board = new Storyboard { RepeatBehavior = RepeatBehavior.Forever };
+        foreach (var axis in new[] { "ScaleX", "ScaleY" })
+        {
+            var beat = new DoubleAnimationUsingKeyFrames();
+            beat.KeyFrames.Add(new EasingDoubleKeyFrame { KeyTime = TimeSpan.Zero, Value = 1 });
+            beat.KeyFrames.Add(new EasingDoubleKeyFrame
+            {
+                KeyTime = TimeSpan.FromMilliseconds(420), Value = 1.06, EasingFunction = MotionCurves.Travel,
+            });
+            beat.KeyFrames.Add(new EasingDoubleKeyFrame
+            {
+                KeyTime = TimeSpan.FromMilliseconds(840), Value = 1, EasingFunction = MotionCurves.Travel,
+            });
+            beat.KeyFrames.Add(new EasingDoubleKeyFrame { KeyTime = TimeSpan.FromMilliseconds(3000), Value = 1 });
+            Storyboard.SetTarget(beat, SizeWarningScale);
+            Storyboard.SetTargetProperty(beat, axis);
+            board.Children.Add(beat);
+        }
+
+        _warningPulse = board;
+        board.Begin();
     }
 
     /// <summary>Gets the "of N" label beside the frame box.</summary>
@@ -123,7 +174,10 @@ public sealed partial class PresenterView : UserControl
         // Below native the frame loses detail the receiver needs, so that is worth saying; above it
         // the frame only gains pixels.
         bool belowNative = tileDevicePixels < tile;
-        SizeWarning.Visibility = belowNative ? Visibility.Visible : Visibility.Collapsed;
+        bool wasShown = SizeWarningButton.Visibility == Visibility.Visible;
+        SizeWarningButton.Visibility = belowNative ? Visibility.Visible : Visibility.Collapsed;
+        if (belowNative != wasShown)
+            UpdateWarningPulse();
         if (belowNative)
         {
             // Everything in device pixels, and both axes, since either can be the one holding it back.
