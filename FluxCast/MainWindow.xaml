@@ -4,6 +4,7 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:controls="using:Flux.Ui.Controls"
     xmlns:views="using:Flux.Ui.Views"
+    xmlns:local="using:FluxCast.Views"
     xmlns:animatedvisuals="using:Microsoft.UI.Xaml.Controls.AnimatedVisuals">
 
     <Grid Background="{ThemeResource BgBrush}" RowDefinitions="48,Auto,*">
@@ -35,7 +36,7 @@
                     </Grid>
                     <TextBlock Text="FluxCast" FontSize="13" FontWeight="SemiBold"
                                Foreground="{ThemeResource TextPrimaryBrush}" VerticalAlignment="Center"/>
-                    <TextBlock Text="Optical sender" FontSize="12"
+                    <TextBlock x:Name="SubtitleText" Text="Optical sender" FontSize="12"
                                Foreground="{ThemeResource TextSecondaryBrush}" VerticalAlignment="Center"/>
                     <Border x:Name="VersionChip" Padding="6,1" CornerRadius="4" VerticalAlignment="Center"
                             Background="{ThemeResource HoverOverlayBrush}">
@@ -47,6 +48,9 @@
 
             <!-- Clear of the native caption buttons, which own the right edge. -->
             <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,148,0">
+                <!-- The presenter's size warning. The shell hosts it because it sits in this bar,
+                     outside the drag region so it stays clickable; the presenter shows and hides it. -->
+                <local:SizeWarningBadge x:Name="SizeWarning" Visibility="Collapsed" Margin="0,0,8,0"/>
                 <Button x:Name="SettingsButton" Style="{StaticResource CaptionIconButton}"
                         Click="OnOpenSettings" AutomationProperties.Name="Settings"
                         ToolTipService.ToolTip="Settings">

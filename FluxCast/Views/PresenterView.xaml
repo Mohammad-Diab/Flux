@@ -124,93 +124,12 @@
                    ImageOpened="OnFrameOpened" HorizontalAlignment="Center" VerticalAlignment="Center"/>
         </Grid>
 
-        <!-- Fixed height, so the warning appearing in here costs the frame nothing. -->
-        <Border Grid.Row="2" Height="34" Background="{ThemeResource SurfaceBrush}">
-          <Grid>
+        <!-- Fixed height, so nothing appearing elsewhere ever reflows the frame above it. The size
+             warning lives in the title bar (SizeWarningBadge, hosted by the shell), not in here. -->
+        <Border Grid.Row="2" Height="28" Background="{ThemeResource SurfaceBrush}">
             <TextBlock Text="Keep this window still during transfer" FontSize="10.5"
                        VerticalAlignment="Center" HorizontalAlignment="Center"
                        Foreground="{ThemeResource TextSecondaryBrush}"/>
-            <!-- A pill rather than a bar: the warning is about the frame being short of room, so it
-                 must not take any. It sits in the chrome, never over the frame, which the receiver
-                 captures, and is laid over this row rather than in it, so a narrow window makes it
-                 cover the note instead of squeezing it away. The whole pill is the button — a 22 px
-                 circle is a small target for something the user is meant to notice and open. Click,
-                 not hover: the pointer passes through here on its way to the transport buttons. -->
-            <Button x:Name="SizeWarningButton" Visibility="Collapsed" Canvas.ZIndex="1"
-                    HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,14,0"
-                    Padding="0" MinWidth="0" MinHeight="0"
-                    BorderThickness="0" Background="Transparent"
-                    AutomationProperties.Name="Window size is too small"
-                    ToolTipService.ToolTip="The frame is below native size — open for detail">
-                <!-- The button is only the hit target; the two islands below carry every mark. -->
-                <Button.Resources>
-                    <SolidColorBrush x:Key="ButtonBackground" Color="Transparent"/>
-                    <SolidColorBrush x:Key="ButtonBackgroundPointerOver" Color="Transparent"/>
-                    <SolidColorBrush x:Key="ButtonBackgroundPressed" Color="Transparent"/>
-                    <SolidColorBrush x:Key="ButtonBorderBrush" Color="Transparent"/>
-                    <SolidColorBrush x:Key="ButtonBorderBrushPointerOver" Color="Transparent"/>
-                    <SolidColorBrush x:Key="ButtonBorderBrushPressed" Color="Transparent"/>
-                </Button.Resources>
-                <!-- One island cut in two. The label's right edge is concave, struck by the same circle
-                     the mark is, so the pair reads as a single shape pulled apart rather than a caption
-                     next to a badge. A corner radius cannot bend inwards, so the outline is a geometry
-                     built to the label's width in code. -->
-                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                    <Grid x:Name="SizeWarningCapsule" Height="28" VerticalAlignment="Center"
-                          SizeChanged="OnSizeWarningCapsuleResized">
-                        <Path x:Name="SizeWarningShape" Fill="{StaticResource DangerTintBrush}"
-                              Stroke="{StaticResource DangerBrush}" StrokeThickness="1"/>
-                        <TextBlock x:Name="SizeWarningSummary" Text="Window size is too small"
-                                   VerticalAlignment="Center" Margin="15,0,20,0" FontSize="11"
-                                   FontWeight="SemiBold" Foreground="{StaticResource DangerBrush}"/>
-                    </Grid>
-                    <!-- Only the mark beats. The label holds still so it stays readable. -->
-                    <Border Width="28" Height="28" CornerRadius="14" VerticalAlignment="Center"
-                            Margin="-4,0,0,0" Background="{StaticResource DangerBrush}"
-                            RenderTransformOrigin="0.5,0.5">
-                        <Border.RenderTransform>
-                            <ScaleTransform x:Name="SizeWarningScale"/>
-                        </Border.RenderTransform>
-                        <FontIcon Glyph="&#xE783;" FontSize="15" Foreground="White"/>
-                    </Border>
-                </StackPanel>
-                <Button.Flyout>
-                    <Flyout Placement="Top" Opening="OnSizeWarningOpening">
-                        <Flyout.FlyoutPresenterStyle>
-                            <Style TargetType="FlyoutPresenter">
-                                <Setter Property="Background" Value="{ThemeResource SurfaceBrush}"/>
-                                <Setter Property="BorderBrush" Value="{ThemeResource FluxBorderBrush}"/>
-                                <Setter Property="BorderThickness" Value="1"/>
-                                <Setter Property="CornerRadius" Value="12"/>
-                                <Setter Property="Padding" Value="18"/>
-                                <Setter Property="MaxWidth" Value="400"/>
-                            </Style>
-                        </Flyout.FlyoutPresenterStyle>
-                        <StackPanel Width="330" Spacing="12">
-                            <StackPanel Orientation="Horizontal" Spacing="10">
-                                <Border Width="26" Height="26" CornerRadius="13"
-                                        Background="{StaticResource DangerBrush}">
-                                    <FontIcon Glyph="&#xE783;" FontSize="14" Foreground="White"/>
-                                </Border>
-                                <TextBlock Text="Window is small" FontSize="16" FontWeight="SemiBold"
-                                           VerticalAlignment="Center"
-                                           Foreground="{ThemeResource TextPrimaryBrush}"/>
-                            </StackPanel>
-                            <TextBlock TextWrapping="Wrap" Style="{StaticResource SubtleText}"
-                                       Text="The frame is drawn below its native size. Shrinking it blunts the tile edges the receiver reads, so a capture may need more retries or fail outright."/>
-                            <!-- The numbers behind the warning, so it is not just an assertion. -->
-                            <Border Background="{ThemeResource SurfaceAltBrush}" CornerRadius="8" Padding="11,9">
-                                <TextBlock x:Name="SizeWarningDetail" TextWrapping="Wrap" FontSize="12"
-                                           LineHeight="18"
-                                           Foreground="{ThemeResource TextSecondaryBrush}"/>
-                            </Border>
-                            <Button Content="Got it" Click="OnDismissSizeWarning" HorizontalAlignment="Right"
-                                    Style="{StaticResource SecondaryButton}" MinHeight="34" FontSize="13"/>
-                        </StackPanel>
-                    </Flyout>
-                </Button.Flyout>
-            </Button>
-          </Grid>
         </Border>
     </Grid>
 </UserControl>

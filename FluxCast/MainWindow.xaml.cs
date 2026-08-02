@@ -179,7 +179,7 @@ public sealed partial class MainWindow : Window
 
     private void ShowPresenter(EncodeSessionResult session)
     {
-        _castScreen = new PresenterView(new PresenterViewModel(session, ShowSetup, _dialogs));
+        _castScreen = new PresenterView(new PresenterViewModel(session, ShowSetup, _dialogs), SizeWarning);
         UpdateCurrent();
     }
 
@@ -236,7 +236,7 @@ public sealed partial class MainWindow : Window
     {
         var session = App.Services.GetRequiredService<CastHistoryService>()
             .OpenForPresenting(entry.SessionDirectory);
-        _castScreen = new PresenterView(new PresenterViewModel(session, ShowSetup, _dialogs));
+        _castScreen = new PresenterView(new PresenterViewModel(session, ShowSetup, _dialogs), SizeWarning);
         _isSettingsOpen = false;
         CastTab.IsChecked = true;
         UpdateCurrent();
@@ -273,6 +273,11 @@ public sealed partial class MainWindow : Window
             TabStrip.Visibility = settingsOpen || presenting ? Visibility.Collapsed : Visibility.Visible;
             SettingsButton.Visibility = settingsOpen || presenting ? Visibility.Collapsed : Visibility.Visible;
             BackButton.Visibility = settingsOpen || presenting ? Visibility.Visible : Visibility.Collapsed;
+            // The size warning takes this corner while presenting, and a narrow window would run the
+            // strip's tail under it — the star column does not clip. Presenting keeps only the wordmark.
+            SubtitleText.Visibility = presenting ? Visibility.Collapsed : Visibility.Visible;
+            VersionChip.Visibility = !presenting && AppVersion.Current.Length > 0
+                ? Visibility.Visible : Visibility.Collapsed;
         }
 
         // Cast(0) → History(1) → Settings(2): moving deeper slides in from the right, back from the left.
