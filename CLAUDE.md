@@ -91,12 +91,14 @@ dotnet test FluxCore.Tests/FluxCore.Tests.csproj --filter "FullyQualifiedName~So
   describe it only in those terms everywhere (code, commits, docs, UI strings).
 - **Taskbar progress:** `Interop/TaskbarProgress` talks to `ITaskbarList3` directly (no
   TaskbarItemInfo in WinUI), attached once to the shell HWND.
-- **Pixel-exact presentation:** the presenter sizes the image to
-  `pixelWidth / XamlRoot.RasterizationScale`, recomputed on `SizeChanged`, with `Stretch="Fill"` so
-  those bounds map the bitmap one device pixel per source pixel. It must not be `Stretch="None"`:
-  that draws the bitmap at its natural DIP size and lets Width/Height merely clip, so above 100%
-  scaling the frame comes out magnified and cut off. Never let WinUI resample a frame — it blurs the
-  tile edges the decoder reads; too-large frames warn instead of scaling.
+- **Whole-tile presentation:** the presenter fills the space it is given, but only in whole device
+  pixels per tile — it takes the largest scale where `TilePixelSize × scale` is an integer, and one
+  factor drives both axes so the aspect ratio is exact. Tiles are flat colour, so resampling only ever
+  touches the boundaries between them, and a whole-pixel tile keeps those boundaries — the edges the
+  decoder reads — on exact device pixels. Sizing is `pixelWidth × scale / RasterizationScale` with
+  `Stretch="Fill"`, recomputed on `SizeChanged`. It must not be `Stretch="None"`: that draws the
+  bitmap at its natural DIP size and lets Width/Height merely clip, so above 100% scaling the frame
+  comes out magnified and cut off. Below native size the frame warns instead, having lost detail.
 - **Format params ride in frame 0.** `FrameLayout` is parametric (grid, tile px, bits/tile);
   `PaletteGenerator.Generate(count, kind)` derives the palette so no colour list crosses the wire.
   Frame 0 is always `FrameLayout.Default` + cube corners — the bootstrap anchor, never user-driven.

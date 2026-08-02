@@ -54,13 +54,26 @@ public sealed partial class PresenterView : UserControl
         if (FrameImage.Source is not BitmapImage frame || frame.PixelWidth == 0)
             return;
 
-        double scale = XamlRoot?.RasterizationScale ?? 1;
-        FrameImage.Width = frame.PixelWidth / scale;
-        FrameImage.Height = frame.PixelHeight / scale;
+        double raster = XamlRoot?.RasterizationScale ?? 1;
+        double availableWidth = FrameArea.ActualWidth, availableHeight = FrameArea.ActualHeight;
+        if (availableWidth <= 0 || availableHeight <= 0)
+            return;
 
-        // Nothing can be scaled down without blurring the tiles, so warn instead when it will not fit.
-        bool fits = FrameImage.Width <= FrameArea.ActualWidth + 0.5
-                    && FrameImage.Height <= FrameArea.ActualHeight + 0.5;
-        SizeWarning.Visibility = fits ? Visibility.Collapsed : Visibility.Visible;
+        // The frame takes the space it is given, but only in whole device pixels per tile. Tiles are
+        // flat colour, so resampling only ever touches the boundaries between them, and a whole-pixel
+        // tile keeps every boundary on an exact device pixel — the edges the decoder reads stay sharp.
+        // One factor drives both axes, so the aspect ratio is untouched.
+        int tile = Math.Max(1, Vm.TilePixelSize);
+        double room = Math.Min(availableWidth * raster / frame.PixelWidth,
+                               availableHeight * raster / frame.PixelHeight);
+        int tileDevicePixels = Math.Max(1, (int)Math.Floor(tile * room));
+        double scale = (double)tileDevicePixels / tile;
+
+        FrameImage.Width = frame.PixelWidth * scale / raster;
+        FrameImage.Height = frame.PixelHeight * scale / raster;
+
+        // Below native the frame loses detail the receiver needs, so that is worth saying; above it
+        // the frame only gains pixels.
+        SizeWarning.Visibility = tileDevicePixels < tile ? Visibility.Visible : Visibility.Collapsed;
     }
 }

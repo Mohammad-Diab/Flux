@@ -17,6 +17,7 @@
             <Setter Property="FontWeight" Value="SemiBold"/>
             <Setter Property="TextAlignment" Value="Center"/>
             <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
             <Setter Property="Foreground" Value="{ThemeResource TextPrimaryBrush}"/>
         </Style>
 
@@ -58,10 +59,14 @@
                         <TextBlock Text="Frame" FontSize="14" VerticalAlignment="Center" Margin="14,0,10,0"
                                    Foreground="{ThemeResource TextSecondaryBrush}"/>
                         <TextBox Text="{x:Bind Vm.GotoText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                 Style="{StaticResource FramePillBox}" Width="40" KeyDown="OnGotoKeyDown"
+                                 Style="{StaticResource FramePillBox}" Width="78" KeyDown="OnGotoKeyDown"
                                  AutomationProperties.Name="Frame number"
                                  ToolTipService.ToolTip="Go to frame number">
                             <TextBox.Resources>
+                                <!-- The template's minimum height is what makes the box taller than its
+                                     text, and a TextBox taller than its text pins the text to the top
+                                     however it is told to align. Sized to its text, it centres. -->
+                                <x:Double x:Key="TextControlThemeMinHeight">0</x:Double>
                                 <SolidColorBrush x:Key="TextControlBackground" Color="Transparent"/>
                                 <SolidColorBrush x:Key="TextControlBackgroundPointerOver" Color="Transparent"/>
                                 <SolidColorBrush x:Key="TextControlBackgroundFocused" Color="Transparent"/>
@@ -103,7 +108,7 @@
         </Border>
 
         <Border x:Name="SizeWarning" Grid.Row="1" Background="#CCB91C1C" Padding="14,7" Visibility="Collapsed">
-            <TextBlock Text="Window is small — enlarge it so the whole frame is visible at native size."
+            <TextBlock Text="Window is small — the frame is below native size, which costs the receiver detail. Enlarge the window."
                        Foreground="White" FontSize="12.5" HorizontalAlignment="Center" TextAlignment="Center"/>
         </Border>
 
