@@ -2,6 +2,7 @@ using FluxCast.ViewModels;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
+using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
 using Windows.System;
 
@@ -22,14 +23,43 @@ public sealed partial class PresenterView : UserControl
         FrameArea.SizeChanged += (_, _) => ApplyNativeSize();
         // Frames are cached bitmaps, so revisiting one raises no ImageOpened and the box would keep the
         // previous frame's dimensions — frame 0 is not the payload's shape, so the two disagree.
-        FrameImage.RegisterPropertyChangedCallback(Image.SourceProperty, (_, _) => ApplyNativeSize());
+        FrameImage.RegisterPropertyChangedCallback(Image.SourceProperty, (_, _) => OnFrameSourceChanged());
         KeyDown += OnKeyDown;
     }
 
     /// <summary>Gets the "of N" label beside the frame box.</summary>
     public string TotalLabel => $"of {Vm.TotalFrames}";
 
-    private void OnFrameOpened(object sender, RoutedEventArgs e) => ApplyNativeSize();
+    // The frame last measured and shown, kept so it can stand in while the next one decodes.
+    private ImageSource? _shown;
+
+    private void OnFrameSourceChanged()
+    {
+        if (FrameImage.Source is BitmapImage ready && ready.PixelWidth > 0)
+        {
+            ApplyNativeSize();   // already decoded, so it draws this pass and nothing is missing
+            return;
+        }
+
+        // Decoding is asynchronous and an Image draws nothing until it finishes, so the outgoing frame
+        // stays underneath at the size it was shown until ImageOpened brings the new one in.
+        if (_shown is null)
+            return;
+
+        FrameHold.Source = _shown;
+        FrameHold.Width = FrameImage.Width;
+        FrameHold.Height = FrameImage.Height;
+        FrameHold.Visibility = Visibility.Visible;
+        FrameImage.Opacity = 0;
+    }
+
+    private void OnFrameOpened(object sender, RoutedEventArgs e)
+    {
+        ApplyNativeSize();
+        FrameImage.Opacity = 1;
+        FrameHold.Visibility = Visibility.Collapsed;
+        FrameHold.Source = null;
+    }
 
     private void OnKeyDown(object sender, KeyRoutedEventArgs e)
     {
@@ -77,6 +107,7 @@ public sealed partial class PresenterView : UserControl
 
         FrameImage.Width = frame.PixelWidth * scale / raster;
         FrameImage.Height = frame.PixelHeight * scale / raster;
+        _shown = frame;
 
         // Below native the frame loses detail the receiver needs, so that is worth saying; above it
         // the frame only gains pixels.

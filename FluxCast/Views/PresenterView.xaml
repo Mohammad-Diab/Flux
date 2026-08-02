@@ -120,6 +120,10 @@
              Stretch is Fill, not None: None draws the bitmap at its natural DIP size and lets Width
              and Height merely clip it, so above 100% scaling the frame is magnified and cut off. -->
         <Grid x:Name="FrameArea" Grid.Row="2" Margin="10">
+            <!-- Holds the outgoing frame underneath while the incoming one decodes. Without it the
+                 image is empty for that frame and the area blinks to its background on every step. -->
+            <Image x:Name="FrameHold" Stretch="Fill" Visibility="Collapsed"
+                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
             <Image x:Name="FrameImage" Source="{x:Bind Vm.CurrentFrame, Mode=OneWay}" Stretch="Fill"
                    ImageOpened="OnFrameOpened" HorizontalAlignment="Center" VerticalAlignment="Center"/>
         </Grid>
