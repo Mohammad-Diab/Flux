@@ -67,29 +67,33 @@ public sealed partial class SizeWarningBadge : UserControl
 
     /// <summary>
     /// Draws the label's outline: rounded at the left, and on the right a concave arc struck by the
-    /// same circle the mark is, so the two look like one shape pulled apart.
+    /// same circle the mark is, so the two look like one shape pulled apart. The whole outline is
+    /// inset by half the stroke: centred on the shape's edge, the top and bottom runs land half
+    /// outside the panel and are clipped to a thinner line than the arcs get.
     /// </summary>
     private void BuildShape()
     {
-        double width = Capsule.ActualWidth, radius = WarningHeight / 2;
-        if (width <= radius * 2)
+        double half = Shape.StrokeThickness / 2;
+        double width = Capsule.ActualWidth, capX = WarningHeight / 2, radius = WarningHeight / 2 - half;
+        if (width <= WarningHeight)
             return;
 
+        double top = half, bottom = WarningHeight - half;
         double centreX = width + WarningCutOffset;
         double edgeX = centreX - Math.Sqrt(WarningCutRadius * WarningCutRadius - radius * radius);
 
-        var outline = new PathFigure { StartPoint = new Point(radius, 0), IsClosed = true, IsFilled = true };
-        outline.Segments.Add(new LineSegment { Point = new Point(edgeX, 0) });
+        var outline = new PathFigure { StartPoint = new Point(capX, top), IsClosed = true, IsFilled = true };
+        outline.Segments.Add(new LineSegment { Point = new Point(edgeX, top) });
         outline.Segments.Add(new ArcSegment
         {
-            Point = new Point(edgeX, WarningHeight),
+            Point = new Point(edgeX, bottom),
             Size = new Size(WarningCutRadius, WarningCutRadius),
             SweepDirection = SweepDirection.Counterclockwise,
         });
-        outline.Segments.Add(new LineSegment { Point = new Point(radius, WarningHeight) });
+        outline.Segments.Add(new LineSegment { Point = new Point(capX, bottom) });
         outline.Segments.Add(new ArcSegment
         {
-            Point = new Point(radius, 0),
+            Point = new Point(capX, top),
             Size = new Size(radius, radius),
             SweepDirection = SweepDirection.Clockwise,
         });

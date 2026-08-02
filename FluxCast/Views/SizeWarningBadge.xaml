@@ -27,8 +27,11 @@
              built to the label's width in code. -->
         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
             <Grid x:Name="Capsule" Height="28" VerticalAlignment="Center" SizeChanged="OnCapsuleResized">
+                <!-- Round joins: the horn tips where the straight edges meet the concave arc are
+                     acute, and a mitre join throws a spike past each tip. -->
                 <Path x:Name="Shape" Fill="{StaticResource DangerTintBrush}"
-                      Stroke="{StaticResource DangerBrush}" StrokeThickness="1"/>
+                      Stroke="{StaticResource DangerBrush}" StrokeThickness="1"
+                      StrokeLineJoin="Round"/>
                 <TextBlock Text="Window size is too small"
                            VerticalAlignment="Center" Margin="15,0,20,0" FontSize="11"
                            FontWeight="SemiBold" Foreground="{StaticResource DangerBrush}"/>
