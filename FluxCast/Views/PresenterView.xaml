@@ -156,18 +156,20 @@
                     <SolidColorBrush x:Key="ButtonBorderBrushPointerOver" Color="Transparent"/>
                     <SolidColorBrush x:Key="ButtonBorderBrushPressed" Color="Transparent"/>
                 </Button.Resources>
-                <!-- Two islands, not one pill: the label is its own capsule, rounded at both ends, and
-                     the mark is its own circle clear of it. Nothing joins them. -->
-                <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                    <Border Height="28" CornerRadius="14" Padding="15,0" VerticalAlignment="Center"
-                            BorderThickness="1" BorderBrush="{StaticResource WarningBrush}"
-                            Background="{ThemeResource SurfaceBrush}">
+                <!-- One island cut in two. The label's right edge is concave, struck by the same circle
+                     the mark is, so the pair reads as a single shape pulled apart rather than a caption
+                     next to a badge. A corner radius cannot bend inwards, so the outline is a geometry
+                     built to the label's width in code. -->
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <Grid x:Name="SizeWarningCapsule" Height="28" VerticalAlignment="Center"
+                          SizeChanged="OnSizeWarningCapsuleResized">
+                        <Path x:Name="SizeWarningShape" Fill="{StaticResource WarningBrush}"/>
                         <TextBlock x:Name="SizeWarningSummary" Text="Window size is too small"
-                                   VerticalAlignment="Center" FontSize="11"
-                                   Foreground="{ThemeResource TextPrimaryBrush}"/>
-                    </Border>
+                                   VerticalAlignment="Center" Margin="15,0,20,0" FontSize="11"
+                                   FontWeight="SemiBold" Foreground="#FF2A1C00"/>
+                    </Grid>
                     <Border Width="28" Height="28" CornerRadius="14" VerticalAlignment="Center"
-                            Background="{StaticResource WarningBrush}">
+                            Margin="-4,0,0,0" Background="{StaticResource WarningBrush}">
                         <FontIcon Glyph="&#xE7BA;" FontSize="13" Foreground="#FF2A1C00"/>
                     </Border>
                 </StackPanel>

@@ -7,6 +7,7 @@ using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Animation;
 using Microsoft.UI.Xaml.Media.Imaging;
+using Windows.Foundation;
 using Windows.System;
 
 namespace FluxCast.Views;
@@ -38,6 +39,46 @@ public sealed partial class PresenterView : UserControl
     }
 
     private void OnMotionChanged(object? sender, PropertyChangedEventArgs e) => UpdateWarningPulse();
+
+    private const double WarningHeight = 28;   // capsule and circle share it, being one shape once
+    private const double WarningCutRadius = 18;   // the circle's radius plus the gap it is set back by
+    private const double WarningCutOffset = 6;    // how far past the label's edge that circle sits
+
+    private void OnSizeWarningCapsuleResized(object sender, SizeChangedEventArgs e) => BuildWarningShape();
+
+    /// <summary>
+    /// Draws the label's outline: rounded at the left, and on the right a concave arc struck by the
+    /// same circle the mark is, so the two look like one shape pulled apart.
+    /// </summary>
+    private void BuildWarningShape()
+    {
+        double width = SizeWarningCapsule.ActualWidth, radius = WarningHeight / 2;
+        if (width <= radius * 2)
+            return;
+
+        double centreX = width + WarningCutOffset;
+        double edgeX = centreX - Math.Sqrt(WarningCutRadius * WarningCutRadius - radius * radius);
+
+        var outline = new PathFigure { StartPoint = new Point(radius, 0), IsClosed = true, IsFilled = true };
+        outline.Segments.Add(new LineSegment { Point = new Point(edgeX, 0) });
+        outline.Segments.Add(new ArcSegment
+        {
+            Point = new Point(edgeX, WarningHeight),
+            Size = new Size(WarningCutRadius, WarningCutRadius),
+            SweepDirection = SweepDirection.Counterclockwise,
+        });
+        outline.Segments.Add(new LineSegment { Point = new Point(radius, WarningHeight) });
+        outline.Segments.Add(new ArcSegment
+        {
+            Point = new Point(radius, 0),
+            Size = new Size(radius, radius),
+            SweepDirection = SweepDirection.Clockwise,
+        });
+
+        var geometry = new PathGeometry();
+        geometry.Figures.Add(outline);
+        SizeWarningShape.Data = geometry;
+    }
 
     private Storyboard? _warningPulse;
 
