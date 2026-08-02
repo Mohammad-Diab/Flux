@@ -91,9 +91,12 @@ dotnet test FluxCore.Tests/FluxCore.Tests.csproj --filter "FullyQualifiedName~So
   describe it only in those terms everywhere (code, commits, docs, UI strings).
 - **Taskbar progress:** `Interop/TaskbarProgress` talks to `ITaskbarList3` directly (no
   TaskbarItemInfo in WinUI), attached once to the shell HWND.
-- **Pixel-exact presentation:** the presenter sets `Stretch="None"` and sizes the image to
-  `pixelWidth / XamlRoot.RasterizationScale`, recomputed on `SizeChanged`. Never let WinUI resample
-  a frame — it blurs the tile edges the decoder reads; too-large frames warn instead of scaling.
+- **Pixel-exact presentation:** the presenter sizes the image to
+  `pixelWidth / XamlRoot.RasterizationScale`, recomputed on `SizeChanged`, with `Stretch="Fill"` so
+  those bounds map the bitmap one device pixel per source pixel. It must not be `Stretch="None"`:
+  that draws the bitmap at its natural DIP size and lets Width/Height merely clip, so above 100%
+  scaling the frame comes out magnified and cut off. Never let WinUI resample a frame — it blurs the
+  tile edges the decoder reads; too-large frames warn instead of scaling.
 - **Format params ride in frame 0.** `FrameLayout` is parametric (grid, tile px, bits/tile);
   `PaletteGenerator.Generate(count, kind)` derives the palette so no colour list crosses the wire.
   Frame 0 is always `FrameLayout.Default` + cube corners — the bootstrap anchor, never user-driven.
