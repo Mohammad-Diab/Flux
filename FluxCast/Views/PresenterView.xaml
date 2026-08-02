@@ -35,7 +35,9 @@
 
     <Grid Background="#FF262A30" RowDefinitions="72,Auto,*,Auto">
 
-        <Border Grid.Row="0" Background="#FF16181D">
+        <!-- The bars follow the theme; only the area around the frame stays dark, to hold the
+             viewer's eye and the capture's contrast on the frame itself. -->
+        <Border Grid.Row="0" Background="{ThemeResource SurfaceBrush}">
             <!-- Next keeps its text label: the receiver's OCR locates that button by the word "Next". -->
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="6">
                 <Button Command="{x:Bind Vm.FirstCommand}" IsTabStop="False" AutomationProperties.Name="First frame"
@@ -122,9 +124,9 @@
                    ImageOpened="OnFrameOpened" HorizontalAlignment="Center" VerticalAlignment="Center"/>
         </Grid>
 
-        <Border Grid.Row="3" Background="#FF16181D" Padding="0,7">
+        <Border Grid.Row="3" Background="{ThemeResource SurfaceBrush}" Padding="0,7">
             <TextBlock Text="Keep this window still during transfer" FontSize="10.5"
-                       Foreground="#FF8A9199" HorizontalAlignment="Center"/>
+                       Foreground="{ThemeResource TextSecondaryBrush}" HorizontalAlignment="Center"/>
         </Border>
     </Grid>
 </UserControl>

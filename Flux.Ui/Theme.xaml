@@ -11,6 +11,10 @@
             <SolidColorBrush x:Key="FluxBorderBrush" Color="#2A3140"/>
             <SolidColorBrush x:Key="SurfaceBrush" Color="#181C27"/>
             <SolidColorBrush x:Key="SurfaceAltBrush" Color="#1F2434"/>
+            <!-- Disabled recedes toward the surface behind it, which an opacity fade cannot do: that
+                 darkens on a dark bar and lightens on a light one, so on one of them it vanishes. -->
+            <SolidColorBrush x:Key="DisabledFillBrush" Color="#171B25"/>
+            <SolidColorBrush x:Key="DisabledBorderBrush" Color="#232A38"/>
             <SolidColorBrush x:Key="HoverOverlayBrush" Color="#14FFFFFF"/>
             <SolidColorBrush x:Key="HoverOverlayStrongBrush" Color="#22FFFFFF"/>
             <SolidColorBrush x:Key="AltRowBrush" Color="#0DFFFFFF"/>
@@ -37,6 +41,8 @@
             <SolidColorBrush x:Key="FluxBorderBrush" Color="#DCE1EA"/>
             <SolidColorBrush x:Key="SurfaceBrush" Color="#FFFFFF"/>
             <SolidColorBrush x:Key="SurfaceAltBrush" Color="#EEF1F6"/>
+            <SolidColorBrush x:Key="DisabledFillBrush" Color="#DDE2EC"/>
+            <SolidColorBrush x:Key="DisabledBorderBrush" Color="#CDD4E1"/>
             <SolidColorBrush x:Key="HoverOverlayBrush" Color="#0F000000"/>
             <SolidColorBrush x:Key="HoverOverlayStrongBrush" Color="#1F000000"/>
             <SolidColorBrush x:Key="AltRowBrush" Color="#08000000"/>
@@ -160,21 +166,17 @@
                                     </Storyboard>
                                 </VisualState>
                                 <VisualState x:Name="Disabled">
-                                    <!-- Flat muted fill reads as disabled better than a faded gradient.
-                                         The fade is what carries it on a secondary button, whose enabled
-                                         fill and border are already these: without it only the label
-                                         changed and enabled and disabled looked alike. -->
+                                    <!-- A flat fill of its own, not a fade: the fade moved with whatever
+                                         was behind the button, so on a light bar a disabled secondary
+                                         button came out the same shade as an enabled one. -->
                                     <Storyboard>
-                                        <DoubleAnimation Storyboard.TargetName="Root"
-                                                         Storyboard.TargetProperty="Opacity"
-                                                         To="0.7" Duration="0"/>
                                         <ObjectAnimationUsingKeyFrames Storyboard.TargetName="Bd"
                                                                        Storyboard.TargetProperty="Background">
-                                            <DiscreteObjectKeyFrame KeyTime="0" Value="{ThemeResource SurfaceAltBrush}"/>
+                                            <DiscreteObjectKeyFrame KeyTime="0" Value="{ThemeResource DisabledFillBrush}"/>
                                         </ObjectAnimationUsingKeyFrames>
                                         <ObjectAnimationUsingKeyFrames Storyboard.TargetName="Bd"
                                                                        Storyboard.TargetProperty="BorderBrush">
-                                            <DiscreteObjectKeyFrame KeyTime="0" Value="{ThemeResource FluxBorderBrush}"/>
+                                            <DiscreteObjectKeyFrame KeyTime="0" Value="{ThemeResource DisabledBorderBrush}"/>
                                         </ObjectAnimationUsingKeyFrames>
                                         <ObjectAnimationUsingKeyFrames Storyboard.TargetName="Bd"
                                                                        Storyboard.TargetProperty="BorderThickness">
