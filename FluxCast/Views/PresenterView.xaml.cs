@@ -20,6 +20,9 @@ public sealed partial class PresenterView : UserControl
         InitializeComponent();
 
         FrameArea.SizeChanged += (_, _) => ApplyNativeSize();
+        // Frames are cached bitmaps, so revisiting one raises no ImageOpened and the box would keep the
+        // previous frame's dimensions — frame 0 is not the payload's shape, so the two disagree.
+        FrameImage.RegisterPropertyChangedCallback(Image.SourceProperty, (_, _) => ApplyNativeSize());
         KeyDown += OnKeyDown;
     }
 
@@ -52,7 +55,13 @@ public sealed partial class PresenterView : UserControl
     private void ApplyNativeSize()
     {
         if (FrameImage.Source is not BitmapImage frame || frame.PixelWidth == 0)
+        {
+            // Still decoding, so its shape is unknown: drop the box rather than stretch the new frame
+            // into the old one. ImageOpened sizes it once the dimensions arrive.
+            FrameImage.Width = double.NaN;
+            FrameImage.Height = double.NaN;
             return;
+        }
 
         double raster = XamlRoot?.RasterizationScale ?? 1;
         double availableWidth = FrameArea.ActualWidth, availableHeight = FrameArea.ActualHeight;
