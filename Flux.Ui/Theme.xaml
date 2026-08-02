@@ -160,8 +160,14 @@
                                     </Storyboard>
                                 </VisualState>
                                 <VisualState x:Name="Disabled">
-                                    <!-- Flat muted fill reads as disabled better than a faded gradient. -->
+                                    <!-- Flat muted fill reads as disabled better than a faded gradient.
+                                         The fade is what carries it on a secondary button, whose enabled
+                                         fill and border are already these: without it only the label
+                                         changed and enabled and disabled looked alike. -->
                                     <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetName="Root"
+                                                         Storyboard.TargetProperty="Opacity"
+                                                         To="0.45" Duration="0"/>
                                         <ObjectAnimationUsingKeyFrames Storyboard.TargetName="Bd"
                                                                        Storyboard.TargetProperty="Background">
                                             <DiscreteObjectKeyFrame KeyTime="0" Value="{ThemeResource SurfaceAltBrush}"/>

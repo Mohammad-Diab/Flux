@@ -96,7 +96,9 @@
                         Style="{StaticResource PrimaryButton}" MinWidth="104" MinHeight="44">
                     <StackPanel Orientation="Horizontal" Spacing="10">
                         <TextBlock Text="Next" FontSize="16" VerticalAlignment="Center"/>
-                        <FontIcon Glyph="&#xE76C;" FontSize="13" Foreground="White" VerticalAlignment="Center"/>
+                        <!-- No Foreground of its own: it inherits the button's, so it follows the label
+                             into the disabled colour instead of staying white and vanishing. -->
+                        <FontIcon Glyph="&#xE76C;" FontSize="13" VerticalAlignment="Center"/>
                     </StackPanel>
                 </Button>
                 <Button Command="{x:Bind Vm.LastCommand}" IsTabStop="False" AutomationProperties.Name="Last frame"
