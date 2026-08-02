@@ -138,9 +138,8 @@
                  not hover: the pointer passes through here on its way to the transport buttons. -->
             <Button x:Name="SizeWarningButton" Visibility="Collapsed" Canvas.ZIndex="1"
                     HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,14,0"
-                    Height="28" CornerRadius="14" Padding="14,0,4,0"
-                    BorderThickness="1" BorderBrush="{StaticResource WarningBrush}"
-                    Background="{ThemeResource SurfaceBrush}"
+                    Padding="0" MinWidth="0" MinHeight="0"
+                    BorderThickness="0" Background="Transparent"
                     AutomationProperties.Name="Window size is too small"
                     ToolTipService.ToolTip="The frame is below native size — open for detail">
                 <!-- Origin as a fraction; ScaleTransform's own centre is in pixels, not a ratio. -->
@@ -148,25 +147,28 @@
                 <Button.RenderTransform>
                     <ScaleTransform x:Name="SizeWarningScale"/>
                 </Button.RenderTransform>
+                <!-- The button is only the hit target; the two islands below carry every mark. -->
                 <Button.Resources>
-                    <StaticResource x:Key="ButtonBackground" ResourceKey="SurfaceBrush"/>
-                    <StaticResource x:Key="ButtonBackgroundPointerOver" ResourceKey="SurfaceAltBrush"/>
-                    <StaticResource x:Key="ButtonBackgroundPressed" ResourceKey="SurfaceAltBrush"/>
-                    <StaticResource x:Key="ButtonBorderBrush" ResourceKey="WarningBrush"/>
-                    <StaticResource x:Key="ButtonBorderBrushPointerOver" ResourceKey="WarningBrush"/>
-                    <StaticResource x:Key="ButtonBorderBrushPressed" ResourceKey="WarningBrush"/>
+                    <SolidColorBrush x:Key="ButtonBackground" Color="Transparent"/>
+                    <SolidColorBrush x:Key="ButtonBackgroundPointerOver" Color="Transparent"/>
+                    <SolidColorBrush x:Key="ButtonBackgroundPressed" Color="Transparent"/>
+                    <SolidColorBrush x:Key="ButtonBorderBrush" Color="Transparent"/>
+                    <SolidColorBrush x:Key="ButtonBorderBrushPointerOver" Color="Transparent"/>
+                    <SolidColorBrush x:Key="ButtonBorderBrushPressed" Color="Transparent"/>
                 </Button.Resources>
-                <StackPanel Orientation="Horizontal" Spacing="14" VerticalAlignment="Center">
-                    <!-- Divided into segments the way the frame counter is, so the label and the mark
-                         read as two parts of one control rather than a badge with a caption. -->
-                    <TextBlock x:Name="SizeWarningSummary" Text="Window size is too small"
-                               VerticalAlignment="Center" FontSize="11"
-                               Foreground="{ThemeResource TextPrimaryBrush}"/>
-                    <Border Width="1" Margin="0,5" Opacity="0.55"
-                            Background="{StaticResource WarningBrush}"/>
-                    <Border Width="22" Height="22" CornerRadius="11" VerticalAlignment="Center"
+                <!-- Two islands, not one pill: the label is its own capsule, rounded at both ends, and
+                     the mark is its own circle clear of it. Nothing joins them. -->
+                <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                    <Border Height="28" CornerRadius="14" Padding="15,0" VerticalAlignment="Center"
+                            BorderThickness="1" BorderBrush="{StaticResource WarningBrush}"
+                            Background="{ThemeResource SurfaceBrush}">
+                        <TextBlock x:Name="SizeWarningSummary" Text="Window size is too small"
+                                   VerticalAlignment="Center" FontSize="11"
+                                   Foreground="{ThemeResource TextPrimaryBrush}"/>
+                    </Border>
+                    <Border Width="28" Height="28" CornerRadius="14" VerticalAlignment="Center"
                             Background="{StaticResource WarningBrush}">
-                        <FontIcon Glyph="&#xE7BA;" FontSize="11" Foreground="#FF2A1C00"/>
+                        <FontIcon Glyph="&#xE7BA;" FontSize="13" Foreground="#FF2A1C00"/>
                     </Border>
                 </StackPanel>
                 <Button.Flyout>
