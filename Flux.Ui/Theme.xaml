@@ -69,6 +69,7 @@
     <SolidColorBrush x:Key="DangerBrush" Color="#FF5C6C"/>
     <SolidColorBrush x:Key="SuccessBrush" Color="#38D39F"/>
     <SolidColorBrush x:Key="WarningBrush" Color="#F0A93B"/>
+    <SolidColorBrush x:Key="WarningTintBrush" Color="#26F0A93B"/>
     <SolidColorBrush x:Key="DangerSelectionBrush" Color="#33FF5C6C"/>
 
     <!-- Stock controls recolour through named lightweight-styling brushes, not a retemplate. -->

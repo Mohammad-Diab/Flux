@@ -133,15 +133,19 @@
             <!-- A badge rather than a bar: the warning is about the frame being short of room, so it
                  must not take any. It sits in the chrome, never over the frame, which the receiver
                  captures. Click to open, not hover — the pointer crosses here on its way to Next. -->
-            <StackPanel x:Name="SizeWarning" Visibility="Collapsed" Canvas.ZIndex="1"
-                        Orientation="Horizontal" Spacing="9"
-                        HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,14,0">
-              <!-- The badge alone says something is wrong but not what, so a plain line sits beside it;
-                   the numbers behind it are in the flyout. It is laid out over the row rather than in
-                   it, so a narrow window makes it cover the note rather than squeeze it away. -->
+            <!-- A tinted pill, so the warning reads as one object and stays legible where it overlaps
+                 the note beneath it. The badge alone says something is wrong but not what, so a plain
+                 line sits beside it; the numbers behind it are in the flyout. It is laid out over the
+                 row rather than in it, so a narrow window makes it cover the note, not squeeze it. -->
+            <Border x:Name="SizeWarning" Visibility="Collapsed" Canvas.ZIndex="1"
+                    HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,14,0"
+                    Height="28" CornerRadius="14" Padding="13,0,3,0"
+                    BorderThickness="1" BorderBrush="{StaticResource WarningBrush}"
+                    Background="{StaticResource WarningTintBrush}">
+              <StackPanel Orientation="Horizontal" Spacing="9" VerticalAlignment="Center">
               <TextBlock x:Name="SizeWarningSummary" Text="Window size is too small"
                          VerticalAlignment="Center" FontSize="11"
-                         Foreground="{ThemeResource TextSecondaryBrush}"/>
+                         Foreground="{ThemeResource TextPrimaryBrush}"/>
               <Button x:Name="SizeWarningButton"
                     VerticalAlignment="Center"
                     Width="22" Height="22" Padding="0" CornerRadius="11" BorderThickness="0"
@@ -195,7 +199,8 @@
                     </Flyout>
                 </Button.Flyout>
               </Button>
-            </StackPanel>
+              </StackPanel>
+            </Border>
           </Grid>
         </Border>
     </Grid>
