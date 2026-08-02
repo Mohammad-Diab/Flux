@@ -157,9 +157,13 @@
                     <StaticResource x:Key="ButtonBorderBrushPressed" ResourceKey="WarningBrush"/>
                 </Button.Resources>
                 <StackPanel Orientation="Horizontal" Spacing="14" VerticalAlignment="Center">
+                    <!-- Divided into segments the way the frame counter is, so the label and the mark
+                         read as two parts of one control rather than a badge with a caption. -->
                     <TextBlock x:Name="SizeWarningSummary" Text="Window size is too small"
                                VerticalAlignment="Center" FontSize="11"
                                Foreground="{ThemeResource TextPrimaryBrush}"/>
+                    <Border Width="1" Margin="0,5" Opacity="0.55"
+                            Background="{StaticResource WarningBrush}"/>
                     <Border Width="22" Height="22" CornerRadius="11" VerticalAlignment="Center"
                             Background="{StaticResource WarningBrush}">
                         <FontIcon Glyph="&#xE7BA;" FontSize="11" Foreground="#FF2A1C00"/>
