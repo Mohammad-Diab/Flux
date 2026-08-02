@@ -33,11 +33,12 @@
         </Style>
     </UserControl.Resources>
 
-    <Grid Background="#FF262A30" RowDefinitions="72,Auto,*,Auto">
+    <Grid Background="#FF262A30" RowDefinitions="72,*,Auto">
 
         <!-- The bars follow the theme; only the area around the frame stays dark, to hold the
              viewer's eye and the capture's contrast on the frame itself. -->
         <Border Grid.Row="0" Background="{ThemeResource SurfaceBrush}">
+          <Grid>
             <!-- Next keeps its text label: the receiver's OCR locates that button by the word "Next". -->
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="6">
                 <Button Command="{x:Bind Vm.FirstCommand}" IsTabStop="False" AutomationProperties.Name="First frame"
@@ -109,17 +110,46 @@
                     <FontIcon Glyph="&#xE893;" FontSize="15"/>
                 </Button>
             </StackPanel>
-        </Border>
 
-        <Border x:Name="SizeWarning" Grid.Row="1" Background="#CCB91C1C" Padding="14,7" Visibility="Collapsed">
-            <TextBlock Text="Window is small — the frame is below native size, which costs the receiver detail. Enlarge the window."
-                       Foreground="White" FontSize="12.5" HorizontalAlignment="Center" TextAlignment="Center"/>
+            <!-- A badge rather than a bar: the warning is about the frame being short of room, so it
+                 must not take any. It sits in the chrome, never over the frame, which the receiver
+                 captures. Click to open, not hover — the pointer crosses here on its way to Next. -->
+            <Button x:Name="SizeWarning" Visibility="Collapsed"
+                    HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,18,0"
+                    Width="34" Height="34" Padding="0" CornerRadius="17" BorderThickness="0"
+                    Background="{StaticResource WarningBrush}" Foreground="#FF2A1C00"
+                    AutomationProperties.Name="Frame size warning"
+                    ToolTipService.ToolTip="The frame is below native size — open for detail">
+                <Button.Resources>
+                    <StaticResource x:Key="ButtonBackground" ResourceKey="WarningBrush"/>
+                    <StaticResource x:Key="ButtonBackgroundPointerOver" ResourceKey="WarningBrush"/>
+                    <StaticResource x:Key="ButtonBackgroundPressed" ResourceKey="WarningBrush"/>
+                    <StaticResource x:Key="ButtonForegroundPointerOver" ResourceKey="TextPrimaryBrush"/>
+                    <StaticResource x:Key="ButtonForegroundPressed" ResourceKey="TextPrimaryBrush"/>
+                    <SolidColorBrush x:Key="ButtonBorderBrush" Color="Transparent"/>
+                    <SolidColorBrush x:Key="ButtonBorderBrushPointerOver" Color="Transparent"/>
+                    <SolidColorBrush x:Key="ButtonBorderBrushPressed" Color="Transparent"/>
+                </Button.Resources>
+                <FontIcon Glyph="&#xE7BA;" FontSize="16"/>
+                <Button.Flyout>
+                    <Flyout Placement="Bottom">
+                        <StackPanel MaxWidth="330" Spacing="10">
+                            <TextBlock Text="Window is small" Style="{StaticResource HeadingText}" FontSize="16"/>
+                            <TextBlock TextWrapping="Wrap" Style="{StaticResource SubtleText}"
+                                       Text="The frame is showing below its native size, which costs the receiver detail. Enlarge the window to send it at full size."/>
+                            <Button Content="Got it" Click="OnDismissSizeWarning" HorizontalAlignment="Right"
+                                    Style="{StaticResource SecondaryButton}" MinHeight="34" FontSize="13"/>
+                        </StackPanel>
+                    </Flyout>
+                </Button.Flyout>
+            </Button>
+          </Grid>
         </Border>
 
         <!-- Sized in code-behind: the frame must land on whole device pixels, never be resampled.
              Stretch is Fill, not None: None draws the bitmap at its natural DIP size and lets Width
              and Height merely clip it, so above 100% scaling the frame is magnified and cut off. -->
-        <Grid x:Name="FrameArea" Grid.Row="2" Margin="10">
+        <Grid x:Name="FrameArea" Grid.Row="1" Margin="10">
             <!-- Holds the outgoing frame underneath while the incoming one decodes. Without it the
                  image is empty for that frame and the area blinks to its background on every step. -->
             <Image x:Name="FrameHold" Stretch="Fill" Visibility="Collapsed"
@@ -128,7 +158,7 @@
                    ImageOpened="OnFrameOpened" HorizontalAlignment="Center" VerticalAlignment="Center"/>
         </Grid>
 
-        <Border Grid.Row="3" Background="{ThemeResource SurfaceBrush}" Padding="0,7">
+        <Border Grid.Row="2" Background="{ThemeResource SurfaceBrush}" Padding="0,7">
             <TextBlock Text="Keep this window still during transfer" FontSize="10.5"
                        Foreground="{ThemeResource TextSecondaryBrush}" HorizontalAlignment="Center"/>
         </Border>

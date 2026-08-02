@@ -73,6 +73,8 @@ public sealed partial class PresenterView : UserControl
         e.Handled = true;
     }
 
+    private void OnDismissSizeWarning(object sender, RoutedEventArgs e) => SizeWarning.Flyout?.Hide();
+
     private void OnGotoKeyDown(object sender, KeyRoutedEventArgs e)
     {
         if (e.Key != VirtualKey.Enter)
