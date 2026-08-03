@@ -88,7 +88,15 @@
                                                 <MenuFlyoutItem Text="Export frames…" Command="{x:Bind ExportFramesCommand}"/>
                                                 <MenuFlyoutSeparator/>
                                                 <MenuFlyoutItem Text="Delete" Command="{x:Bind DeleteCommand}"
-                                                                Foreground="{StaticResource DangerBrush}"/>
+                                                                Foreground="{StaticResource DangerBrush}">
+                                                    <!-- Same language as DangerGhostButton: red text at rest, solid red under the pointer. -->
+                                                    <MenuFlyoutItem.Resources>
+                                                        <StaticResource x:Key="MenuFlyoutItemBackgroundPointerOver" ResourceKey="DangerBrush"/>
+                                                        <SolidColorBrush x:Key="MenuFlyoutItemForegroundPointerOver" Color="White"/>
+                                                        <StaticResource x:Key="MenuFlyoutItemBackgroundPressed" ResourceKey="DangerBrush"/>
+                                                        <SolidColorBrush x:Key="MenuFlyoutItemForegroundPressed" Color="White"/>
+                                                    </MenuFlyoutItem.Resources>
+                                                </MenuFlyoutItem>
                                             </MenuFlyout>
                                         </Button.Flyout>
                                     </Button>
