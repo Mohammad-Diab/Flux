@@ -48,8 +48,7 @@
 
             <!-- Clear of the native caption buttons, which own the right edge. -->
             <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,148,0">
-                <!-- The presenter's size warning. The shell hosts it because it sits in this bar,
-                     outside the drag region so it stays clickable; the presenter shows and hides it. -->
+                <!-- The presenter drives it; hosted here, outside the drag region, so it takes clicks. -->
                 <local:SizeWarningBadge x:Name="SizeWarning" Visibility="Collapsed" Margin="0,0,8,0"/>
                 <Button x:Name="SettingsButton" Style="{StaticResource CaptionIconButton}"
                         Click="OnOpenSettings" AutomationProperties.Name="Settings"

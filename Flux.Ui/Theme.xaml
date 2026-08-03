@@ -129,8 +129,7 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="Button">
-                    <!-- States hold instant values; the transitions carry the timing so the motion
-                         gate can strip them and keep the look. -->
+                    <!-- States hold instant values; the transitions time them, so the gate can strip them. -->
                     <Grid x:Name="Root" Background="Transparent" controls:Motion.GateTransitions="True">
                         <Grid.RenderTransform>
                             <ScaleTransform x:Name="Scale" ScaleX="1" ScaleY="1"/>
