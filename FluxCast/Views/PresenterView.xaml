@@ -33,7 +33,7 @@
         </Style>
     </UserControl.Resources>
 
-    <Grid Background="#FF262A30" RowDefinitions="72,*,Auto">
+    <Grid Background="#FF262A30" RowDefinitions="62,*,Auto">
 
         <!-- The bars follow the theme; only the area around the frame stays dark, to hold the
              viewer's eye and the capture's contrast on the frame itself. -->
@@ -124,9 +124,8 @@
                    ImageOpened="OnFrameOpened" HorizontalAlignment="Center" VerticalAlignment="Center"/>
         </Grid>
 
-        <!-- Fixed height, so nothing appearing elsewhere ever reflows the frame above it. The size
-             warning lives in the title bar (SizeWarningBadge, hosted by the shell), not in here. -->
-        <Border Grid.Row="2" Height="28" Background="{ThemeResource SurfaceBrush}">
+        <!-- Fixed height, so the frame above it never reflows. -->
+        <Border Grid.Row="2" Height="22" Background="{ThemeResource SurfaceBrush}">
             <TextBlock Text="Keep this window still during transfer" FontSize="10.5"
                        VerticalAlignment="Center" HorizontalAlignment="Center"
                        Foreground="{ThemeResource TextSecondaryBrush}"/>
