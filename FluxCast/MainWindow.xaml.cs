@@ -83,9 +83,28 @@ public sealed partial class MainWindow : Window
                 MeasureGear();
                 UpdateGenieTarget();
             };
+            root.Loaded += (_, _) =>
+            {
+                ApplyMinimumSize();
+                root.XamlRoot.Changed += (_, _) => ApplyMinimumSize();   // scale can change per monitor
+            };
         }
 
         ShowSetup();
+    }
+
+    // Below this the chrome collapses onto itself: the transport bar and the warned title bar both
+    // need the width, the bars plus a sliver of frame the height. The frame itself may still warn.
+    private const double MinWindowWidth = 680, MinWindowHeight = 420;
+
+    private void ApplyMinimumSize()
+    {
+        if (AppWindow.Presenter is not OverlappedPresenter presenter || Content?.XamlRoot is not { } xamlRoot)
+            return;
+
+        double scale = xamlRoot.RasterizationScale;
+        presenter.PreferredMinimumWidth = (int)Math.Ceiling(MinWindowWidth * scale);
+        presenter.PreferredMinimumHeight = (int)Math.Ceiling(MinWindowHeight * scale);
     }
 
     private double _gearFromRight = double.NaN, _gearCenterY;
@@ -273,8 +292,7 @@ public sealed partial class MainWindow : Window
             TabStrip.Visibility = settingsOpen || presenting ? Visibility.Collapsed : Visibility.Visible;
             SettingsButton.Visibility = settingsOpen || presenting ? Visibility.Collapsed : Visibility.Visible;
             BackButton.Visibility = settingsOpen || presenting ? Visibility.Visible : Visibility.Collapsed;
-            // The size warning takes this corner while presenting, and a narrow window would run the
-            // strip's tail under it — the star column does not clip. Presenting keeps only the wordmark.
+            // A narrow window runs these under the size warning — the star column does not clip.
             SubtitleText.Visibility = presenting ? Visibility.Collapsed : Visibility.Visible;
             VersionChip.Visibility = !presenting && AppVersion.Current.Length > 0
                 ? Visibility.Visible : Visibility.Collapsed;
