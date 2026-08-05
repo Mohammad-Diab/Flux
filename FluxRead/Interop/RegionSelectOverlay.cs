@@ -45,9 +45,12 @@ public sealed class RegionSelectOverlay
     private const int WsPopup = unchecked((int)0x80000000);
     private const int SwShow = 5;
     private const uint LwaAlpha = 0x2;
+    private const uint LwaColorKey = 0x1;
+    private const int KeyColor = 0xFF00FF;   // BGR magenta; key-painted pixels become fully clear
 
     private const int WmDestroy = 0x0002;
     private const int WmPaint = 0x000F;
+    private const int WmEraseBkgnd = 0x0014;
     private const int WmKeyDown = 0x0100;
     private const int WmLButtonDown = 0x0201;
     private const int WmLButtonUp = 0x0202;
@@ -65,6 +68,15 @@ public sealed class RegionSelectOverlay
     private bool _dragging, _done;
     private RectInt32? _result;
 
+    // The class outlives every run, so its proc must too: a per-run delegate is collected once its
+    // run ends, and the still-registered class then calls a freed thunk — the second open crashed.
+    private static readonly WndProc SharedProc = (hwnd, msg, wParam, lParam) =>
+        _current is { } overlay ? overlay.WindowProc(hwnd, msg, wParam, lParam)
+            : DefWindowProc(hwnd, msg, wParam, lParam);
+    private static readonly string ClassName = "FluxRegionOverlay" + Environment.ProcessId;
+    private static RegionSelectOverlay? _current;
+    private static bool _classRegistered;
+
     private RectInt32? Run()
     {
         _originX = GetSystemMetrics(SmXVirtualScreen);
@@ -72,24 +84,29 @@ public sealed class RegionSelectOverlay
         int width = GetSystemMetrics(SmCxVirtualScreen);
         int height = GetSystemMetrics(SmCyVirtualScreen);
 
-        var proc = new WndProc(WindowProc);
-        var wc = new WNDCLASSEX
+        if (!_classRegistered)
         {
-            cbSize = Marshal.SizeOf<WNDCLASSEX>(),
-            lpfnWndProc = Marshal.GetFunctionPointerForDelegate(proc),
-            hInstance = GetModuleHandle(null),
-            lpszClassName = "FluxRegionOverlay" + Environment.ProcessId,
-            hCursor = LoadCursor(IntPtr.Zero, 32515),   // IDC_CROSS
-        };
-        RegisterClassEx(ref wc);
+            var wc = new WNDCLASSEX
+            {
+                cbSize = Marshal.SizeOf<WNDCLASSEX>(),
+                lpfnWndProc = Marshal.GetFunctionPointerForDelegate(SharedProc),
+                hInstance = GetModuleHandle(null),
+                lpszClassName = ClassName,
+                hCursor = LoadCursor(IntPtr.Zero, 32515),   // IDC_CROSS
+            };
+            RegisterClassEx(ref wc);
+            _classRegistered = true;
+        }
 
+        _current = this;
         _hwnd = CreateWindowEx(
-            WsExLayered | WsExTopmost | WsExToolWindow, wc.lpszClassName, "Flux region",
+            WsExLayered | WsExTopmost | WsExToolWindow, ClassName, "Flux region",
             WsPopup, _originX, _originY, width, height,
-            IntPtr.Zero, IntPtr.Zero, wc.hInstance, IntPtr.Zero);
+            IntPtr.Zero, IntPtr.Zero, GetModuleHandle(null), IntPtr.Zero);
 
-        // Uniform alpha over the whole window, so the frame being selected stays visible underneath.
-        SetLayeredWindowAttributes(_hwnd, 0, 110, LwaAlpha);
+        // Uniform alpha dims the desktop; the dragged rectangle is painted in the key colour, so it
+        // reads as a clear hole in the dim.
+        SetLayeredWindowAttributes(_hwnd, KeyColor, 110, LwaAlpha | LwaColorKey);
         ShowWindow(_hwnd, SwShow);
         SetForegroundWindow(_hwnd);
 
@@ -102,7 +119,7 @@ public sealed class RegionSelectOverlay
         if (_hwnd != IntPtr.Zero)
             DestroyWindow(_hwnd);
 
-        GC.KeepAlive(proc);
+        _current = null;
         return _result;
     }
 
@@ -111,6 +128,9 @@ public sealed class RegionSelectOverlay
         switch (msg)
         {
             case WmLButtonDown:
+                // The hole is transparent to hit-testing too, so the drag must be captured or the
+                // pointer's messages fall through to the windows underneath it.
+                SetCapture(hwnd);
                 _dragging = true;
                 _startX = _curX = LoWord(lParam);
                 _startY = _curY = HiWord(lParam);
@@ -121,13 +141,18 @@ public sealed class RegionSelectOverlay
                 {
                     _curX = LoWord(lParam);
                     _curY = HiWord(lParam);
-                    InvalidateRect(hwnd, IntPtr.Zero, true);
+                    InvalidateRect(hwnd, IntPtr.Zero, false);
                 }
                 return IntPtr.Zero;
+
+            // Every pixel is repainted from the buffer, so the erase pass would only flicker.
+            case WmEraseBkgnd:
+                return (IntPtr)1;
 
             case WmLButtonUp:
                 if (_dragging)
                 {
+                    ReleaseCapture();
                     _dragging = false;
                     int x = Math.Min(_startX, _curX), y = Math.Min(_startY, _curY);
                     int w = Math.Abs(_curX - _startX), h = Math.Abs(_curY - _startY);
@@ -157,11 +182,18 @@ public sealed class RegionSelectOverlay
         return DefWindowProc(hwnd, msg, wParam, lParam);
     }
 
+    // Drawn into a memory bitmap and blitted once: painting dim-then-hole straight to the screen
+    // shows the half-painted states as streaks while the marquee is dragged.
     private void Paint(IntPtr hwnd)
     {
         var dc = BeginPaint(hwnd, out var ps);
+        GetClientRect(hwnd, out var rc);
+        var mem = CreateCompatibleDC(dc);
+        var surface = CreateCompatibleBitmap(dc, rc.Right, rc.Bottom);
+        var oldSurface = SelectObject(mem, surface);
+
         var dim = CreateSolidBrush(0x14100C);   // BGR: the app's dark background
-        FillRect(dc, ref ps.rcPaint, dim);
+        FillRect(mem, ref rc, dim);
         DeleteObject(dim);
 
         if (_dragging || _result is not null)
@@ -169,15 +201,20 @@ public sealed class RegionSelectOverlay
             int x = Math.Min(_startX, _curX), y = Math.Min(_startY, _curY);
             int w = Math.Abs(_curX - _startX), h = Math.Abs(_curY - _startY);
             var pen = CreatePen(0, 2, 0xFF5C7C);   // BGR of the accent violet
-            var old = SelectObject(dc, pen);
-            var hollow = GetStockObject(5);        // NULL_BRUSH
-            var oldBrush = SelectObject(dc, hollow);
-            Rectangle(dc, x, y, x + w, y + h);
-            SelectObject(dc, old);
-            SelectObject(dc, oldBrush);
+            var old = SelectObject(mem, pen);
+            var key = CreateSolidBrush(KeyColor);  // clears the selection out of the dim
+            var oldBrush = SelectObject(mem, key);
+            Rectangle(mem, x, y, x + w, y + h);
+            SelectObject(mem, old);
+            SelectObject(mem, oldBrush);
             DeleteObject(pen);
+            DeleteObject(key);
         }
 
+        BitBlt(dc, 0, 0, rc.Right, rc.Bottom, mem, 0, 0, 0x00CC0020);   // SRCCOPY
+        SelectObject(mem, oldSurface);
+        DeleteObject(surface);
+        DeleteDC(mem);
         EndPaint(hwnd, ref ps);
     }
 
@@ -229,12 +266,20 @@ public sealed class RegionSelectOverlay
     [DllImport("user32.dll")] private static extern bool SetForegroundWindow(IntPtr h);
     [DllImport("user32.dll")] private static extern bool SetLayeredWindowAttributes(IntPtr h, uint key, byte alpha, uint flags);
     [DllImport("user32.dll")] private static extern int GetSystemMetrics(int i);
-    [DllImport("user32.dll")] private static extern IntPtr DefWindowProc(IntPtr h, int m, IntPtr w, IntPtr l);
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)] private static extern IntPtr DefWindowProc(IntPtr h, int m, IntPtr w, IntPtr l);
     [DllImport("user32.dll")] private static extern int GetMessage(out MSG m, IntPtr h, uint min, uint max);
     [DllImport("user32.dll")] private static extern bool TranslateMessage(ref MSG m);
     [DllImport("user32.dll")] private static extern IntPtr DispatchMessage(ref MSG m);
     [DllImport("user32.dll")] private static extern void PostQuitMessage(int code);
     [DllImport("user32.dll")] private static extern bool InvalidateRect(IntPtr h, IntPtr r, bool erase);
+    [DllImport("user32.dll")] private static extern IntPtr SetCapture(IntPtr h);
+    [DllImport("user32.dll")] private static extern bool ReleaseCapture();
+    [DllImport("user32.dll")] private static extern bool GetClientRect(IntPtr h, out RECT r);
+    [DllImport("gdi32.dll")] private static extern IntPtr CreateCompatibleDC(IntPtr dc);
+    [DllImport("gdi32.dll")] private static extern IntPtr CreateCompatibleBitmap(IntPtr dc, int w, int h);
+    [DllImport("gdi32.dll")] private static extern bool DeleteDC(IntPtr dc);
+    [DllImport("gdi32.dll")] private static extern bool BitBlt(
+        IntPtr dst, int x, int y, int w, int h, IntPtr src, int sx, int sy, uint rop);
     [DllImport("user32.dll")] private static extern IntPtr BeginPaint(IntPtr h, out PAINTSTRUCT ps);
     [DllImport("user32.dll")] private static extern bool EndPaint(IntPtr h, ref PAINTSTRUCT ps);
     [DllImport("user32.dll")] private static extern int FillRect(IntPtr dc, ref RECT r, IntPtr brush);
