@@ -19,6 +19,10 @@ public sealed partial class MiniCaptureWindow : Window
     private const double ExpandedHeight = 372;
     private const double CollapsedHeight = 128;
     private const double CornerMargin = 24;
+    // A dialog is laid out inside its window, so the window has to clear the widest one (440) plus
+    // the scrim's margin, or the prompt is cut off by the edge of the mini window.
+    private const double DialogWidth = 500;
+    private const double DialogHeight = 400;
     private static readonly TimeSpan ResizeDuration = TimeSpan.FromMilliseconds(240);
     private static readonly TimeSpan FrameInterval = TimeSpan.FromMilliseconds(16);
 
@@ -68,6 +72,19 @@ public sealed partial class MiniCaptureWindow : Window
         UpdatePauseIcon();
         WindowPlacement.PlaceBottomRightOfMonitor(
             _hwnd, ownerHandle, Width, _expanded ? ExpandedHeight : CollapsedHeight, CornerMargin);
+
+        if (Content is FrameworkElement content)
+            content.Loaded += (_, _) => AlignCaptionCluster();
+    }
+
+    // The system draws the close button in its own band at the very top, whose height and width are
+    // its to decide, so the chevron is matched to it rather than to the header.
+    private void AlignCaptionCluster()
+    {
+        double scale = Content.XamlRoot?.RasterizationScale ?? 1;
+        var bar = AppWindow.TitleBar;
+        CaptionCluster.Height = bar.Height / scale;
+        CaptionCluster.Margin = new Thickness(0, 0, bar.RightInset / scale, 0);
     }
 
     /// <summary>Applies the theme the shell is using; a second window does not inherit it.</summary>
@@ -110,6 +127,28 @@ public sealed partial class MiniCaptureWindow : Window
         string label = _expanded ? "Collapse" : "Expand";
         Microsoft.UI.Xaml.Controls.ToolTipService.SetToolTip(CollapseButton, label);
         Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(CollapseButton, label);
+    }
+
+    /// <summary>Grows the window so a dialog shown on it is not clipped, restoring the size on dispose.</summary>
+    public IDisposable RoomForDialog()
+    {
+        _resizeTicker.Stop();
+        var original = new Windows.Graphics.RectInt32(
+            AppWindow.Position.X, AppWindow.Position.Y, AppWindow.Size.Width, AppWindow.Size.Height);
+
+        double scale = Content.XamlRoot?.RasterizationScale ?? 1;
+        int width = Math.Max(original.Width, (int)Math.Round(DialogWidth * scale));
+        int height = Math.Max(original.Height, (int)Math.Round(DialogHeight * scale));
+        // Grows up and to the left, keeping the corner it is parked in.
+        AppWindow.MoveAndResize(new Windows.Graphics.RectInt32(
+            original.X + original.Width - width, original.Y + original.Height - height, width, height));
+
+        return new Restorer(this, original);
+    }
+
+    private sealed class Restorer(MiniCaptureWindow window, Windows.Graphics.RectInt32 original) : IDisposable
+    {
+        public void Dispose() => window.AppWindow.MoveAndResize(original);
     }
 
     // The bottom edge stays put, and an AppWindow has no animatable height, so this tweens by hand.

@@ -50,10 +50,12 @@
                 <TextBlock Text="{x:Bind Vm.StateText, Mode=OneWay}" VerticalAlignment="Center" FontSize="12"
                            Foreground="{ThemeResource TextSecondaryBrush}" TextTrimming="CharacterEllipsis"/>
             </StackPanel>
-            <!-- Clear of the native close button, which owns the right edge of the drag region. -->
-            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center"
-                        Margin="0,0,46,0">
-                <Button x:Name="CollapseButton" Style="{StaticResource MiniIconButton}" Click="OnToggleSize">
+            <!-- Height and right inset come from the real caption band in code: centring in this
+                 48-tall header instead puts the chevron below the native close button. -->
+            <StackPanel x:Name="CaptionCluster" Orientation="Horizontal" HorizontalAlignment="Right"
+                        VerticalAlignment="Top">
+                <Button x:Name="CollapseButton" Style="{StaticResource MiniIconButton}" Click="OnToggleSize"
+                        Height="28" VerticalAlignment="Center">
                     <Grid>
                         <Path x:Name="ChevronUpIcon" Data="M1,7 L6,2 L11,7" StrokeThickness="1.6"
                               StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round"
