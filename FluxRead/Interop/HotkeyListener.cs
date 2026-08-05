@@ -15,6 +15,10 @@ public sealed class HotkeyListener : IDisposable
     private const int HotkeyId = 0xF10C;
     private const int GwlpWndProc = -4;
 
+    // Self-rooting: the window's procedure points at this instance's thunk until Dispose, so being
+    // collected before then leaves the chain calling freed memory on the next message.
+    private static readonly HashSet<HotkeyListener> Installed = [];
+
     private readonly IntPtr _hwnd;
     private readonly WndProc _proc;
     private readonly IntPtr _previousProc;
@@ -34,6 +38,7 @@ public sealed class HotkeyListener : IDisposable
         _previousProc = SetWindowLongPtr(_hwnd, GwlpWndProc, Marshal.GetFunctionPointerForDelegate(_proc));
         if (_previousProc == IntPtr.Zero)
             throw new InvalidOperationException("Could not hook the window for the hotkey.");
+        Installed.Add(this);
     }
 
     /// <summary>Registers the F8 hotkey. Idempotent.</summary>
@@ -77,7 +82,7 @@ public sealed class HotkeyListener : IDisposable
         Disarm();
         SetWindowLongPtr(_hwnd, GwlpWndProc, _previousProc);
         _disposed = true;
-        GC.KeepAlive(_proc);
+        Installed.Remove(this);
     }
 
     private delegate IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam);
