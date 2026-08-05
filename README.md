@@ -69,7 +69,8 @@ A frame is a grid of flat colored tiles inside a white quiet zone, rendered with
 (one tile = one flat color block). **The grid, tile size, and palette are per-transfer settings**:
 FluxCast fits the grid to the sender's display at the chosen tile size, writes the geometry into
 frame 0, and the receiver adopts whatever frame 0 declares. The legacy fixed geometry — **160 × 90
-tiles at 8 px**, a 1312 × 752 px PNG — remains the default layout and the bootstrap anchor.
+tiles at 8 px**, a 1312 × 752 px PNG — remains the default payload layout; frame 0 has its own
+smaller fixed grid (below), the bootstrap anchor.
 
 - **Corner finder patterns** — four QR-style 7×7 concentric squares (1:1:3:1:1 scanline
   profile). The decoder locates them by run-length scan and builds a homography, so captures
@@ -104,11 +105,15 @@ gate scales to the palette's actual minimum distance.
 The rugged tier is eight grays on an even luma ladder: screen codecs preserve luma and wreck
 chroma, so a palette that differs *only* in luma loses nothing to chroma subsampling.
 
-**Frame 0** (metadata) is fixed and never follows these settings — it uses only the **8 RGB cube
-corners** (black/red/green/blue/cyan/yellow/magenta/white) at 3 bits/tile, decoded by a simple
-per-channel threshold (minimum distance 255). That makes the bootstrap frame maximally robust and
-palette-independent while it carries the transfer metadata (SHA-256, name, sizes, ECC level, grid,
-tile size, color count, and palette kind).
+**Frame 0** (metadata) is fixed and never follows these settings — it is a **96 × 54 grid encoded
+in pure black/white** (1 bit/tile, an 800 × 464 px PNG), decoded by a single adaptive luma
+threshold, with the ~250 bytes of metadata protected by two half-rate RS(255,127) codewords. Mono
+because frame 0 must survive the worst channel any payload tier targets — a grayscale or
+chroma-destroying link that the rugged tier handles cannot be allowed to kill the frame that
+bootstraps it. It carries the transfer metadata (SHA-256, name, sizes, ECC level, grid, tile size,
+color count, palette kind, and a metadata-frame count reserved for future multi-frame metadata).
+From v5 on the metadata is versioned append-only, so future fields extend it without breaking
+older readers; the redesign itself is the one wire break, worth a line in the next release notes.
 
 ### ECC levels (per-frame payload capacity)
 
@@ -201,10 +206,10 @@ coordinates are physical pixels.
 ## Project layout
 
 - `FluxCore/` — `Framing/` (format, parametric layout, header, encoder), `Ecc/`, `Imaging/`
-  (palette generator, renderer, cube-corner colors), `Decoding/` (fiducials, homography, sampler,
+  (palette generator, renderer, mono bootstrap colors), `Decoding/` (fiducials, homography, sampler,
   decoder, assembler), `Compression/`, `Hashing/`, `Transfer/` (content signature, encode service,
   capture loop).
-- `FluxCore.Tests/` — 365 xUnit tests incl. the golden round-trip and degradation matrix.
+- `FluxCore.Tests/` — 371 xUnit tests incl. the golden round-trip and degradation matrix.
 - `Flux.Ui/` — the shared interface library: the single theme, transitions, motion and theme
   settings, dialogs, and the views both apps embed.
 - `FluxCast/` — the sender (setup / progress / presenter / recent casts).

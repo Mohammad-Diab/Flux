@@ -118,25 +118,26 @@ public class FrameEncoderTests
     }
 
     [Fact]
-    public void BuildMetadataFrame_IsCubeCornerScheme_WithBlackBeacon()
+    public void BuildMetadataFrame_IsMonoScheme_WithBlackBeacon()
     {
-        var map = FrameEncoder.BuildMetadataFrame(DeterministicPayload(500), 42);
+        var map = FrameEncoder.BuildMetadataFrame(DeterministicPayload(200), 42);
 
-        Assert.Equal(TileColorScheme.CubeCorner8, map.ColorScheme);
+        Assert.Equal(TileColorScheme.Mono2, map.ColorScheme);
+        Assert.Same(BootstrapFrame.Layout, map.Layout);
         Assert.True(map.Header.IsMetadataFrame);
         Assert.Equal(0u, map.Header.FrameId);
         Assert.True(map.BeaconIsBlack);
 
-        foreach (var (x, y) in FrameFormat.MetadataFrameTiles.Take(FrameFormat.MetadataTilesUsed))
+        foreach (var (x, y) in BootstrapFrame.MetadataFrameTiles.Take(BootstrapFrame.TilesUsed))
         {
-            Assert.InRange(map.GetTileValue(x, y), (byte)0, (byte)7);
+            Assert.InRange(map.GetTileValue(x, y), (byte)0, (byte)1);
         }
     }
 
     [Fact]
     public void BuildMetadataFrame_ThrowsWhenContentExceedsCapacity()
     {
-        var content = DeterministicPayload(FrameFormat.MetadataContentBytes + 1);
+        var content = DeterministicPayload(BootstrapFrame.ContentBytes + 1);
 
         Assert.Throws<ArgumentException>(() => FrameEncoder.BuildMetadataFrame(content, 2));
     }
@@ -157,38 +158,33 @@ public class FrameEncoderTests
 
         var map = FrameEncoder.BuildMetadataFrame(metadata.Serialize(), 42);
 
-        var stream = new byte[FrameFormat.MetadataEncodedBytes];
-        var positions = FrameFormat.MetadataFrameTiles;
-        for (int t = 0; t < FrameFormat.MetadataTilesUsed; t++)
+        var stream = new byte[BootstrapFrame.EncodedBytes];
+        var positions = BootstrapFrame.MetadataFrameTiles;
+        for (int t = 0; t < BootstrapFrame.TilesUsed; t++)
         {
             var (x, y) = positions[t];
-            int value = map.GetTileValue(x, y);
-            for (int k = 0; k < 3; k++)
-            {
-                int bit = (value >> (2 - k)) & 1;
-                int globalBit = t * 3 + k;
-                if (bit != 0)
-                    stream[globalBit >> 3] |= (byte)(1 << (7 - (globalBit & 7)));
-            }
+            if (map.GetTileValue(x, y) != 0)
+                stream[t >> 3] |= (byte)(1 << (7 - (t & 7)));
         }
 
-        var content = new byte[FrameFormat.MetadataContentBytes];
-        int parity = FrameFormat.CodewordLength - FrameFormat.MetadataCodewordDataBytes;
-        for (int c = 0; c < FrameFormat.MetadataCodewordCount; c++)
+        var content = new byte[BootstrapFrame.ContentBytes];
+        for (int c = 0; c < BootstrapFrame.CodewordCount; c++)
         {
             var block = new byte[FrameFormat.CodewordLength];
             for (int s = 0; s < FrameFormat.CodewordLength; s++)
             {
-                block[s] = stream[s * FrameFormat.MetadataCodewordCount + c];
+                block[s] = stream[s * BootstrapFrame.CodewordCount + c];
             }
 
             Assert.True(ReedSolomonBlockCodec.TryDecodeBlock(
-                block, parity, content.AsSpan(c * FrameFormat.MetadataCodewordDataBytes, FrameFormat.MetadataCodewordDataBytes), out _));
+                block, BootstrapFrame.ParitySymbols,
+                content.AsSpan(c * BootstrapFrame.CodewordDataBytes, BootstrapFrame.CodewordDataBytes), out _));
         }
 
         var restored = MetadataPayload.Deserialize(content);
         Assert.Equal("vacation-photos.7z", restored.OriginalName);
         Assert.Equal(42u, restored.TotalFrames);
+        Assert.Equal(1, restored.MetadataFrameCount);
         Assert.True(restored.TryBuildLayout(out _));
     }
 }

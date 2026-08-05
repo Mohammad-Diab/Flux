@@ -52,8 +52,9 @@ public static class ContentSignature
     {
         ArgumentNullException.ThrowIfNull(options);
 
+        // The metadata version re-keys renders, so a reshaped frame 0 can't be resumed from stale frames.
         using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
-        hash.AppendData([(byte)options.EccLevel, FrameFormat.Version, (byte)options.PaletteKind]);
+        hash.AppendData([(byte)options.EccLevel, FrameFormat.Version, (byte)options.PaletteKind, MetadataPayload.CurrentVersion]);
         AppendInt64(hash, options.GridWidthTiles);
         AppendInt64(hash, options.GridHeightTiles);
         AppendInt64(hash, options.TilePixelSize);

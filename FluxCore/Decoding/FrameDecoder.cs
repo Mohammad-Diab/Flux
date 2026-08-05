@@ -120,17 +120,17 @@ public sealed class FrameDecoder
 
     /// <summary>
     /// Decodes the metadata frame (frame 0). The caller identifies frame 0 by position (first
-    /// frame). Uses cube-corner threshold classification independent of the payload palette, so
-    /// the frame is decodable even before the palette is known. Returns the serialized metadata
-    /// bytes as the payload for the caller to deserialize.
+    /// frame). Uses black/white luma classification independent of the payload palette, so the
+    /// frame is decodable on any channel before the palette is known. Returns the serialized
+    /// metadata bytes as the payload for the caller to deserialize.
     /// </summary>
     /// <param name="capture">Captured image of frame 0.</param>
     public FrameDecodeResult DecodeMetadataFrame(SKBitmap capture)
     {
         ArgumentNullException.ThrowIfNull(capture);
 
-        // Frame 0 is always the canonical layout — the bootstrap anchor before the grid is known.
-        if (!TryRegister(capture, FrameLayout.Default, out var registration))
+        // Frame 0 is always the bootstrap layout — the fixed anchor before the grid is known.
+        if (!TryRegister(capture, BootstrapFrame.Layout, out var registration))
             return registration.FailureResult!;
 
         var sampler = registration.Sampler!;
@@ -140,31 +140,31 @@ public sealed class FrameDecoder
             TimingMatchRatio = registration.TimingMatchRatio,
         };
 
-        var positions = FrameFormat.MetadataFrameTiles;
-        var tileValues = new ushort[FrameFormat.MetadataTilesUsed];
-        for (int t = 0; t < FrameFormat.MetadataTilesUsed; t++)
+        double threshold = registration.Luma!.Threshold;
+        var positions = BootstrapFrame.MetadataFrameTiles;
+        var tileValues = new ushort[BootstrapFrame.TilesUsed];
+        for (int t = 0; t < BootstrapFrame.TilesUsed; t++)
         {
             var (x, y) = positions[t];
-            var sample = sampler.Sample(x, y);
-            tileValues[t] = (ushort)CubeCornerColors.Classify(sample.R, sample.G, sample.B);
+            tileValues[t] = (ushort)MonoColors.Classify(sampler.Sample(x, y).Luma, threshold);
         }
 
-        var stream = TileBitPacker.Unpack(tileValues, CubeCornerColors.BitsPerTile, FrameFormat.MetadataEncodedBytes);
+        var stream = TileBitPacker.Unpack(tileValues, MonoColors.BitsPerTile, BootstrapFrame.EncodedBytes);
 
-        var content = new byte[FrameFormat.MetadataContentBytes];
+        var content = new byte[BootstrapFrame.ContentBytes];
         int correctedErrors = 0;
         Span<byte> block = stackalloc byte[FrameFormat.CodewordLength];
 
-        for (int c = 0; c < FrameFormat.MetadataCodewordCount; c++)
+        for (int c = 0; c < BootstrapFrame.CodewordCount; c++)
         {
             for (int s = 0; s < FrameFormat.CodewordLength; s++)
             {
-                block[s] = stream[s * FrameFormat.MetadataCodewordCount + c];
+                block[s] = stream[s * BootstrapFrame.CodewordCount + c];
             }
 
             if (!ReedSolomonBlockCodec.TryDecodeBlock(
-                    block, FrameFormat.MetadataParitySymbols,
-                    content.AsSpan(c * FrameFormat.MetadataCodewordDataBytes, FrameFormat.MetadataCodewordDataBytes),
+                    block, BootstrapFrame.ParitySymbols,
+                    content.AsSpan(c * BootstrapFrame.CodewordDataBytes, BootstrapFrame.CodewordDataBytes),
                     out int corrected))
             {
                 return Undecodable(DecodeFailureReason.EccFailure, With(diagnostics, correctedErrors: correctedErrors));

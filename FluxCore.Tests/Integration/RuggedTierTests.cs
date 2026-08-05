@@ -72,6 +72,34 @@ public class RuggedTierTests
     }
 
     [Fact]
+    public void MonoFrameZero_SurvivesTotalChromaLoss()
+    {
+        var metadata = new MetadataPayload(
+            sha256: Deterministic(32),
+            payloadType: PayloadType.SevenZip,
+            eccLevel: EccLevel.Medium,
+            totalFrames: 7,
+            payloadLength: 50_000,
+            originalName: "rugged-transfer.7z",
+            originalLength: 120_000,
+            contentSignature: Deterministic(32, seed: 9),
+            colorCount: 8,
+            paletteKind: PaletteKind.Rugged);
+
+        var map = FrameEncoder.BuildMetadataFrame(metadata.Serialize(), 7);
+        using var bitmap = SKBitmap.Decode(FrameRenderer.RenderPng(map, ColorMap.Default));
+        CollapseChroma(bitmap);
+
+        var result = new FrameDecoder(ColorMap.Default).DecodeMetadataFrame(bitmap);
+
+        // The channel the rugged tier exists for must not be able to kill the frame that bootstraps it.
+        Assert.Equal(DecodeStatus.Success, result.Status);
+        var restored = MetadataPayload.Deserialize(result.Payload!);
+        Assert.Equal("rugged-transfer.7z", restored.OriginalName);
+        Assert.Equal(PaletteKind.Rugged, restored.PaletteKind);
+    }
+
+    [Fact]
     public void Standard8_FailsUnderTotalChromaLoss_WhereRuggedSucceeds()
     {
         var payload = Deterministic(EccLevel.Medium.PayloadBytesPerFrame(FrameLayout.Default.CodewordsForBits(Bits)));

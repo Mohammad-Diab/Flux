@@ -4,8 +4,8 @@ using SkiaSharp;
 namespace FluxCore.Imaging;
 
 /// <summary>
-/// Renders a <see cref="FrameTileMap"/> to the canonical 1312x752 PNG: white quiet zone,
-/// 8x8-pixel tiles, no antialiasing so every pixel is an exact palette or structural color.
+/// Renders a <see cref="FrameTileMap"/> to a PNG at its layout's canonical scale: white quiet
+/// zone, square tiles, no antialiasing so every pixel is an exact palette or structural color.
 /// </summary>
 public static class FrameRenderer
 {
@@ -67,8 +67,8 @@ public static class FrameRenderer
             case TileRole.Data:
             case TileRole.Header:
                 var value = tiles.GetTileValue(x, y);
-                var rgb = tiles.ColorScheme == TileColorScheme.CubeCorner8
-                    ? CubeCornerColors.ToColor(value)
+                var rgb = tiles.ColorScheme == TileColorScheme.Mono2
+                    ? MonoColors.ToColor(value)
                     : colorMap.GetColor(value);
                 color = new SKColor(rgb.R, rgb.G, rgb.B);
                 return true;

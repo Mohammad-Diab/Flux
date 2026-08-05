@@ -13,14 +13,20 @@ namespace FluxCore.Framing;
 /// </summary>
 public sealed class MetadataPayload
 {
-    /// <summary>Metadata format version (current = 4).</summary>
-    public const byte CurrentVersion = 4;
+    /// <summary>Metadata format version (current = 5).</summary>
+    public const byte CurrentVersion = 5;
 
     /// <summary>Serialized size in bytes excluding the variable-length name.</summary>
-    public const int FixedSize = 1 + 32 + 1 + 1 + 1 + 2 + 2 + 4 + 8 + 2 + 8 + 32 + 2 + 1;
+    public const int FixedSize = 1 + 1 + 32 + 1 + 1 + 1 + 2 + 2 + 4 + 8 + 8 + 32 + 2 + 1 + 2;
+
+    /// <summary>Largest UTF-8 name that fits frame 0 alongside the fixed fields.</summary>
+    public const int MaxNameBytes = BootstrapFrame.ContentBytes - FixedSize;
 
     /// <summary>Gets the metadata format version.</summary>
     public byte Version { get; init; } = CurrentVersion;
+
+    /// <summary>Gets how many leading frames carry metadata (frame 0 included); payload frames start at this id.</summary>
+    public byte MetadataFrameCount { get; }
 
     /// <summary>Gets the SHA-256 hash of the transferred payload (after compression if applicable).</summary>
     public byte[] Sha256 { get; }
@@ -75,7 +81,8 @@ public sealed class MetadataPayload
         long originalLength,
         byte[] contentSignature,
         int colorCount = 256,
-        PaletteKind paletteKind = PaletteKind.Standard)
+        PaletteKind paletteKind = PaletteKind.Standard,
+        byte metadataFrameCount = 1)
     {
         ArgumentNullException.ThrowIfNull(sha256);
         ArgumentNullException.ThrowIfNull(originalName);
@@ -89,6 +96,10 @@ public sealed class MetadataPayload
             throw new ArgumentException($"Unknown ECC level: {eccLevel}.", nameof(eccLevel));
         if (totalFrames < 1)
             throw new ArgumentException("Total frames must be at least 1.", nameof(totalFrames));
+        if (metadataFrameCount < 1 || metadataFrameCount > totalFrames)
+            throw new ArgumentException(
+                $"Metadata frame count {metadataFrameCount} must be between 1 and the {totalFrames} total frames.",
+                nameof(metadataFrameCount));
         if (payloadLength < 0)
             throw new ArgumentException("Payload length cannot be negative.", nameof(payloadLength));
         if (originalLength < 0)
@@ -106,11 +117,12 @@ public sealed class MetadataPayload
         ContentSignature = contentSignature;
         ColorCount = colorCount;
         PaletteKind = paletteKind;
+        MetadataFrameCount = metadataFrameCount;
     }
 
     /// <summary>
     /// Builds the payload-frame layout this transfer's geometry describes. The decoder adopts the
-    /// returned layout for every payload frame (frame 0 is always <see cref="FrameLayout.Default"/>).
+    /// returned layout for every payload frame (frame 0 is always <see cref="BootstrapFrame.Layout"/>).
     /// Returns false when the version is incompatible, the grid is not a constructible layout, or a
     /// frame's payload would overflow <see cref="FrameHeader.PayloadLength"/>; a decoder must refuse
     /// the transfer in that case.
@@ -119,7 +131,7 @@ public sealed class MetadataPayload
     public bool TryBuildLayout([NotNullWhen(true)] out FrameLayout? layout)
     {
         layout = null;
-        if (Version != CurrentVersion)
+        if (Version < CurrentVersion)
             return false;
 
         try
@@ -137,24 +149,41 @@ public sealed class MetadataPayload
         }
     }
 
+    /// <summary>Shortens a name to <see cref="MaxNameBytes"/> of UTF-8, never splitting a code point.</summary>
+    /// <param name="name">Original file or folder name.</param>
+    public static string FitName(string name)
+    {
+        ArgumentNullException.ThrowIfNull(name);
+        if (Encoding.UTF8.GetByteCount(name) <= MaxNameBytes)
+            return name;
+
+        int length = Math.Min(name.Length, MaxNameBytes);
+        while (length > 0 &&
+               (char.IsHighSurrogate(name[length - 1]) || Encoding.UTF8.GetByteCount(name, 0, length) > MaxNameBytes))
+            length--;
+        return name[..length];
+    }
+
     /// <summary>
-    /// Serializes the metadata payload. Layout (little-endian):
-    /// Version(1) | Sha256(32) | PayloadType(1) | EccLevel(1) | TilePixelSize(1) |
-    /// GridWidthTiles(2) | GridHeightTiles(2) | TotalFrames(4) | PayloadLength(8) |
-    /// NameLength(2) | Name(UTF-8) | OriginalLength(8) | ContentSignature(32) | ColorCount(2) |
-    /// PaletteKind(1).
+    /// Serializes the metadata payload. Layout (little-endian, version 5):
+    /// Version(1) | MetadataFrameCount(1) | Sha256(32) | PayloadType(1) | EccLevel(1) |
+    /// TilePixelSize(1) | GridWidthTiles(2) | GridHeightTiles(2) | TotalFrames(4) |
+    /// PayloadLength(8) | OriginalLength(8) | ContentSignature(32) | ColorCount(2) |
+    /// PaletteKind(1) | NameLength(2) | Name(UTF-8). The name comes last so every fixed field has
+    /// a constant offset; from v5 on, new versions may only append fields, which readers ignore.
     /// </summary>
     public byte[] Serialize()
     {
         var nameBytes = Encoding.UTF8.GetBytes(OriginalName);
-        if (nameBytes.Length > ushort.MaxValue)
+        if (nameBytes.Length > MaxNameBytes)
             throw new InvalidOperationException(
-                $"Original name is too long: {nameBytes.Length} bytes (max {ushort.MaxValue}).");
+                $"Original name is too long: {nameBytes.Length} bytes (max {MaxNameBytes}; shorten it with {nameof(FitName)}).");
 
         var buffer = new byte[FixedSize + nameBytes.Length];
         int offset = 0;
 
         buffer[offset++] = Version;
+        buffer[offset++] = MetadataFrameCount;
 
         Sha256.CopyTo(buffer.AsSpan(offset));
         offset += 32;
@@ -171,12 +200,6 @@ public sealed class MetadataPayload
         offset += 4;
         BinaryPrimitives.WriteInt64LittleEndian(buffer.AsSpan(offset), PayloadLength);
         offset += 8;
-
-        BinaryPrimitives.WriteUInt16LittleEndian(buffer.AsSpan(offset), (ushort)nameBytes.Length);
-        offset += 2;
-        nameBytes.CopyTo(buffer.AsSpan(offset));
-        offset += nameBytes.Length;
-
         BinaryPrimitives.WriteInt64LittleEndian(buffer.AsSpan(offset), OriginalLength);
         offset += 8;
 
@@ -186,7 +209,11 @@ public sealed class MetadataPayload
         BinaryPrimitives.WriteUInt16LittleEndian(buffer.AsSpan(offset), (ushort)ColorCount);
         offset += 2;
 
-        buffer[offset] = (byte)PaletteKind;
+        buffer[offset++] = (byte)PaletteKind;
+
+        BinaryPrimitives.WriteUInt16LittleEndian(buffer.AsSpan(offset), (ushort)nameBytes.Length);
+        offset += 2;
+        nameBytes.CopyTo(buffer.AsSpan(offset));
 
         return buffer;
     }
@@ -199,7 +226,11 @@ public sealed class MetadataPayload
         return Deserialize(data.AsSpan());
     }
 
-    /// <summary>Deserializes a metadata payload from a span.</summary>
+    /// <summary>
+    /// Deserializes a metadata payload from a span. Accepts any version at or above
+    /// <see cref="CurrentVersion"/>: from v5 on, new versions only ever append fields, so the
+    /// known prefix parses and the remainder is ignored.
+    /// </summary>
     /// <param name="data">Serialized metadata.</param>
     public static MetadataPayload Deserialize(ReadOnlySpan<byte> data)
     {
@@ -209,9 +240,11 @@ public sealed class MetadataPayload
         int offset = 0;
 
         var version = data[offset++];
-        if (version != CurrentVersion)
+        if (version < CurrentVersion)
             throw new NotSupportedException(
-                $"Unsupported metadata version: {version}. Expected {CurrentVersion}.");
+                $"Unsupported metadata version: {version}. Expected {CurrentVersion} or later.");
+
+        var metadataFrameCount = data[offset++];
 
         var sha256 = data.Slice(offset, 32).ToArray();
         offset += 32;
@@ -228,16 +261,6 @@ public sealed class MetadataPayload
         offset += 4;
         var payloadLength = BinaryPrimitives.ReadInt64LittleEndian(data[offset..]);
         offset += 8;
-
-        var nameLength = BinaryPrimitives.ReadUInt16LittleEndian(data[offset..]);
-        offset += 2;
-
-        if (offset + nameLength + 8 + 32 + 2 + 1 > data.Length)
-            throw new ArgumentException("Data is corrupted or truncated.", nameof(data));
-
-        var originalName = Encoding.UTF8.GetString(data.Slice(offset, nameLength));
-        offset += nameLength;
-
         var originalLength = BinaryPrimitives.ReadInt64LittleEndian(data[offset..]);
         offset += 8;
 
@@ -247,7 +270,15 @@ public sealed class MetadataPayload
         var colorCount = BinaryPrimitives.ReadUInt16LittleEndian(data[offset..]);
         offset += 2;
 
-        var paletteKind = (PaletteKind)data[offset];
+        var paletteKind = (PaletteKind)data[offset++];
+
+        var nameLength = BinaryPrimitives.ReadUInt16LittleEndian(data[offset..]);
+        offset += 2;
+
+        if (offset + nameLength > data.Length)
+            throw new ArgumentException("Data is corrupted or truncated.", nameof(data));
+
+        var originalName = Encoding.UTF8.GetString(data.Slice(offset, nameLength));
 
         return new MetadataPayload(
             sha256,
@@ -259,7 +290,8 @@ public sealed class MetadataPayload
             originalLength,
             contentSignature,
             colorCount,
-            paletteKind)
+            paletteKind,
+            metadataFrameCount)
         {
             Version = version,
             TilePixelSize = tilePixelSize,

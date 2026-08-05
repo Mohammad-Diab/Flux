@@ -7,8 +7,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 Flux moves a file/folder across a display-only channel by encoding it into error-corrected,
 colored-tile frames (FFv3: RS(255,k) over GF(256), QR-style corner fiducials + homography
 registration). Grid, tile size, and palette are per-transfer settings carried in frame 0 and
-adopted by the receiver; 160×90 tiles at 8 px / 256 colors is the default and the frame-0
-bootstrap anchor. Two WinUI 3 apps on .NET 10 over shared libraries:
+adopted by the receiver; 160×90 tiles at 8 px / 256 colors is the default payload layout, and
+frame 0 itself is a fixed 96×54 black/white bootstrap frame (`BootstrapFrame`) so no channel that
+can show a frame at all can fail to bootstrap. Two WinUI 3 apps on .NET 10 over shared libraries:
 
 - **FluxCast** — sender: file/folder → 7z compress → encode to frames → present one frame
   at a time with manual Back/Next navigation.
@@ -19,8 +20,10 @@ These three projects were WPF until this branch, and the WinUI ports carried a `
 both stacks coexisted. The WPF apps are now **removed** and the suffix dropped, so `FluxCast`,
 `FluxRead` and `Flux.Ui` mean the WinUI ones — `master` still has the WPF originals under the same
 names. A 0.10.0-beta Release publish of the WPF pair is kept in `dist/wpf-reference-0.10.0-beta/`
-as the proven sender and receiver until these apps complete an optical transfer on real hardware;
-it reads the same settings and session files, so a transfer can still cross between the two.
+as the proven sender and receiver; it reads the same settings and session files, **but the mono
+frame-0 redesign (metadata v5, `BootstrapFrame`) broke wire compatibility with it** — the reference
+build can no longer decode transfers these apps cast, or vice versa. The WinUI pair has since
+completed a real 290-frame optical transfer, so the reference is now history-only.
 
 See README.md for the full frame-format spec, ECC-level table, and usage flow.
 
@@ -47,7 +50,7 @@ dotnet test FluxCore.Tests/FluxCore.Tests.csproj
 dotnet test FluxCore.Tests/FluxCore.Tests.csproj --filter "FullyQualifiedName~SomeTestName"
 ```
 
-- Expect 365 passing tests; keep them green. The golden round-trip + degradation suite pins the
+- Expect 371 passing tests; keep them green. The golden round-trip + degradation suite pins the
   codec — Medium ECC must survive JPEG q85, High q75, at 0.8×/1.0×/1.25× scale.
 - Pre-existing/expected warnings: CompressionService CS8604 and a few FluxCore.Tests nullable
   warnings. Don't chase them; don't add new ones.
@@ -62,7 +65,7 @@ dotnet test FluxCore.Tests/FluxCore.Tests.csproj --filter "FullyQualifiedName~So
 
 - **FluxCore** — codec/pipeline, deliberately UI- and Win32-free: `Framing/` (FrameFormat,
   parametric FrameLayout, header, encoder, metadata), `Ecc/`, `Imaging/` (PaletteGenerator,
-  ColorMap, renderer, cube-corner colors), `Decoding/` (fiducials, homography, sampler, decoder,
+  ColorMap, renderer, mono bootstrap colors), `Decoding/` (fiducials, homography, sampler, decoder,
   assembler), `Compression/`, `Hashing/`, `Transfer/` (content signature, encode service,
   capture-loop state machine).
 - **FluxCore.Tests** — xUnit.
@@ -101,7 +104,10 @@ dotnet test FluxCore.Tests/FluxCore.Tests.csproj --filter "FullyQualifiedName~So
   comes out magnified and cut off. Below native size the frame warns instead, having lost detail.
 - **Format params ride in frame 0.** `FrameLayout` is parametric (grid, tile px, bits/tile);
   `PaletteGenerator.Generate(count, kind)` derives the palette so no colour list crosses the wire.
-  Frame 0 is always `FrameLayout.Default` + cube corners — the bootstrap anchor, never user-driven.
+  Frame 0 is always `BootstrapFrame.Layout` (96×54, mono, 2× RS(255,127), ~250 B) — the bootstrap
+  anchor, never user-driven. Its metadata (v5) is append-only versioned — future versions may only
+  add trailing fields, which older readers ignore — and carries a `MetadataFrameCount` so a future
+  format can span metadata over several leading frames.
   `TilePixelSize` is decode-irrelevant (the homography rescales), so capture fragility is gated at
   capture time (`CaptureTilePxFloor` filters the setup combos), not with more metadata.
 - **Settings** persist to `%LOCALAPPDATA%\Flux\{FluxCast|FluxRead}\settings.json`. Encode sessions

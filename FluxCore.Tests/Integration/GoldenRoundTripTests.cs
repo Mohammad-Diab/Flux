@@ -149,7 +149,8 @@ public class GoldenRoundTripTests
     public void RoundTrip_LongUnicodeName_SurvivesFrameZero()
     {
         var payload = DeterministicPayload(1_000);
-        var name = "Отчёт-第四季度-📊-" + new string('x', 200) + ".7z";
+        var name = "Отчёт-第四季度-📊-" + new string('x', MetadataPayload.MaxNameBytes - 35) + ".7z";
+        Assert.Equal(name, MetadataPayload.FitName(name));
         var pngs = EncodeTransfer(payload, EccLevel.Medium, name);
 
         var (metadata, decoded) = DecodeTransfer(pngs);

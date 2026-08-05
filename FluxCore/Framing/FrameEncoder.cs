@@ -5,11 +5,11 @@ using FluxCore.Imaging;
 namespace FluxCore.Framing;
 
 /// <summary>
-/// Builds the complete tile map for one frame. Payload frames (1..N) carry a 16-byte header as
-/// three redundant RS(48,16) copies plus 53 interleaved RS(255,k) palette codewords. The
-/// metadata frame (frame 0) is a self-contained 8-color frame: its header and data tiles all
-/// carry cube-corner colors (3 bits each) protected by 12 interleaved RS(255,127) codewords,
-/// so it is decodable by pure threshold and independent of the payload palette.
+/// Builds the complete tile map for one frame. Payload frames (1..N) carry an 18-byte header as
+/// three redundant RS(48,18) copies plus interleaved RS(255,k) palette codewords. The metadata
+/// frame (frame 0) is a self-contained black/white frame on the fixed bootstrap grid: its tiles
+/// carry 1 bit each protected by 2 interleaved RS(255,127) codewords, so it is decodable by a
+/// single luma threshold on any channel and independent of the payload palette.
 /// </summary>
 public static class FrameEncoder
 {
@@ -54,46 +54,48 @@ public static class FrameEncoder
     }
 
     /// <summary>
-    /// Builds the metadata frame (frame 0) as a self-contained 8-color frame.
+    /// Builds the metadata frame (frame 0) as a self-contained black/white frame on the fixed
+    /// bootstrap grid.
     /// </summary>
-    /// <param name="content">Serialized metadata; at most <see cref="FrameFormat.MetadataContentBytes"/> bytes.</param>
+    /// <param name="content">Serialized metadata; at most <see cref="BootstrapFrame.ContentBytes"/> bytes.</param>
     /// <param name="totalFrames">Total frames in the transfer, including frame 0.</param>
     public static FrameTileMap BuildMetadataFrame(ReadOnlySpan<byte> content, uint totalFrames)
     {
-        if (content.Length > FrameFormat.MetadataContentBytes)
+        if (content.Length > BootstrapFrame.ContentBytes)
             throw new ArgumentException(
-                $"Metadata content of {content.Length} bytes exceeds the {FrameFormat.MetadataContentBytes}-byte capacity.",
+                $"Metadata content of {content.Length} bytes exceeds the {BootstrapFrame.ContentBytes}-byte capacity.",
                 nameof(content));
 
-        var padded = new byte[FrameFormat.MetadataContentBytes];
+        var padded = new byte[BootstrapFrame.ContentBytes];
         content.CopyTo(padded);
 
-        var stream = new byte[FrameFormat.MetadataEncodedBytes];
+        var stream = new byte[BootstrapFrame.EncodedBytes];
         Span<byte> block = stackalloc byte[FrameFormat.CodewordLength];
-        for (int c = 0; c < FrameFormat.MetadataCodewordCount; c++)
+        for (int c = 0; c < BootstrapFrame.CodewordCount; c++)
         {
             ReedSolomonBlockCodec.EncodeBlock(
-                padded.AsSpan(c * FrameFormat.MetadataCodewordDataBytes, FrameFormat.MetadataCodewordDataBytes),
-                FrameFormat.MetadataParitySymbols,
+                padded.AsSpan(c * BootstrapFrame.CodewordDataBytes, BootstrapFrame.CodewordDataBytes),
+                BootstrapFrame.ParitySymbols,
                 block);
 
             for (int s = 0; s < FrameFormat.CodewordLength; s++)
             {
-                stream[s * FrameFormat.MetadataCodewordCount + c] = block[s];
+                stream[s * BootstrapFrame.CodewordCount + c] = block[s];
             }
         }
 
-        var tiles = new ushort[FrameFormat.TotalTiles];
-        var positions = FrameFormat.MetadataFrameTiles;
-        var packed = TileBitPacker.Pack(stream, CubeCornerColors.BitsPerTile);
-        for (int t = 0; t < FrameFormat.MetadataTilesUsed; t++)
+        var layout = BootstrapFrame.Layout;
+        var tiles = new ushort[layout.TotalTiles];
+        var positions = BootstrapFrame.MetadataFrameTiles;
+        var packed = TileBitPacker.Pack(stream, MonoColors.BitsPerTile);
+        for (int t = 0; t < BootstrapFrame.TilesUsed; t++)
         {
             var (x, y) = positions[t];
-            tiles[y * FrameFormat.GridWidthTiles + x] = packed[t];
+            tiles[y * layout.GridWidthTiles + x] = packed[t];
         }
 
         var header = new FrameHeader(0, totalFrames, (uint)content.Length, 0, EccLevel.Max, isMetadataFrame: true);
-        return new FrameTileMap(header, tiles, TileColorScheme.CubeCorner8);
+        return new FrameTileMap(header, tiles, TileColorScheme.Mono2, layout);
     }
 
     private static void WriteHeaderCopies(in FrameHeader header, ushort[] tiles, FrameLayout layout)

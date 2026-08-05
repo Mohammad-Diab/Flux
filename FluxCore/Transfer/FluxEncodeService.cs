@@ -79,8 +79,9 @@ public sealed class FluxEncodeService
 
         int bitsPerTile = PaletteGenerator.BitsForCount(options.ColorCount);
         int bytesPerFrame = options.EccLevel.PayloadBytesPerFrame(layout.CodewordsForBits(bitsPerTile));
+        const byte metadataFrames = 1;
         uint payloadFrames = (uint)Math.Max(1, (payload.Length + bytesPerFrame - 1) / bytesPerFrame);
-        uint totalFrames = payloadFrames + 1;
+        uint totalFrames = payloadFrames + metadataFrames;
 
         var payloadSha = Sha256Helper.ComputeHash(payload);
         var metadata = new MetadataPayload(
@@ -89,11 +90,12 @@ public sealed class FluxEncodeService
             eccLevel: options.EccLevel,
             totalFrames: totalFrames,
             payloadLength: payload.Length,
-            originalName: SourceName(sourcePath),
+            originalName: MetadataPayload.FitName(SourceName(sourcePath)),
             originalLength: PathSize.GetTotalBytes(sourcePath),
             contentSignature: combinedSignature,
             colorCount: options.ColorCount,
-            paletteKind: options.PaletteKind)
+            paletteKind: options.PaletteKind,
+            metadataFrameCount: metadataFrames)
         {
             GridWidthTiles = (ushort)layout.GridWidthTiles,
             GridHeightTiles = (ushort)layout.GridHeightTiles,
@@ -280,7 +282,7 @@ public sealed class FluxEncodeService
         }
         else
         {
-            int offset = (int)(frameId - 1) * bytesPerFrame;
+            int offset = (int)(frameId - metadata.MetadataFrameCount) * bytesPerFrame;
             int length = Math.Clamp(payload.Length - offset, 0, bytesPerFrame);
             map = FrameEncoder.BuildFrame(frameId, totalFrames, payload.AsSpan(offset, length), metadata.EccLevel, bitsPerTile, layout);
         }

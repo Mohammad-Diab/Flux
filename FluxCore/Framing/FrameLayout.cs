@@ -71,11 +71,25 @@ public sealed class FrameLayout
     /// <param name="tilePixelSize">Tile edge length in pixels.</param>
     /// <param name="bitsPerTile">Colour depth (bits per tile); the header region scales with it. Default 8.</param>
     public FrameLayout(int gridWidthTiles, int gridHeightTiles, int tilePixelSize, int bitsPerTile = 8)
+        : this(gridWidthTiles, gridHeightTiles, tilePixelSize, bitsPerTile, bootstrap: false)
+    {
+    }
+
+    /// <summary>
+    /// Builds the fixed frame-0 layout, below the public minimum edge: the 64-tile floor exists
+    /// for the 8-bit header edge-strips, which band-mode header copies do not need.
+    /// </summary>
+    internal static FrameLayout CreateBootstrap(int gridWidthTiles, int gridHeightTiles, int tilePixelSize) =>
+        new(gridWidthTiles, gridHeightTiles, tilePixelSize, bitsPerTile: 1, bootstrap: true);
+
+    private FrameLayout(int gridWidthTiles, int gridHeightTiles, int tilePixelSize, int bitsPerTile, bool bootstrap)
     {
         if (bitsPerTile is < 1 or > 10)
             throw new ArgumentOutOfRangeException(nameof(bitsPerTile));
 
-        int minEdge = 2 * FrameFormat.CornerBlockSizeTiles + FrameFormat.HeaderCopyLength;
+        int minEdge = bootstrap
+            ? 2 * FrameFormat.CornerBlockSizeTiles + 4
+            : 2 * FrameFormat.CornerBlockSizeTiles + FrameFormat.HeaderCopyLength;
         if (gridWidthTiles < minEdge || gridHeightTiles < minEdge)
             throw new ArgumentException(
                 $"Grid must be at least {minEdge}×{minEdge} tiles to fit finders, timing, and header runs.");

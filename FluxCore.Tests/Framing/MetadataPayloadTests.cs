@@ -134,14 +134,36 @@ public class MetadataPayloadTests
     }
 
     [Fact]
-    public void SerializeDeserialize_HandlesLongName()
+    public void SerializeDeserialize_HandlesMaxLengthName()
     {
-        var name = new string('x', 1000);
+        var name = new string('x', MetadataPayload.MaxNameBytes);
         var original = CreateValid(name: name);
 
         var restored = MetadataPayload.Deserialize(original.Serialize());
 
         Assert.Equal(name, restored.OriginalName);
+    }
+
+    [Fact]
+    public void Serialize_ThrowsOnOverlongName_AndFitNameShortensIt()
+    {
+        var overlong = new string('x', MetadataPayload.MaxNameBytes + 1);
+
+        Assert.Throws<InvalidOperationException>(() => CreateValid(name: overlong).Serialize());
+
+        var fitted = MetadataPayload.FitName(overlong);
+        Assert.Equal(MetadataPayload.MaxNameBytes, fitted.Length);
+        _ = CreateValid(name: fitted).Serialize();
+    }
+
+    [Fact]
+    public void FitName_NeverSplitsAMultiByteCodePoint()
+    {
+        var fitted = MetadataPayload.FitName(string.Concat(Enumerable.Repeat("🎨", 200)));
+
+        Assert.True(System.Text.Encoding.UTF8.GetByteCount(fitted) <= MetadataPayload.MaxNameBytes);
+        Assert.Equal(0, fitted.Length % 2);
+        Assert.Equal(fitted, MetadataPayload.FitName(fitted));
     }
 
     [Fact]
@@ -153,12 +175,46 @@ public class MetadataPayloadTests
     }
 
     [Fact]
-    public void Serialize_FitsInMaxLevelFrameCapacity_WithGenerousName()
+    public void Serialize_FitsFrameZero_WithAMaxLengthName()
     {
-        var payload = CreateValid(name: new string('n', 255));
+        var payload = CreateValid(name: new string('n', MetadataPayload.MaxNameBytes));
 
-        Assert.True(payload.Serialize().Length <= EccLevel.Max.PayloadBytesPerFrame(),
-            "Frame 0 must always fit in a Max-level frame.");
+        Assert.True(payload.Serialize().Length <= BootstrapFrame.ContentBytes,
+            "Frame 0 must always fit the bootstrap frame's capacity.");
+    }
+
+    [Fact]
+    public void SerializeDeserialize_PreservesMetadataFrameCount()
+    {
+        var original = new MetadataPayload(
+            Filled(0xAA), PayloadType.Raw, EccLevel.Medium, 5, 1000, "x", 2000, Filled(0xBB),
+            metadataFrameCount: 2);
+
+        Assert.Equal(2, MetadataPayload.Deserialize(original.Serialize()).MetadataFrameCount);
+        Assert.Equal(1, MetadataPayload.Deserialize(CreateValid().Serialize()).MetadataFrameCount);
+    }
+
+    [Fact]
+    public void Constructor_RejectsMetadataFrameCountOutsideTotalFrames()
+    {
+        Assert.Throws<ArgumentException>(() => new MetadataPayload(
+            Filled(0), PayloadType.Raw, EccLevel.Low, 1, 0, "x", 0, Filled(0), metadataFrameCount: 0));
+        Assert.Throws<ArgumentException>(() => new MetadataPayload(
+            Filled(0), PayloadType.Raw, EccLevel.Low, 2, 0, "x", 0, Filled(0), metadataFrameCount: 3));
+    }
+
+    [Fact]
+    public void Deserialize_AcceptsNewerVersion_AndIgnoresAppendedFields()
+    {
+        var data = CreateValid().Serialize();
+        var extended = data.Concat(new byte[] { 0xDE, 0xAD, 0xBE, 0xEF }).ToArray();
+        extended[0] = MetadataPayload.CurrentVersion + 1;
+
+        var restored = MetadataPayload.Deserialize(extended);
+
+        Assert.Equal(MetadataPayload.CurrentVersion + 1, restored.Version);
+        Assert.Equal("document.pdf", restored.OriginalName);
+        Assert.True(restored.TryBuildLayout(out _));
     }
 
     [Theory]

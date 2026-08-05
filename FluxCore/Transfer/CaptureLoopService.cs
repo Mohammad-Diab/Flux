@@ -24,10 +24,13 @@ public sealed class CaptureLoopService
     private readonly object _pauseLock = new();
     private TaskCompletionSource<bool>? _pauseGate;
 
-    // Adopted from frame 0; only payload frames vary, frame 0 stays Default cube-corner.
+    // Adopted from frame 0; only payload frames vary, frame 0 stays the fixed mono bootstrap.
     private FrameLayout _payloadLayout = FrameLayout.Default;
     private FrameDecoder _payloadDecoder;
     private int _payloadBits = 8;
+
+    /// <summary>Gets the payload-frame layout adopted from frame 0, so a caller can re-find the frame on screen.</summary>
+    public FrameLayout PayloadLayout => _payloadLayout;
 
     /// <summary>Gets a value indicating whether the loop is currently paused.</summary>
     public bool IsPaused
@@ -129,7 +132,7 @@ public sealed class CaptureLoopService
                 await WaitIfPausedAsync(cancellationToken);
 
                 // Highest frame seen but gaps remain — clicking Next can't reach them; recover.
-                if (assembler.LastAcceptedId >= assembler.ExpectedPayloadFrames)
+                if (assembler.LastAcceptedId >= assembler.LastPayloadFrameId)
                 {
                     await RecoverGapsAsync(assembler, metadata, progress, cancellationToken);
                     break;
@@ -292,7 +295,7 @@ public sealed class CaptureLoopService
             var probe = _payloadDecoder.TryProbe(capture, _payloadLayout);
             uint? shown = probe.Registered && probe.Header is { } h ? h.FrameId : null;
 
-            if (shown is { } id && id >= 1 && id < metadata.TotalFrames && !assembler.HasFrame(id))
+            if (shown is { } id && id >= metadata.MetadataFrameCount && id < metadata.TotalFrames && !assembler.HasFrame(id))
             {
                 var decoded = _payloadDecoder.Decode(capture, bitsPerTile: _payloadBits, layout: _payloadLayout);
                 if (decoded.Status == DecodeStatus.Success && decoded.Header is { } fullHeader &&
@@ -449,7 +452,7 @@ public sealed class CaptureLoopService
 
     private static bool IsAcceptablePayloadFrame(in FrameHeader header, MetadataPayload metadata, PayloadAssembler assembler) =>
         !header.IsMetadataFrame &&
-        header.FrameId >= 1 &&
+        header.FrameId >= metadata.MetadataFrameCount &&
         header.FrameId < metadata.TotalFrames &&
         header.TotalFrames == metadata.TotalFrames &&
         !assembler.HasFrame(header.FrameId);

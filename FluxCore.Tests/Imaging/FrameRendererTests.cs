@@ -139,9 +139,10 @@ public class FrameRendererTests
         var png = FrameRenderer.RenderPng(map, ColorMap.Default);
 
         using var bitmap = SKBitmap.Decode(png);
-        Assert.Equal(1312, bitmap.Width);
-        Assert.Equal(TileColorScheme.CubeCorner8, map.ColorScheme);
-        Assert.Equal(Black, CenterPixel(bitmap, 78, 2));
+        Assert.Equal(800, bitmap.Width);
+        Assert.Equal(464, bitmap.Height);
+        Assert.Equal(TileColorScheme.Mono2, map.ColorScheme);
+        Assert.Equal(Black, CenterPixel(bitmap, 46, 2));
     }
 
     [Fact]

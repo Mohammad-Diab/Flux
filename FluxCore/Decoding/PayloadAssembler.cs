@@ -137,8 +137,14 @@ public sealed class PayloadAssembler : IDisposable
     public string PayloadFilePath =>
         _payloadFilePath ?? throw new InvalidOperationException("This assembler is not disk-backed.");
 
-    /// <summary>Gets the number of payload frames expected (total frames minus frame 0).</summary>
-    public uint ExpectedPayloadFrames => _metadata.TotalFrames - 1;
+    /// <summary>Gets the id of the first payload frame (the frame after the metadata frames).</summary>
+    public uint FirstPayloadFrameId => _metadata.MetadataFrameCount;
+
+    /// <summary>Gets the id of the last payload frame.</summary>
+    public uint LastPayloadFrameId => _metadata.TotalFrames - 1;
+
+    /// <summary>Gets the number of payload frames expected (total frames minus the metadata frames).</summary>
+    public uint ExpectedPayloadFrames => _metadata.TotalFrames - _metadata.MetadataFrameCount;
 
     /// <summary>Gets the number of distinct payload frames received so far.</summary>
     public int ReceivedFrames => _useDisk ? _diskFrameIds!.Count : _frames!.Count;
@@ -163,7 +169,7 @@ public sealed class PayloadAssembler : IDisposable
         get
         {
             var missing = new List<uint>();
-            for (uint id = 1; id <= ExpectedPayloadFrames; id++)
+            for (uint id = FirstPayloadFrameId; id <= LastPayloadFrameId; id++)
             {
                 if (!HasFrame(id))
                     missing.Add(id);
@@ -188,7 +194,7 @@ public sealed class PayloadAssembler : IDisposable
         if (header.TotalFrames != _metadata.TotalFrames)
             throw new ArgumentException(
                 $"Frame declares {header.TotalFrames} total frames; transfer expects {_metadata.TotalFrames}.");
-        if (header.IsMetadataFrame || header.FrameId == 0 || header.FrameId >= _metadata.TotalFrames)
+        if (header.IsMetadataFrame || header.FrameId < FirstPayloadFrameId || header.FrameId >= _metadata.TotalFrames)
             throw new ArgumentException($"Frame id {header.FrameId} is not a payload frame of this transfer.");
 
         int expectedLength = ExpectedFrameLength(header.FrameId);
@@ -205,7 +211,7 @@ public sealed class PayloadAssembler : IDisposable
                     throw new InvalidOperationException("Cannot add frames after the payload has been finalized.");
                 if (!_diskFrameIds!.Add(frameId))
                     return false;
-                long offset = (long)(frameId - 1) * _bytesPerFrame;
+                long offset = (long)(frameId - FirstPayloadFrameId) * _bytesPerFrame;
                 _payloadStream!.Seek(offset, SeekOrigin.Begin);
                 _payloadStream.Write(payload, 0, payload.Length);
 
@@ -264,7 +270,7 @@ public sealed class PayloadAssembler : IDisposable
         for (int i = 0; i + sizeof(uint) <= bytes.Length; i += sizeof(uint))
         {
             uint id = BinaryPrimitives.ReadUInt32LittleEndian(bytes.AsSpan(i));
-            if (id >= 1 && id < _metadata.TotalFrames && _diskFrameIds!.Add(id))
+            if (id >= FirstPayloadFrameId && id < _metadata.TotalFrames && _diskFrameIds!.Add(id))
             {
                 if (id > LastAcceptedId)
                     LastAcceptedId = id;
@@ -410,7 +416,7 @@ public sealed class PayloadAssembler : IDisposable
     {
         var payload = new byte[_metadata.PayloadLength];
         int offset = 0;
-        for (uint id = 1; id <= ExpectedPayloadFrames; id++)
+        for (uint id = FirstPayloadFrameId; id <= LastPayloadFrameId; id++)
         {
             _frames![id].CopyTo(payload.AsSpan(offset));
             offset += _frames[id].Length;
@@ -432,7 +438,7 @@ public sealed class PayloadAssembler : IDisposable
 
     private int ExpectedFrameLength(uint frameId)
     {
-        long remaining = _metadata.PayloadLength - (long)(frameId - 1) * _bytesPerFrame;
+        long remaining = _metadata.PayloadLength - (long)(frameId - FirstPayloadFrameId) * _bytesPerFrame;
         return (int)Math.Clamp(remaining, 0, _bytesPerFrame);
     }
 }

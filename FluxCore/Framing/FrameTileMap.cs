@@ -8,8 +8,8 @@ public enum TileColorScheme
     /// <summary>256-color palette, one byte per tile. Used by payload frames (1..N).</summary>
     Palette256,
 
-    /// <summary>Eight RGB cube corners, three bits per tile. Used by the metadata frame (frame 0).</summary>
-    CubeCorner8,
+    /// <summary>Black and white, one bit per tile. Used by the metadata frame (frame 0).</summary>
+    Mono2,
 }
 
 /// <summary>
@@ -33,7 +33,7 @@ public sealed class FrameTileMap
     /// <summary>Gets a value indicating whether the beacon block renders black (frame id is even) or white (odd).</summary>
     public bool BeaconIsBlack => Header.FrameId % 2 == 0;
 
-    /// <summary>Tile values are row-major: palette indices for Palette256, 0-7 cube-corner indices for CubeCorner8.</summary>
+    /// <summary>Tile values are row-major: palette indices for Palette256, 0-1 bits for Mono2.</summary>
     public FrameTileMap(
         FrameHeader header,
         ushort[] tileValues,
