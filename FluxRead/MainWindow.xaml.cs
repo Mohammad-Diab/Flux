@@ -25,7 +25,7 @@ public sealed partial class MainWindow : Window
     private readonly ReceivedItemsView _receivedView;
     private readonly ReceivedItemsViewModel _receivedVm;
     private bool _revertingTab;
-    private int _currentTab = 1;
+    private int _currentTab;
 
     public MainWindow()
     {
@@ -80,7 +80,7 @@ public sealed partial class MainWindow : Window
             };
         }
 
-        ModeHost.Page = _folderView;
+        ModeHost.Page = _liveView;
     }
 
     private double _gearFromRight = double.NaN, _gearCenterY;
