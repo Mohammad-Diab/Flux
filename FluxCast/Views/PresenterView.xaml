@@ -33,11 +33,13 @@
         </Style>
     </UserControl.Resources>
 
-    <Grid Background="#FF262A30" RowDefinitions="62,*,Auto">
+    <!-- Transport under the frame, so the frame sits high and the bottom of the window is chrome:
+         the receiver's mini window parks in that corner and must not cover the frame. -->
+    <Grid Background="#FF262A30" RowDefinitions="*,62,Auto">
 
         <!-- The bars follow the theme; only the area around the frame stays dark, to hold the
              viewer's eye and the capture's contrast on the frame itself. -->
-        <Border Grid.Row="0" Background="{ThemeResource SurfaceBrush}">
+        <Border Grid.Row="1" Background="{ThemeResource SurfaceBrush}">
             <!-- Next keeps its text label: the receiver's OCR locates that button by the word "Next". -->
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="6">
                 <Button Command="{x:Bind Vm.FirstCommand}" IsTabStop="False" AutomationProperties.Name="First frame"
@@ -115,7 +117,7 @@
         <!-- Sized in code-behind: the frame must land on whole device pixels, never be resampled.
              Stretch is Fill, not None: None draws the bitmap at its natural DIP size and lets Width
              and Height merely clip it, so above 100% scaling the frame is magnified and cut off. -->
-        <Grid x:Name="FrameArea" Grid.Row="1" Margin="10">
+        <Grid x:Name="FrameArea" Grid.Row="0" Margin="10">
             <!-- Holds the outgoing frame underneath while the incoming one decodes. Without it the
                  image is empty for that frame and the area blinks to its background on every step. -->
             <Image x:Name="FrameHold" Stretch="Fill" Visibility="Collapsed"
