@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.IO;
 using Flux.Ui.Services;
 using FluxCore.Decoding;
+using FluxCore.Framing;
 using FluxCore.Imaging;
 using FluxCore.Transfer;
 using FluxRead.Services;
@@ -564,6 +565,11 @@ public sealed partial class LiveCaptureView : UserControl
         return widened;
     }
 
+    // Mid-transfer the sender shows payload frames on the adopted grid, so look for that first;
+    // frame 0's bootstrap grid stays in the list in case the sender was stepped back to the start.
+    private IReadOnlyList<FrameLayout> LocatableLayouts() =>
+        _loop is { } loop ? [loop.PayloadLayout, BootstrapFrame.Layout] : [BootstrapFrame.Layout];
+
     /// <summary>Re-locates the frame and adopts it with no prompting, taking the largest candidate.
     /// Returns true only when the region actually changed, so a caller can fall back.</summary>
     private async Task<bool> TryRefreshRegionAsync()
@@ -572,7 +578,8 @@ public sealed partial class LiveCaptureView : UserControl
         var virtualScreen = DpiUtil.GetVirtualScreenPhysical();
         using var shot = await CaptureWithShellHiddenAsync(virtualScreen);
 
-        var regions = await Task.Run(() => new FrameLocator(ColorMap.Default).Locate(shot));
+        var layouts = LocatableLayouts();
+        var regions = await Task.Run(() => new FrameLocator(ColorMap.Default).Locate(shot, layouts));
         if (regions.Count == 0)
         {
             Vm.AddLog("No frame found on screen.");
@@ -615,7 +622,8 @@ public sealed partial class LiveCaptureView : UserControl
         var virtualScreen = DpiUtil.GetVirtualScreenPhysical();
         using var shot = await CaptureWithShellHiddenAsync(virtualScreen);
 
-        var regions = await Task.Run(() => new FrameLocator(ColorMap.Default).Locate(shot));
+        var layouts = LocatableLayouts();
+        var regions = await Task.Run(() => new FrameLocator(ColorMap.Default).Locate(shot, layouts));
         if (regions.Count == 0)
         {
             Vm.AddLog("No frame found — keeping the current region.");

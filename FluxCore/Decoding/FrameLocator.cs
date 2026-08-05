@@ -8,10 +8,12 @@ namespace FluxCore.Decoding;
 public readonly record struct FrameRegion(int X, int Y, int Width, int Height, uint? FrameId);
 
 /// <summary>
-/// Finds every FFv2 frame in a large image (e.g. a full screenshot): pairs up finder-pattern
-/// centers into candidate frame quads by their expected tile spacing, then confirms each by
-/// cropping it and requiring the decoder to register it (fiducials + timing match). Registration
-/// rejects lookalike patterns, so the returned regions are real frames, not false positives.
+/// Finds every frame of a known layout in a large image (e.g. a full screenshot): pairs up
+/// finder-pattern centers into candidate quads by the layout's tile spacing, then confirms each
+/// by cropping it and requiring the decoder to register it (fiducials + timing match).
+/// Registration rejects lookalike patterns, so the returned regions are real frames, not false
+/// positives. Defaults to the bootstrap layout (frame 0); pass the transfer's adopted layout as
+/// well to re-find payload frames mid-transfer.
 /// </summary>
 public sealed class FrameLocator
 {
@@ -20,45 +22,53 @@ public sealed class FrameLocator
 
     private readonly FrameDecoder _decoder;
 
+    /// <summary>Creates a locator; the palette only affects reading frame ids, never detection.</summary>
     public FrameLocator(ColorMap colorMap) => _decoder = new FrameDecoder(colorMap);
 
     /// <summary>Locates frames in the image, largest-first, de-duplicating overlapping candidates.</summary>
-    public IReadOnlyList<FrameRegion> Locate(SKBitmap image)
+    /// <param name="image">Image to search.</param>
+    /// <param name="layouts">Frame layouts to look for; earlier layouts win overlaps. Null means the bootstrap layout.</param>
+    public IReadOnlyList<FrameRegion> Locate(SKBitmap image, IReadOnlyList<FrameLayout>? layouts = null)
     {
         ArgumentNullException.ThrowIfNull(image);
+        layouts ??= [BootstrapFrame.Layout];
 
         var points = FiducialDetector.DetectAll(LumaImage.FromBitmap(image));
         var regions = new List<FrameRegion>();
 
-        foreach (var box in CandidateBoxes(points, image.Width, image.Height))
+        foreach (var layout in layouts.Distinct())
         {
-            if (regions.Any(r => Overlaps(r, box)))
-                continue;
-
-            using var crop = new SKBitmap();
-            if (!image.ExtractSubset(crop, new SKRectI(box.X, box.Y, box.X + box.Width, box.Y + box.Height)))
-                continue;
-
-            var probe = _decoder.TryProbe(crop);
-            if (probe.Registered)
+            foreach (var box in CandidateBoxes(points, image.Width, image.Height, layout))
             {
-                regions.Add(box with { FrameId = probe.Header?.FrameId });
-                if (regions.Count >= MaxRegions)
-                    break;
+                if (regions.Any(r => Overlaps(r, box)))
+                    continue;
+
+                using var crop = new SKBitmap();
+                if (!image.ExtractSubset(crop, new SKRectI(box.X, box.Y, box.X + box.Width, box.Y + box.Height)))
+                    continue;
+
+                var probe = _decoder.TryProbe(crop, layout);
+                if (probe.Registered)
+                {
+                    regions.Add(box with { FrameId = probe.Header?.FrameId });
+                    if (regions.Count >= MaxRegions)
+                        return regions;
+                }
             }
         }
 
         return regions;
     }
 
-    private static IEnumerable<FrameRegion> CandidateBoxes(IReadOnlyList<FinderPoint> points, int imageWidth, int imageHeight)
+    private static IEnumerable<FrameRegion> CandidateBoxes(
+        IReadOnlyList<FinderPoint> points, int imageWidth, int imageHeight, FrameLayout layout)
     {
-        var centers = FrameFormat.FinderCentersTiles;
+        var centers = layout.FinderCentersTiles;
         double hSpanTiles = centers[1].X - centers[0].X;
         double vSpanTiles = centers[2].Y - centers[0].Y;
-        double marginTiles = centers[0].X + FrameFormat.QuietZonePx / (double)FrameFormat.TilePixelSize;
-        double frameTilesW = FrameFormat.FrameWidthPx / (double)FrameFormat.TilePixelSize;
-        double frameTilesH = FrameFormat.FrameHeightPx / (double)FrameFormat.TilePixelSize;
+        double marginTiles = centers[0].X + layout.QuietZonePx / (double)layout.TilePixelSize;
+        double frameTilesW = layout.FrameWidthPx / (double)layout.TilePixelSize;
+        double frameTilesH = layout.FrameHeightPx / (double)layout.TilePixelSize;
 
         for (int i = 0; i < points.Count; i++)
         {

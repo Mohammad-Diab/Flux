@@ -9,11 +9,18 @@ namespace FluxCore.Tests.Decoding;
 
 public class FrameLocatorTests
 {
-    private static SKBitmap RenderFrame(uint frameId = 5, uint total = 10)
+    private static SKBitmap RenderMetadataFrame(uint totalFrames = 10)
     {
-        var payload = new byte[4000];
-        new Random(7).NextBytes(payload);
-        var map = FrameEncoder.BuildFrame(frameId, total, payload, EccLevel.Medium);
+        var metadata = new MetadataPayload(
+            sha256: Enumerable.Repeat((byte)0xAA, 32).ToArray(),
+            payloadType: PayloadType.SevenZip,
+            eccLevel: EccLevel.Medium,
+            totalFrames: totalFrames,
+            payloadLength: 400_000,
+            originalName: "locator-test.7z",
+            originalLength: 900_000,
+            contentSignature: Enumerable.Repeat((byte)0xBB, 32).ToArray());
+        var map = FrameEncoder.BuildMetadataFrame(metadata.Serialize(), totalFrames);
         return SKBitmap.Decode(FrameRenderer.RenderPng(map, ColorMap.Default));
     }
 
@@ -28,32 +35,32 @@ public class FrameLocatorTests
     }
 
     [Fact]
-    public void Locate_SingleFrame_ReturnsOneRegionAtOffset()
+    public void Locate_SingleBootstrapFrame_ReturnsOneRegionAtOffset()
     {
-        using var frame = RenderFrame(frameId: 5);
+        var layout = BootstrapFrame.Layout;
+        using var frame = RenderMetadataFrame();
         using var canvas = Canvas(2000, 1200, (frame, 300, 200));
 
         var region = Assert.Single(new FrameLocator(ColorMap.Default).Locate(canvas));
 
-        Assert.Equal(5u, region.FrameId);
-        Assert.InRange(region.X, 300 - FrameFormat.TilePixelSize, 300 + FrameFormat.TilePixelSize);
-        Assert.InRange(region.Y, 200 - FrameFormat.TilePixelSize, 200 + FrameFormat.TilePixelSize);
-        Assert.InRange(region.Width, FrameFormat.FrameWidthPx - 16, FrameFormat.FrameWidthPx + 16);
-        Assert.InRange(region.Height, FrameFormat.FrameHeightPx - 16, FrameFormat.FrameHeightPx + 16);
+        Assert.InRange(region.X, 300 - layout.TilePixelSize, 300 + layout.TilePixelSize);
+        Assert.InRange(region.Y, 200 - layout.TilePixelSize, 200 + layout.TilePixelSize);
+        Assert.InRange(region.Width, layout.FrameWidthPx - 16, layout.FrameWidthPx + 16);
+        Assert.InRange(region.Height, layout.FrameHeightPx - 16, layout.FrameHeightPx + 16);
     }
 
     [Fact]
-    public void Locate_TwoFrames_ReturnsBoth()
+    public void Locate_TwoBootstrapFrames_ReturnsBoth()
     {
-        using var a = RenderFrame(frameId: 2);
-        using var b = RenderFrame(frameId: 7);
+        using var a = RenderMetadataFrame(totalFrames: 5);
+        using var b = RenderMetadataFrame(totalFrames: 9);
         using var canvas = Canvas(3000, 1000, (a, 40, 60), (b, 1500, 120));
 
         var regions = new FrameLocator(ColorMap.Default).Locate(canvas);
 
         Assert.Equal(2, regions.Count);
-        Assert.Contains(regions, r => r.FrameId == 2u);
-        Assert.Contains(regions, r => r.FrameId == 7u);
+        Assert.Contains(regions, r => Math.Abs(r.X - 40) <= 8 && Math.Abs(r.Y - 60) <= 8);
+        Assert.Contains(regions, r => Math.Abs(r.X - 1500) <= 8 && Math.Abs(r.Y - 120) <= 8);
     }
 
     [Fact]
@@ -61,5 +68,24 @@ public class FrameLocatorTests
     {
         using var canvas = Canvas(1200, 800);
         Assert.Empty(new FrameLocator(ColorMap.Default).Locate(canvas));
+    }
+
+    [Fact]
+    public void Locate_PayloadFrame_FoundWithItsAdoptedLayout()
+    {
+        var layout = new FrameLayout(240, 135, 8);
+        var payload = new byte[4000];
+        new Random(7).NextBytes(payload);
+        var map = FrameEncoder.BuildFrame(5, 10, payload, EccLevel.Medium, 8, layout);
+        using var frame = SKBitmap.Decode(FrameRenderer.RenderPng(map, ColorMap.Default));
+        using var canvas = Canvas(2400, 1400, (frame, 150, 100));
+
+        var locator = new FrameLocator(ColorMap.Default);
+        Assert.Empty(locator.Locate(canvas));
+
+        var region = Assert.Single(locator.Locate(canvas, [layout, BootstrapFrame.Layout]));
+        Assert.Equal(5u, region.FrameId);
+        Assert.InRange(region.X, 150 - layout.TilePixelSize, 150 + layout.TilePixelSize);
+        Assert.InRange(region.Width, layout.FrameWidthPx - 16, layout.FrameWidthPx + 16);
     }
 }
