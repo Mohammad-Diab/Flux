@@ -80,12 +80,17 @@ public sealed partial class LiveCaptureView : UserControl
         };
 
         // Keep the activity log scrolled to the newest line.
-        Vm.Log.CollectionChanged += (_, _) =>
-        {
-            if (Vm.Log.Count > 0)
-                LogList.ScrollIntoView(Vm.Log[^1]);
-        };
+        Vm.Log.CollectionChanged += (_, _) => ScrollLogToEnd();
     }
+
+    // The log is trimmed as it grows, so past its cap every line is an add followed by a remove and
+    // the list is still catching up when the event arrives — asking it to scroll to an item it has
+    // not taken yet throws. Next tick, by the list's own last item, it is always resolvable.
+    private void ScrollLogToEnd() => LogList.DispatcherQueue?.TryEnqueue(() =>
+    {
+        if (LogList.Items.Count > 0)
+            LogList.ScrollIntoView(LogList.Items[^1]);
+    });
 
     /// <summary>x:Bind helper: shows an element only when its source value exists.</summary>
     public Visibility Shown(object? value) => value is null ? Visibility.Collapsed : Visibility.Visible;
@@ -98,16 +103,25 @@ public sealed partial class LiveCaptureView : UserControl
         Vm.RegionText = "Scanning the screen for a frame…";
 
         var virtualScreen = DpiUtil.GetVirtualScreenPhysical();
-        using var shot = await CaptureWithShellHiddenAsync(virtualScreen);
+        Minimize();
+        await Task.Delay(350);
+        using var shot = _previewCapture.Capture(virtualScreen);
 
         var regions = await Task.Run(() => new FrameLocator(ColorMap.Default).Locate(shot));
 
+        // Falls through to manual selection while still minimized: a restore in between
+        // bounced the window down, up and straight down again.
         if (regions.Count == 0)
         {
             Vm.RegionText = "No frame found — select the region manually.";
-            await SelectRegionManuallyAsync();
+            var region = await RegionSelectOverlay.SelectAsync();
+            Restore();
+            if (region is { } picked)
+                ApplyRegion(picked);
             return;
         }
+
+        Restore();
 
         FrameRegion chosen;
         if (regions.Count == 1)
@@ -189,16 +203,24 @@ public sealed partial class LiveCaptureView : UserControl
         StartPreview();
     }
 
+    private HotkeyListener? _calibrateHotkey;
+
+    // One listener for the view's life, disarmed between calibrations: a fresh one per click also
+    // re-subclasses the window per click, and un-hooking in the wrong order breaks the chain.
     private void OnCalibrate(object sender, RoutedEventArgs e)
     {
-        var hotkey = new HotkeyListener(_owner);
-        hotkey.Pressed += (_, _) =>
+        if (_calibrateHotkey is null)
         {
-            FluxRead.Interop.NativeMethods.GetCursorPos(out var pos);
-            ApplyNextPoint((pos.X, pos.Y));
-            hotkey.Dispose();
-        };
-        hotkey.Arm();
+            _calibrateHotkey = new HotkeyListener(_owner);
+            _calibrateHotkey.Pressed += (_, _) =>
+            {
+                FluxRead.Interop.NativeMethods.GetCursorPos(out var pos);
+                ApplyNextPoint((pos.X, pos.Y));
+                _calibrateHotkey.Disarm();
+            };
+        }
+
+        _calibrateHotkey.Arm();
         Vm.CalibrationText = "Hover over the sender's NEXT button, then press F8…";
     }
 
@@ -256,8 +278,6 @@ public sealed partial class LiveCaptureView : UserControl
         Vm.RegionPreview = null;
         Vm.CalibrationPreview = null;
 
-        WindowPlacement.EnsureOutsideRegion(_hwnd, _region);
-
         _cts = new CancellationTokenSource();
         Vm.IsRunning = true;
         Vm.IsPaused = false;
@@ -269,7 +289,10 @@ public sealed partial class LiveCaptureView : UserControl
         _transferWatch.Restart();
         _elapsedTimer.Start();
 
-        _captureSource = new RegionScreenCapture(_region);
+        // Frame 0 is the small bootstrap grid; payload frames use the transfer's, which is usually far
+        // wider, so a region measured from frame 0 clips their fiducials. The decoder registers a frame
+        // anywhere inside its capture, so the capture is widened to the whole sender window instead.
+        _captureSource = new RegionScreenCapture(CaptureRegionCoveringSender(point));
         _clicker = new PointNextClicker(point);
         // Poll more frequently (so a quick advance is caught fast) while keeping roughly the same
         // ~1.8s budget before a re-click — re-clicking too early would over-advance and skip a frame.
@@ -296,6 +319,9 @@ public sealed partial class LiveCaptureView : UserControl
 
         _owner.AppWindow.Hide();
         _mini.Activate();
+        // The mini window is always-on-top over the frame it is watching, so it is taken out of the
+        // capture rather than moved: the corner it parks in is the one the user wants it in.
+        WindowPlacement.SetExcludeFromCapture(WindowNative.GetWindowHandle(_mini), true);
 
         try
         {
@@ -380,11 +406,24 @@ public sealed partial class LiveCaptureView : UserControl
     private static string FormatSpan(TimeSpan t) =>
         t.TotalHours >= 1 ? $"{(int)t.TotalHours}:{t.Minutes:D2}:{t.Seconds:D2}" : $"{t.Minutes:D2}:{t.Seconds:D2}";
 
+    private bool _regionRefreshed;
+
     private Task<StallResolution> ResolveStallAsync(CancellationToken cancellationToken) => OnUiAsync(async () =>
     {
+        // Frame 0 is always the small bootstrap grid, so a region measured from it is too small for
+        // the payload frames, whose grid is the transfer's — their fiducials fall outside it and every
+        // frame fails. Re-find the frame once, silently, before troubling the user.
+        if (!_regionRefreshed)
+        {
+            _regionRefreshed = true;
+            if (await TryRefreshRegionAsync())
+                return StallResolution.Retry;
+        }
+
         var dialog = new StallDialog(
             "The sender stopped advancing after several tries. Resume, re-find the Next button, "
             + "or re-detect the frame — then FluxRead keeps going.");
+        using var room = _mini?.RoomForDialog();
         await _dialogs.ShowAsync(dialog);
 
         switch (dialog.Choice)
@@ -405,6 +444,7 @@ public sealed partial class LiveCaptureView : UserControl
     private Task<ResumeMode> ResolveResumeAsync(ResumeContext context, CancellationToken cancellationToken) => OnUiAsync(async () =>
     {
         var dialog = new ResumeDialog(context.ReceivedFrames, context.ExpectedPayloadFrames, context.FirstMissingFrameId);
+        using var room = _mini?.RoomForDialog();
         await _dialogs.ShowAsync(dialog);
 
         switch (dialog.Choice)
@@ -487,6 +527,7 @@ public sealed partial class LiveCaptureView : UserControl
 
     private async Task RecalibrateWithF8Async()
     {
+        _calibrateHotkey?.Disarm();   // it shares the F8 id, and two registrations cannot coexist
         using var hotkey = new HotkeyListener(_owner);
         var captured = new TaskCompletionSource<(int X, int Y)>();
         hotkey.Pressed += (_, _) =>
@@ -499,6 +540,73 @@ public sealed partial class LiveCaptureView : UserControl
         await _dialogs.InformAsync("Recalibrate", "Hover over the sender's Next button, press F8, then choose OK.");
         if (captured.Task.IsCompleted)
             ApplyNextPoint(captured.Task.Result);
+    }
+
+    /// <summary>The region to capture: the sender's window, found from the calibrated Next point, so
+    /// every frame size it can draw is inside it. Falls back to the calibrated region.</summary>
+    private RectInt32 CaptureRegionCoveringSender((int X, int Y) nextPoint)
+    {
+        var sender = NativeMethods.GetAncestor(
+            NativeMethods.WindowFromPoint(new NativeMethods.POINT { X = nextPoint.X, Y = nextPoint.Y }),
+            NativeMethods.GA_ROOT);
+        if (sender == IntPtr.Zero || !NativeMethods.GetWindowRect(sender, out var box))
+            return _region;
+
+        var screen = DpiUtil.GetVirtualScreenPhysical();
+        int x = Math.Max(screen.X, box.Left), y = Math.Max(screen.Y, box.Top);
+        int right = Math.Min(screen.X + screen.Width, box.Right);
+        int bottom = Math.Min(screen.Y + screen.Height, box.Bottom);
+        if (right - x < _region.Width || bottom - y < _region.Height)
+            return _region;
+
+        var widened = new RectInt32(x, y, right - x, bottom - y);
+        Vm.AddLog($"Watching the sender's window, {widened.Width}×{widened.Height}, so every frame size fits.");
+        return widened;
+    }
+
+    /// <summary>Re-locates the frame and adopts it with no prompting, taking the largest candidate.
+    /// Returns true only when the region actually changed, so a caller can fall back.</summary>
+    private async Task<bool> TryRefreshRegionAsync()
+    {
+        Vm.AddLog("Re-finding the frame — payload frames use a different grid than the first frame.");
+        var virtualScreen = DpiUtil.GetVirtualScreenPhysical();
+        using var shot = await CaptureWithShellHiddenAsync(virtualScreen);
+
+        var regions = await Task.Run(() => new FrameLocator(ColorMap.Default).Locate(shot));
+        if (regions.Count == 0)
+        {
+            Vm.AddLog("No frame found on screen.");
+            return false;
+        }
+
+        var chosen = regions[0];
+        foreach (var candidate in regions)
+        {
+            if ((long)candidate.Width * candidate.Height > (long)chosen.Width * chosen.Height)
+                chosen = candidate;
+        }
+
+        var updated = new RectInt32(
+            virtualScreen.X + chosen.X, virtualScreen.Y + chosen.Y, chosen.Width, chosen.Height);
+        if (updated.X == _region.X && updated.Y == _region.Y
+            && updated.Width == _region.Width && updated.Height == _region.Height)
+        {
+            Vm.AddLog("The frame is still where it was.");
+            return false;
+        }
+
+        ApplyLiveRegion(updated);
+        Vm.AddLog($"Region updated to {updated.Width}×{updated.Height} — continuing.");
+        return true;
+    }
+
+    // Retargets the running capture as well as the readout.
+    private void ApplyLiveRegion(RectInt32 region)
+    {
+        _region = region;
+        if (_captureSource is not null)
+            _captureSource.Region = region;
+        Vm.RegionText = $"Region: {region.Width}×{region.Height} at ({region.X},{region.Y})";
     }
 
     private async Task AdjustRegionAsync()
@@ -528,10 +636,8 @@ public sealed partial class LiveCaptureView : UserControl
             chosen = regions[index];
         }
 
-        _region = new RectInt32(virtualScreen.X + chosen.X, virtualScreen.Y + chosen.Y, chosen.Width, chosen.Height);
-        if (_captureSource is not null)
-            _captureSource.Region = _region;
-        Vm.RegionText = $"Region: {_region.Width}×{_region.Height} at ({_region.X},{_region.Y})";
+        ApplyLiveRegion(new RectInt32(
+            virtualScreen.X + chosen.X, virtualScreen.Y + chosen.Y, chosen.Width, chosen.Height));
         Vm.AddLog("Region updated.");
     }
 
