@@ -37,11 +37,13 @@ public partial class ReceivedItemsViewModel : ObservableObject
     {
         Items.Clear();
         foreach (var entry in _history.List(ReceptionPaths.SessionRoot))
-            Items.Add(new ReceivedItemViewModel(entry, Resume, OpenLocation, item => _ = DeleteAsync(item)));
+            Items.Add(new ReceivedItemViewModel(entry, Resume, OpenLocation, OpenSessionFolder, item => _ = DeleteAsync(item)));
         IsEmpty = Items.Count == 0;
     }
 
     private void Resume(ReceivedItemViewModel item) => ResumeRequested?.Invoke();
+
+    private void OpenSessionFolder(ReceivedItemViewModel item) => _dialogs.OpenInExplorer(item.Entry.SessionDirectory);
 
     private void OpenLocation(ReceivedItemViewModel item)
     {

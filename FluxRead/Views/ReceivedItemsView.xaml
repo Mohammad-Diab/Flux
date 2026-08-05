@@ -6,11 +6,20 @@
 
     <Grid Margin="0,8,0,20" RowDefinitions="Auto,*">
 
-        <StackPanel Grid.Row="0" Margin="24,0,24,14">
-            <TextBlock Text="Received" Style="{StaticResource HeadingText}"/>
-            <TextBlock Text="Open a saved item, resume an unfinished one, or delete it to free space."
-                       Style="{StaticResource SubtleText}" Margin="0,4,0,0"/>
-        </StackPanel>
+        <Grid Grid.Row="0" Margin="24,0,24,14" ColumnDefinitions="*,Auto">
+            <StackPanel Grid.Column="0">
+                <TextBlock Text="Received" Style="{StaticResource HeadingText}"/>
+                <TextBlock Text="Open a saved item, resume an unfinished one, or delete it to free space."
+                           Style="{StaticResource SubtleText}" Margin="0,4,0,0"/>
+            </StackPanel>
+            <Button Grid.Column="1" Style="{StaticResource SecondaryButton}"
+                    MinHeight="0" MinWidth="0" Padding="12,9" VerticalAlignment="Center"
+                    Click="{x:Bind Vm.Refresh}"
+                    ToolTipService.ToolTip="Reload the list from disk"
+                    AutomationProperties.Name="Refresh">
+                <FontIcon Glyph="&#xE72C;" FontSize="14"/>
+            </Button>
+        </Grid>
 
         <StackPanel Grid.Row="1" VerticalAlignment="Center" HorizontalAlignment="Center"
                     Visibility="{x:Bind Vm.IsEmpty, Mode=OneWay}">
@@ -65,12 +74,30 @@
                                             MinHeight="0" Padding="18,8" FontSize="12.5"
                                             Command="{x:Bind ResumeCommand}"
                                             ToolTipService.ToolTip="{x:Bind ResumeTooltip}"/>
-                                    <Button Content="Open location" Style="{StaticResource SecondaryButton}"
-                                            MinHeight="0" Padding="14,8" FontSize="12.5"
-                                            Command="{x:Bind OpenLocationCommand}"
-                                            ToolTipService.ToolTip="{x:Bind OpenLocationTooltip}"/>
-                                    <Button Content="Delete" Style="{StaticResource DangerGhostButton}"
-                                            Command="{x:Bind DeleteCommand}"/>
+                                    <Button Style="{StaticResource SecondaryButton}" MinHeight="0" MinWidth="0"
+                                            Padding="12,8" ToolTipService.ToolTip="More actions"
+                                            AutomationProperties.Name="More actions">
+                                        <Button.Content>
+                                            <FontIcon Glyph="&#xE712;" FontSize="14"/>
+                                        </Button.Content>
+                                        <Button.Flyout>
+                                            <MenuFlyout Placement="Bottom">
+                                                <MenuFlyoutItem Text="Open location" Command="{x:Bind OpenLocationCommand}"/>
+                                                <MenuFlyoutItem Text="Open session folder" Command="{x:Bind OpenSessionFolderCommand}"/>
+                                                <MenuFlyoutSeparator/>
+                                                <MenuFlyoutItem Text="Delete" Command="{x:Bind DeleteCommand}"
+                                                                Foreground="{StaticResource DangerBrush}">
+                                                    <!-- Same language as DangerGhostButton: red text at rest, solid red under the pointer. -->
+                                                    <MenuFlyoutItem.Resources>
+                                                        <StaticResource x:Key="MenuFlyoutItemBackgroundPointerOver" ResourceKey="DangerBrush"/>
+                                                        <SolidColorBrush x:Key="MenuFlyoutItemForegroundPointerOver" Color="White"/>
+                                                        <StaticResource x:Key="MenuFlyoutItemBackgroundPressed" ResourceKey="DangerBrush"/>
+                                                        <SolidColorBrush x:Key="MenuFlyoutItemForegroundPressed" Color="White"/>
+                                                    </MenuFlyoutItem.Resources>
+                                                </MenuFlyoutItem>
+                                            </MenuFlyout>
+                                        </Button.Flyout>
+                                    </Button>
                                 </StackPanel>
                             </Grid>
                         </Border>

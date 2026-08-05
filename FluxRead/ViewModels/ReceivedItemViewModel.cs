@@ -12,17 +12,20 @@ public partial class ReceivedItemViewModel : ObservableObject
 {
     private readonly Action<ReceivedItemViewModel> _resume;
     private readonly Action<ReceivedItemViewModel> _openLocation;
+    private readonly Action<ReceivedItemViewModel> _openSessionFolder;
     private readonly Action<ReceivedItemViewModel> _delete;
 
     public ReceivedItemViewModel(
         ReceptionEntry entry,
         Action<ReceivedItemViewModel> resume,
         Action<ReceivedItemViewModel> openLocation,
+        Action<ReceivedItemViewModel> openSessionFolder,
         Action<ReceivedItemViewModel> delete)
     {
         Entry = entry;
         _resume = resume;
         _openLocation = openLocation;
+        _openSessionFolder = openSessionFolder;
         _delete = delete;
     }
 
@@ -77,8 +80,14 @@ public partial class ReceivedItemViewModel : ObservableObject
     [RelayCommand(CanExecute = nameof(CanResume))]
     private void Resume() => _resume(this);
 
+    /// <summary>Gets whether this reception's session folder still exists on disk.</summary>
+    public bool CanOpenSessionFolder => Directory.Exists(Entry.SessionDirectory);
+
     [RelayCommand(CanExecute = nameof(CanOpenLocation))]
     private void OpenLocation() => _openLocation(this);
+
+    [RelayCommand(CanExecute = nameof(CanOpenSessionFolder))]
+    private void OpenSessionFolder() => _openSessionFolder(this);
 
     [RelayCommand]
     private void Delete() => _delete(this);

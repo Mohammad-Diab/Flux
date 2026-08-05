@@ -6,11 +6,20 @@
 
     <Grid Margin="0,8,0,20" RowDefinitions="Auto,*">
 
-        <StackPanel Grid.Row="0" Margin="24,0,24,14">
-            <TextBlock Text="Recent casts" Style="{StaticResource HeadingText}"/>
-            <TextBlock Text="Resume a past cast, open its source location, or delete it to free space."
-                       Style="{StaticResource SubtleText}" Margin="0,4,0,0"/>
-        </StackPanel>
+        <Grid Grid.Row="0" Margin="24,0,24,14" ColumnDefinitions="*,Auto">
+            <StackPanel Grid.Column="0">
+                <TextBlock Text="Recent casts" Style="{StaticResource HeadingText}"/>
+                <TextBlock Text="Resume a past cast, open its source location, or delete it to free space."
+                           Style="{StaticResource SubtleText}" Margin="0,4,0,0"/>
+            </StackPanel>
+            <Button Grid.Column="1" Style="{StaticResource SecondaryButton}"
+                    MinHeight="0" MinWidth="0" Padding="12,9" VerticalAlignment="Center"
+                    Click="{x:Bind Vm.Refresh}"
+                    ToolTipService.ToolTip="Reload the list from disk"
+                    AutomationProperties.Name="Refresh">
+                <FontIcon Glyph="&#xE72C;" FontSize="14"/>
+            </Button>
+        </Grid>
 
         <StackPanel Grid.Row="1" VerticalAlignment="Center" HorizontalAlignment="Center"
                     Visibility="{x:Bind Vm.IsEmpty, Mode=OneWay}">
