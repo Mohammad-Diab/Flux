@@ -35,7 +35,7 @@
 
     <!-- Transport under the frame, so the frame sits high and the bottom of the window is chrome:
          the receiver's mini window parks in that corner and must not cover the frame. -->
-    <Grid Background="#FF262A30" RowDefinitions="*,62,Auto">
+    <Grid Background="#FF262A30" RowDefinitions="*,52,Auto">
 
         <!-- The bars follow the theme; only the area around the frame stays dark, to hold the
              viewer's eye and the capture's contrast on the frame itself. -->
@@ -127,7 +127,7 @@
         </Grid>
 
         <!-- Fixed height, so the frame above it never reflows. -->
-        <Border Grid.Row="2" Height="22" Background="{ThemeResource SurfaceBrush}">
+        <Border Grid.Row="2" Height="17" Background="{ThemeResource SurfaceBrush}">
             <TextBlock Text="Keep this window still during transfer" FontSize="10.5"
                        VerticalAlignment="Center" HorizontalAlignment="Center"
                        Foreground="{ThemeResource TextSecondaryBrush}"/>
