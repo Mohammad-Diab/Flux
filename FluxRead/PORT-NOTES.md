@@ -81,6 +81,10 @@ throughout. Confirmed see-through over the full 2880×1620 desktop. It runs its 
 must live on its own STA thread, not the WinUI dispatcher.
 ⚠️ The drag itself is user-driven and not yet exercised — synthesising a global mouse drag is off-limits
 here, so verify the returned rectangle by hand before wiring the capture loop to it.
+⚠️ The window class outlives the run, so its `WndProc` delegate must too. A per-run delegate was
+collected once its run returned; the class name is process-stable, so the second open's re-register was
+refused, kept the dead thunk, and `CreateWindowEx` crashed with `ExecutionEngineException`. The delegate
+is now rooted in a static and the class registered once, dispatching to the open instance.
 
 ## Known gaps found by the spike
 
@@ -133,6 +137,10 @@ they did. The rest was rewritten:
 - **`HotkeyListener` chains the window procedure.** WinUI has no `HwndSource.AddHook`; `SetWindowLongPtr`
   + `CallWindowProc` needs no comctl32-v6 manifest entry, unlike `SetWindowSubclass`. Keep the delegate
   alive and restore the old procedure on dispose.
+  ⚠️ "Keep the delegate alive" cannot be the caller's job: a listener rooted only by its own event
+  handler was collected while armed, and the chained procedure crashed the app with
+  `ExecutionEngineException` on the next message. The class now roots every installed instance in a
+  static set until Dispose.
 - `WindowPlacement` still drives `SetWindowPos` directly — no need for `AppWindow.Move`, and it stays in
   physical pixels for the mixed-DPI case.
 - Minimise/restore around a full-screen scan is `(Window.AppWindow.Presenter as OverlappedPresenter)`,
