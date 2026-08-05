@@ -236,6 +236,9 @@ public sealed partial class MainWindow : Window
         if (ContentHost is null)
             return;
 
+        // Later tabs leave the first tab as bare text, so the page indents to that text column.
+        ContentHost.Margin = new Thickness(CastTab.IsChecked == true ? 0 : 16, 0, 0, 0);
+
         if (HistoryTab.IsChecked == true)
             ShowHistory();
         else

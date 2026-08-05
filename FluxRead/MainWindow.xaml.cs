@@ -135,6 +135,9 @@ public sealed partial class MainWindow : Window
         ModeHost.SlideFrom = tab >= _currentTab ? 36 : -36;
         _currentTab = tab;
 
+        // Later tabs leave the first tab as bare text, so the page indents to that text column.
+        ModeHost.Margin = new Thickness(tab == 0 ? 0 : 16, 0, 0, 0);
+
         ModeHost.Page = FolderTab.IsChecked == true ? _folderView
             : LiveTab.IsChecked == true ? _liveView
             : _receivedView;
