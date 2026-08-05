@@ -80,10 +80,10 @@
                     </controls:ReadoutBar.Readout>
                 </controls:ReadoutBar>
                 <Button Grid.Column="1" Content="{x:Bind Vm.PauseLabel, Mode=OneWay}" MinWidth="104"
-                        Margin="10,0,0,0" VerticalAlignment="Center"
+                        Margin="10,0,0,0" Height="56"
                         Style="{StaticResource SecondaryButton}" Command="{x:Bind Vm.TogglePauseCommand}"/>
                 <Button Grid.Column="2" Content="Cancel" MinWidth="104" Margin="8,0,0,0"
-                        VerticalAlignment="Center"
+                        Height="56"
                         Style="{StaticResource DangerButton}" Command="{x:Bind Vm.CancelDecodeCommand}"/>
             </Grid>
 
