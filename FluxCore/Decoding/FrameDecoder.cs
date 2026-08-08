@@ -47,28 +47,32 @@ public sealed class FrameDecoder
             return registration.FailureResult!;
 
         var sampler = registration.Sampler!;
-        var samples = sampler.SampleAll();
 
-        var (classifications, lowConfidence, meanDistance, maxDistance) = ClassifyDataTiles(samples, layout);
-        var baseDiagnostics = new DecodeDiagnostics
+        // Header first, sampled on demand: a same-frame or wrong-frame poll returns here without
+        // paying for full-grid sampling and palette classification of every data tile.
+        var headerDiagnostics = new DecodeDiagnostics
         {
             FinderPoints = registration.Corners,
             TimingMatchRatio = registration.TimingMatchRatio,
-            LowConfidenceDataTiles = lowConfidence,
-            MeanPaletteDistance = meanDistance,
-            MaxPaletteDistance = maxDistance,
         };
 
-        bool unstable = lowConfidence > layout.DataTileCount * MaxLowConfidenceFraction;
-
-        if (!TryRecoverHeader(samples, layout, out var header, out int copiesAgreeing))
+        if (!TryRecoverHeader(sampler, layout, out var header, out int copiesAgreeing))
         {
+            var failureSamples = sampler.SampleAll();
+            var (_, lowConf, mean, max) = ClassifyDataTiles(failureSamples, layout);
             return Undecodable(
-                unstable ? DecodeFailureReason.CaptureUnstable : DecodeFailureReason.HeaderUnreadable,
-                baseDiagnostics);
+                lowConf > layout.DataTileCount * MaxLowConfidenceFraction
+                    ? DecodeFailureReason.CaptureUnstable
+                    : DecodeFailureReason.HeaderUnreadable,
+                new DecodeDiagnostics
+                {
+                    FinderPoints = registration.Corners,
+                    TimingMatchRatio = registration.TimingMatchRatio,
+                    LowConfidenceDataTiles = lowConf,
+                    MeanPaletteDistance = mean,
+                    MaxPaletteDistance = max,
+                });
         }
-
-        var diagnostics = With(baseDiagnostics, copiesAgreeing: copiesAgreeing);
 
         if (previousFrameId.HasValue && header.FrameId == previousFrameId.Value)
         {
@@ -76,7 +80,7 @@ public sealed class FrameDecoder
             {
                 Status = DecodeStatus.SameFrameAsBefore,
                 Header = header,
-                Diagnostics = diagnostics,
+                Diagnostics = With(headerDiagnostics, copiesAgreeing: copiesAgreeing),
             };
         }
 
@@ -86,9 +90,23 @@ public sealed class FrameDecoder
             {
                 Status = DecodeStatus.WrongFrame,
                 Header = header,
-                Diagnostics = diagnostics,
+                Diagnostics = With(headerDiagnostics, copiesAgreeing: copiesAgreeing),
             };
         }
+
+        var samples = sampler.SampleAll();
+        var (classifications, lowConfidence, meanDistance, maxDistance) = ClassifyDataTiles(samples, layout);
+        var diagnostics = new DecodeDiagnostics
+        {
+            FinderPoints = registration.Corners,
+            TimingMatchRatio = registration.TimingMatchRatio,
+            LowConfidenceDataTiles = lowConfidence,
+            MeanPaletteDistance = meanDistance,
+            MaxPaletteDistance = maxDistance,
+            HeaderCopiesAgreeing = copiesAgreeing,
+        };
+
+        bool unstable = lowConfidence > layout.DataTileCount * MaxLowConfidenceFraction;
 
         if (!TryDecodePayloadTiles(classifications, header.EccLevel, bitsPerTile, out var payload, out int correctedErrors, layout))
         {

@@ -17,6 +17,10 @@ public static class FiducialDetector
 {
     private const int MinClusterHits = 3;
 
+    // A frame always spans near-black fiducials to bright tiles; a capture with less range than
+    // this cannot contain one, so the row scan is skipped entirely (fast rejection while polling).
+    private const int MinContrast = 24;
+
     /// <summary>
     /// Attempts to locate the four finder centers.
     /// </summary>
@@ -46,6 +50,9 @@ public static class FiducialDetector
     {
         ArgumentNullException.ThrowIfNull(image);
 
+        if (image.Contrast < MinContrast)
+            return [];
+
         var clusters = new List<Cluster>();
         for (int y = 0; y < image.Height; y++)
         {
@@ -57,40 +64,52 @@ public static class FiducialDetector
 
     private static void ScanRow(LumaImage image, int y, List<Cluster> clusters)
     {
-        var runs = new List<(bool Dark, int Start, int Length)>();
-        bool currentDark = image.IsDark(0, y);
-        int runStart = 0;
-
-        for (int x = 1; x <= image.Width; x++)
-        {
-            bool dark = x < image.Width && image.IsDark(x, y);
-            if (x < image.Width && dark == currentDark)
-                continue;
-
-            runs.Add((currentDark, runStart, x - runStart));
-            currentDark = dark;
-            runStart = x;
-        }
+        // Sliding window of the last five runs over the raw row — this loop touches every pixel
+        // of every capture, so no per-row allocations and no per-pixel indexer calls.
+        var row = image.GetRow(y);
+        byte threshold = image.Threshold;
 
         Span<int> lengths = stackalloc int[5];
-        for (int i = 0; i + 4 < runs.Count; i++)
+        Span<int> starts = stackalloc int[5];
+        int runCount = 0;
+
+        bool currentDark = row[0] < threshold;
+        int runStart = 0;
+
+        for (int x = 1; x <= row.Length; x++)
         {
-            if (!runs[i].Dark)
+            bool dark = x < row.Length && row[x] < threshold;
+            if (x < row.Length && dark == currentDark)
                 continue;
 
-            for (int j = 0; j < 5; j++)
+            if (runCount == 5)
             {
-                lengths[j] = runs[i + j].Length;
+                for (int i = 1; i < 5; i++)
+                {
+                    lengths[i - 1] = lengths[i];
+                    starts[i - 1] = starts[i];
+                }
+
+                runCount = 4;
             }
 
-            if (!MatchesFinderProfile(lengths, out double module))
-                continue;
+            lengths[runCount] = x - runStart;
+            starts[runCount] = runStart;
+            runCount++;
 
-            double centerX = runs[i + 2].Start + runs[i + 2].Length / 2.0;
-            if (CrossCheckVertical(image, (int)Math.Round(centerX), y, module, out double centerY))
+            // Runs alternate, so a full window ending in a dark run also starts with one —
+            // exactly the windows the finder profile is defined over.
+            if (runCount == 5 && currentDark && MatchesFinderProfile(lengths, out double module))
             {
-                AddToCluster(clusters, centerX, centerY, module);
+                double centerX = starts[2] + lengths[2] / 2.0;
+                if (CrossCheckVertical(image, (int)Math.Round(centerX), y, module, out double centerY))
+                {
+                    AddToCluster(clusters, centerX, centerY, module);
+                }
             }
+
+            currentDark = dark;
+            runStart = x;
         }
     }
 

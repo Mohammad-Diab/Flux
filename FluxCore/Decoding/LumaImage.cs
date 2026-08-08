@@ -19,6 +19,9 @@ public sealed class LumaImage
     /// <summary>Gets the black/white threshold: midway between the darkest and brightest pixel.</summary>
     public byte Threshold { get; }
 
+    /// <summary>Gets the luma range (brightest minus darkest); a near-zero range means no frame can be present.</summary>
+    public int Contrast { get; }
+
     /// <summary>Wraps row-major luma values of the given dimensions.</summary>
     public LumaImage(byte[] pixels, int width, int height)
     {
@@ -39,12 +42,17 @@ public sealed class LumaImage
         }
 
         Threshold = (byte)((min + max) / 2);
+        Contrast = max - min;
     }
 
     /// <summary>Determines whether the pixel at the given coordinates is dark (below the threshold).</summary>
     /// <param name="x">Pixel column.</param>
     /// <param name="y">Pixel row.</param>
     public bool IsDark(int x, int y) => _pixels[y * Width + x] < Threshold;
+
+    /// <summary>Gets one row of luma values, for scan loops too hot for per-pixel indexing.</summary>
+    /// <param name="y">Pixel row.</param>
+    public ReadOnlySpan<byte> GetRow(int y) => _pixels.AsSpan(y * Width, Width);
 
     /// <summary>Computes the Rec. 601 luma of an RGB color.</summary>
     public static double Rec601Luma(double r, double g, double b) => 0.299 * r + 0.587 * g + 0.114 * b;
@@ -55,14 +63,38 @@ public sealed class LumaImage
     {
         ArgumentNullException.ThrowIfNull(bitmap);
 
-        var colors = bitmap.Pixels;
-        var luma = new byte[colors.Length];
-        for (int i = 0; i < colors.Length; i++)
+        int width = bitmap.Width, height = bitmap.Height;
+        var luma = new byte[width * height];
+
+        // Read the pixel buffer directly: bitmap.Pixels would allocate an SKColor[] copy of the
+        // whole capture on every poll. Integer weights sum to 256, so >>8 normalizes exactly.
+        if (bitmap.ColorType is SKColorType.Bgra8888 or SKColorType.Rgba8888 && bitmap.BytesPerPixel == 4)
         {
-            var c = colors[i];
-            luma[i] = (byte)Rec601Luma(c.Red, c.Green, c.Blue);
+            var span = bitmap.GetPixelSpan();
+            int rowBytes = bitmap.RowBytes;
+            int redOffset = bitmap.ColorType == SKColorType.Bgra8888 ? 2 : 0;
+            int blueOffset = 2 - redOffset;
+            for (int y = 0; y < height; y++)
+            {
+                var row = span.Slice(y * rowBytes, width * 4);
+                int outIndex = y * width;
+                for (int x = 0; x < width; x++)
+                {
+                    int p = x * 4;
+                    luma[outIndex + x] = (byte)((row[p + redOffset] * 77 + row[p + 1] * 150 + row[p + blueOffset] * 29) >> 8);
+                }
+            }
+        }
+        else
+        {
+            var colors = bitmap.Pixels;
+            for (int i = 0; i < colors.Length; i++)
+            {
+                var c = colors[i];
+                luma[i] = (byte)Rec601Luma(c.Red, c.Green, c.Blue);
+            }
         }
 
-        return new LumaImage(luma, bitmap.Width, bitmap.Height);
+        return new LumaImage(luma, width, height);
     }
 }
