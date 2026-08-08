@@ -35,13 +35,14 @@
 
     <!-- Transport under the frame, so the frame sits high and the bottom of the window is chrome:
          the receiver's mini window parks in that corner and must not cover the frame. -->
-    <Grid Background="#FF262A30" RowDefinitions="*,52,Auto">
+    <Grid Background="#FF262A30" RowDefinitions="*,54,Auto">
 
         <!-- The bars follow the theme; only the area around the frame stays dark, to hold the
              viewer's eye and the capture's contrast on the frame itself. -->
         <Border Grid.Row="1" Background="{ThemeResource SurfaceBrush}">
             <!-- Next keeps its text label: the receiver's OCR locates that button by the word "Next". -->
-            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="6">
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Top"
+                        Margin="0,10,0,0" Spacing="6">
                 <Button Command="{x:Bind Vm.FirstCommand}" IsTabStop="False" AutomationProperties.Name="First frame"
                         ToolTipService.ToolTip="First frame"
                         Style="{StaticResource SecondaryButton}" MinWidth="50" Padding="0" MinHeight="44">
@@ -127,7 +128,7 @@
         </Grid>
 
         <!-- Fixed height, so the frame above it never reflows. -->
-        <Border Grid.Row="2" Height="17" Background="{ThemeResource SurfaceBrush}">
+        <Border Grid.Row="2" Height="26" Background="{ThemeResource SurfaceBrush}">
             <TextBlock Text="Keep this window still during transfer" FontSize="10.5"
                        VerticalAlignment="Center" HorizontalAlignment="Center"
                        Foreground="{ThemeResource TextSecondaryBrush}"/>
