@@ -93,6 +93,7 @@
                         <TextBlock Text="{x:Bind Vm.ElapsedText, Mode=OneWay}" Style="{StaticResource SubtleText}" FontSize="11"/>
                         <TextBlock Text="{x:Bind Vm.SpeedText, Mode=OneWay}" Style="{StaticResource SubtleText}" FontSize="11"/>
                         <TextBlock Text="{x:Bind Vm.EtaText, Mode=OneWay}" Style="{StaticResource SubtleText}" FontSize="11"/>
+                        <TextBlock Text="{x:Bind Vm.ShownFrameText, Mode=OneWay}" Style="{StaticResource SubtleText}" FontSize="11"/>
                     </StackPanel>
                     <TextBlock Text="{x:Bind Vm.QualityText, Mode=OneWay}" Style="{StaticResource SubtleText}"
                                FontSize="11" Margin="0,6,0,0" TextWrapping="Wrap"/>
@@ -125,7 +126,7 @@
                 <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,14,0,0" Spacing="10">
                     <Button Content="{x:Bind Vm.PauseLabel, Mode=OneWay}" Style="{StaticResource SecondaryButton}"
                             MinWidth="96" Click="OnPauseToggle"/>
-                    <Button Content="Cancel" Style="{StaticResource DangerButton}" MinWidth="96" Click="OnCancel"/>
+                    <Button Content="Stop" Style="{StaticResource DangerButton}" MinWidth="96" Click="OnCancel"/>
                 </StackPanel>
             </Grid>
 

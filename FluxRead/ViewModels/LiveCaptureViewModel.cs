@@ -97,6 +97,9 @@ public partial class LiveCaptureViewModel : ObservableObject
     private string _qualityText = "";
 
     [ObservableProperty]
+    private string _shownFrameText = "";
+
+    [ObservableProperty]
     private bool _hasLog;
 
     /// <summary>Payload frames received so far (for the elapsed/ETA estimate).</summary>
@@ -146,6 +149,11 @@ public partial class LiveCaptureViewModel : ObservableObject
     {
         IsRecovering = status.State == CaptureLoopState.RecoveringGaps;
         StateText = FriendlyState(status.State);
+
+        if (status.State is CaptureLoopState.Complete or CaptureLoopState.Failed or CaptureLoopState.Stopped)
+            ShownFrameText = "";
+        else if (status.ShownFrameId is { } shownId)
+            ShownFrameText = $"frame {shownId} on screen";
 
         if (IsRecovering && status.MissingFrameIds is { } missing)
         {
@@ -212,7 +220,7 @@ public partial class LiveCaptureViewModel : ObservableObject
         switch (state)
         {
             case CaptureLoopState.Failed:
-            case CaptureLoopState.Cancelled:
+            case CaptureLoopState.Stopped:
                 TaskbarProgress.Current.Clear();
                 break;
             case CaptureLoopState.WaitingForFrame0:
@@ -235,11 +243,12 @@ public partial class LiveCaptureViewModel : ObservableObject
         CaptureLoopState.ClickingNext => "Transferring…",
         CaptureLoopState.WaitingForAdvance => "Transferring…",
         CaptureLoopState.Stalled => "Stalled — needs attention",
+        CaptureLoopState.ChannelBlocked => "Blocked — needs attention",
         CaptureLoopState.RecoveringGaps => "Recovering missing frames…",
         CaptureLoopState.Reassembling => "Reassembling & verifying…",
         CaptureLoopState.Complete => "Complete",
         CaptureLoopState.Failed => "Failed",
-        CaptureLoopState.Cancelled => "Cancelled",
+        CaptureLoopState.Stopped => "Stopped",
         _ => state.ToString(),
     };
 

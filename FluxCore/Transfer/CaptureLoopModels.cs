@@ -18,6 +18,9 @@ public enum CaptureLoopState
     /// <summary>Advance did not happen after repeated re-clicks; awaiting user intervention.</summary>
     Stalled,
 
+    /// <summary>The Next button can't be clicked — covered, minimized, or gone; waiting for the user to clear it.</summary>
+    ChannelBlocked,
+
     /// <summary>Skipped frames can't be reached by clicking forward; waiting for the user to re-show each.</summary>
     RecoveringGaps,
 
@@ -30,24 +33,50 @@ public enum CaptureLoopState
     /// <summary>Transfer failed (e.g. verification error or user abort).</summary>
     Failed,
 
-    /// <summary>Loop cancelled by the user.</summary>
-    Cancelled,
+    /// <summary>Loop stopped by the user; the reception is kept and can be resumed later.</summary>
+    Stopped,
 
     /// <summary>Reopening an interrupted reception: seeking to and capturing the first missing frame.</summary>
     Resuming,
 }
 
-/// <summary>How the user resolves a stall.</summary>
+/// <summary>What made the loop pause and ask the user.</summary>
+public enum StallCause
+{
+    /// <summary>The Next button can't be clicked: covered, minimized, gone, or not found by recalibration.</summary>
+    NextButtonUnreachable,
+
+    /// <summary>Clicks are delivered and the frame reads fine, but the frame id never advances.</summary>
+    NextClickIneffective,
+
+    /// <summary>The frame registers on screen but won't decode — partially covered or a bad channel.</summary>
+    FrameUnreadable,
+
+    /// <summary>No frame can be detected in the capture at all.</summary>
+    FrameNotDetected,
+
+    /// <summary>An unexpected error interrupted the transfer.</summary>
+    Error,
+}
+
+/// <summary>Context handed to the stall prompt so it can name what actually went wrong.</summary>
+/// <param name="Cause">The diagnosed failure mode.</param>
+/// <param name="Message">Human-readable description of the specific failure.</param>
+/// <param name="Attempts">Automatic attempts (with recalibration) already spent before asking.</param>
+/// <param name="ClickOutcome">The blocked click outcome, when <paramref name="Cause"/> is NextButtonUnreachable.</param>
+public sealed record StallContext(StallCause Cause, string Message, int Attempts, NextClickOutcome? ClickOutcome = null);
+
+/// <summary>
+/// How the user resolves a stall. Manual recalibration happens inside the prompt callback
+/// (it owns the UI), which then returns Retry.
+/// </summary>
 public enum StallResolution
 {
-    /// <summary>Try clicking again from the current frame.</summary>
+    /// <summary>Try again; automatic recalibration continues on each try.</summary>
     Retry,
 
-    /// <summary>The Next-button point was recalibrated; resume clicking.</summary>
-    Recalibrate,
-
-    /// <summary>Abandon the transfer.</summary>
-    Abort,
+    /// <summary>Stop the transfer; received frames are kept for a later resume.</summary>
+    Stop,
 }
 
 /// <summary>How the user wants to resume an interrupted reception.</summary>
@@ -80,13 +109,15 @@ public sealed record ResumeContext(int ReceivedFrames, int TotalFrames, uint Fir
 /// <param name="StabilityMaxAttempts">Captures to try for two-identical stability before giving up.</param>
 /// <param name="StabilityIntervalMs">Delay between stability captures.</param>
 /// <param name="Frame0FailuresBeforeWarning">Consecutive frame-0 misses before surfacing a warning.</param>
+/// <param name="BlockedRetryIntervalMs">Delay between click attempts while the Next button is unreachable.</param>
 public sealed record CaptureLoopOptions(
     int PollIntervalMs = 250,
     int MaxPollsPerClick = 8,
     int MaxReclicks = 3,
     int StabilityMaxAttempts = 12,
     int StabilityIntervalMs = 120,
-    int Frame0FailuresBeforeWarning = 10);
+    int Frame0FailuresBeforeWarning = 10,
+    int BlockedRetryIntervalMs = 600);
 
 /// <summary>How well the last accepted frame decoded on this channel.</summary>
 public enum FrameQualityVerdict
@@ -129,6 +160,7 @@ public sealed record FrameQuality(double TimingMatchRatio, int LowConfidenceTile
 /// <param name="MissingFrames">Frames skipped below the highest accepted id (recoverable gaps).</param>
 /// <param name="TotalBytes">Total payload bytes of the transfer (0 until metadata is read).</param>
 /// <param name="Quality">Decode quality of the most recently accepted frame (null on non-accept ticks).</param>
+/// <param name="ShownFrameId">Frame id currently visible on the sender, when the last poll could read it.</param>
 public sealed record LoopStatus(
     CaptureLoopState State,
     int ReceivedFrames,
@@ -141,7 +173,8 @@ public sealed record LoopStatus(
     long ReceivedBytes = 0,
     int MissingFrames = 0,
     long TotalBytes = 0,
-    FrameQuality? Quality = null);
+    FrameQuality? Quality = null,
+    uint? ShownFrameId = null);
 
 /// <summary>Outcome of an optical transfer.</summary>
 /// <param name="State">Terminal loop state.</param>

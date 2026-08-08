@@ -18,7 +18,7 @@
         <TextBlock Text="FluxRead captures the frame you've navigated to, then keeps going."
                    Style="{StaticResource DialogHintText}"/>
 
-        <Button Content="Cancel transfer" HorizontalAlignment="Stretch" Margin="0,16,0,0"
-                Style="{StaticResource DangerGhostButton}" Click="OnCancel"/>
+        <Button Content="Stop transfer" HorizontalAlignment="Stretch" Margin="0,16,0,0"
+                Style="{StaticResource DangerButton}" Click="OnCancel"/>
     </StackPanel>
 </ui:FluxDialog>

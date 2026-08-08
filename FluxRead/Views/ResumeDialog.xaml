@@ -26,7 +26,7 @@
                 Style="{StaticResource SecondaryButton}" Click="OnStartOver"/>
         <TextBlock x:Name="StartOverHint" Style="{StaticResource DialogHintText}"/>
 
-        <Button Content="Cancel" HorizontalAlignment="Stretch" Margin="0,18,0,0"
-                Style="{StaticResource DangerGhostButton}" Click="OnCancel"/>
+        <Button Content="Stop" HorizontalAlignment="Stretch" Margin="0,18,0,0"
+                Style="{StaticResource DangerButton}" Click="OnCancel"/>
     </StackPanel>
 </ui:FluxDialog>

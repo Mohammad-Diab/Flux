@@ -173,7 +173,9 @@ and saves (raw → file, 7z → extracted folder).
    → confirm the frame id advanced → repeat until complete, then reassembles, verifies, and saves.
    A compact always-on-top mini window takes over during the transfer so a single screen can show
    both apps, and a per-frame quality readout reports clean / marginal / low-confidence captures.
-   If it stalls, it asks you to Retry / Recalibrate / Abort rather than spinning forever.
+   Failures are diagnosed, not guessed at: a blocked Next button, an ineffective click, an
+   unreadable frame, and a missing frame each get a few automatic recalibration retries, then a
+   cause-specific prompt — Try again / Manual calibration / Stop (received frames are kept).
 
 An interrupted reception is kept: the **Received** list offers to resume it, and FluxRead
 fast-forwards to the first missing frame instead of restarting.

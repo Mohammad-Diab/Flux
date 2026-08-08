@@ -285,6 +285,7 @@ public sealed partial class LiveCaptureView : UserControl
         Vm.TransferProgress = 0;
         Vm.ElapsedText = "";
         Vm.EtaText = "";
+        Vm.ShownFrameText = "";
         Vm.ClearLog();
         Vm.AddLog("Starting optical transfer…");
         _transferWatch.Restart();
@@ -293,7 +294,10 @@ public sealed partial class LiveCaptureView : UserControl
         // Frame 0 is the small bootstrap grid; payload frames use the transfer's, which is usually far
         // wider, so a region measured from frame 0 clips their fiducials. The decoder registers a frame
         // anywhere inside its capture, so the capture is widened to the whole sender window instead.
-        _captureSource = new RegionScreenCapture(CaptureRegionCoveringSender(point));
+        var senderWindow = SenderWindowAt(point);
+        _captureSource = new RegionScreenCapture(CaptureRegionCoveringSender(senderWindow));
+        if (senderWindow != IntPtr.Zero)
+            _captureSource.FollowWindow(senderWindow);
         _clicker = new PointNextClicker(point);
         // Poll more frequently (so a quick advance is caught fast) while keeping roughly the same
         // ~1.8s budget before a re-click — re-clicking too early would over-advance and skip a frame.
@@ -304,7 +308,8 @@ public sealed partial class LiveCaptureView : UserControl
             StabilityMaxAttempts: 16,
             StabilityIntervalMs: 60);
         _loop = new CaptureLoopService(_captureSource, _clicker, ColorMap.Default, options,
-            assemblerFactory: metadata => _history.OpenAssembler(ReceptionPaths.SessionRoot, metadata));
+            assemblerFactory: metadata => _history.OpenAssembler(ReceptionPaths.SessionRoot, metadata),
+            recalibrator: new LoopRecalibrator(this));
         var progress = new Progress<LoopStatus>(Vm.Apply);
 
         // Default: expanded on multi-monitor, collapsed on single — until the user picks and we save it.
@@ -407,36 +412,87 @@ public sealed partial class LiveCaptureView : UserControl
     private static string FormatSpan(TimeSpan t) =>
         t.TotalHours >= 1 ? $"{(int)t.TotalHours}:{t.Minutes:D2}:{t.Seconds:D2}" : $"{t.Minutes:D2}:{t.Seconds:D2}";
 
-    private bool _regionRefreshed;
-
-    private Task<StallResolution> ResolveStallAsync(CancellationToken cancellationToken) => OnUiAsync(async () =>
+    /// <summary>The loop's automatic recalibration: re-find the Next button by OCR, re-find the
+    /// frame with the locator — no dialogs, one bounded attempt per call.</summary>
+    private sealed class LoopRecalibrator : ILoopRecalibrator
     {
-        // Frame 0 is always the small bootstrap grid, so a region measured from it is too small for
-        // the payload frames, whose grid is the transfer's — their fiducials fall outside it and every
-        // frame fails. Re-find the frame once, silently, before troubling the user.
-        if (!_regionRefreshed)
+        private readonly LiveCaptureView _view;
+
+        public LoopRecalibrator(LiveCaptureView view) => _view = view;
+
+        public Task<bool> RecalibrateNextButtonAsync(CancellationToken cancellationToken) =>
+            _view.AutoRecalibrateNextAsync();
+
+        public Task<bool> RecalibrateFrameAsync(CancellationToken cancellationToken) =>
+            _view.AutoRelocateFrameAsync();
+    }
+
+    // The shell is hidden during a transfer and the mini window is capture-excluded, so unlike the
+    // setup-time scans these need no minimize dance.
+    private Task<bool> AutoRecalibrateNextAsync() => OnUiAsync(async () =>
+    {
+        var virtualScreen = DpiUtil.GetVirtualScreenPhysical();
+        using var shot = _previewCapture.Capture(virtualScreen);
+        return await TryAutoNextAsync(shot, virtualScreen, ToShotRegion(virtualScreen));
+    });
+
+    private Task<bool> AutoRelocateFrameAsync() => OnUiAsync(async () =>
+    {
+        var virtualScreen = DpiUtil.GetVirtualScreenPhysical();
+        using var shot = _previewCapture.Capture(virtualScreen);
+        var regions = await Task.Run(() => new FrameLocator(ColorMap.Default).Locate(shot, LocatableLayouts()));
+        if (regions.Count == 0)
+            return false;
+
+        var chosen = regions[0];
+        foreach (var candidate in regions)
         {
-            _regionRefreshed = true;
-            if (await TryRefreshRegionAsync())
-                return StallResolution.Retry;
+            if ((long)candidate.Width * candidate.Height > (long)chosen.Width * chosen.Height)
+                chosen = candidate;
         }
 
-        var dialog = new StallDialog(
-            "The sender stopped advancing after several tries. Resume, re-find the Next button, "
-            + "or re-detect the frame — then FluxRead keeps going.");
+        var updated = new RectInt32(
+            virtualScreen.X + chosen.X, virtualScreen.Y + chosen.Y, chosen.Width, chosen.Height);
+        if (updated.X != _region.X || updated.Y != _region.Y
+            || updated.Width != _region.Width || updated.Height != _region.Height)
+        {
+            ApplyLiveRegion(updated);
+            Vm.AddLog($"Frame re-detected — region updated to {updated.Width}×{updated.Height}.");
+        }
+
+        return true;
+    });
+
+    private Task<StallResolution> ResolveStallAsync(StallContext context, CancellationToken cancellationToken) => OnUiAsync(async () =>
+    {
+        bool buttonCause = context.Cause is StallCause.NextButtonUnreachable or StallCause.NextClickIneffective;
+        var (title, manualLabel, manualHint) = context.Cause switch
+        {
+            StallCause.NextButtonUnreachable => ("Next button isn't clickable",
+                "Recalibrate Next (F8)", "Hover over the sender's Next button yourself and press F8."),
+            StallCause.NextClickIneffective => ("The sender isn't advancing",
+                "Recalibrate Next (F8)", "Hover over the sender's Next button yourself and press F8."),
+            StallCause.FrameUnreadable => ("The frame can't be read",
+                "Re-detect frame", "Scan the screen again and pick the frame region."),
+            StallCause.FrameNotDetected => ("No frame detected",
+                "Re-detect frame", "Scan the screen again and pick the frame region."),
+            _ => ("Something went wrong", (string?)null, (string?)null),
+        };
+
+        var dialog = new StallDialog(title, context.Message, manualLabel, manualHint);
         using var room = _mini?.RoomForDialog();
         await _dialogs.ShowAsync(dialog);
 
         switch (dialog.Choice)
         {
-            case StallChoice.RecalibrateNext:
-                await RecalibrateNextAsync();
+            case StallChoice.Manual when buttonCause:
+                await RecalibrateWithF8Async();
                 return StallResolution.Retry;
-            case StallChoice.AdjustRegion:
+            case StallChoice.Manual:
                 await AdjustRegionAsync();
                 return StallResolution.Retry;
-            case StallChoice.Cancel:
-                return StallResolution.Abort;
+            case StallChoice.Stop:
+                return StallResolution.Stop;
             default:
                 return StallResolution.Retry;
         }
@@ -513,19 +569,6 @@ public sealed partial class LiveCaptureView : UserControl
 
     private void Restore() => ((_mini ?? _owner).AppWindow.Presenter as OverlappedPresenter)?.Restore();
 
-    private async Task RecalibrateNextAsync()
-    {
-        Vm.AddLog("Re-finding the Next button…");
-        var virtualScreen = DpiUtil.GetVirtualScreenPhysical();
-        using var shot = await CaptureWithShellHiddenAsync(virtualScreen);
-
-        if (!await TryAutoNextAsync(shot, virtualScreen, ToShotRegion(virtualScreen)))
-        {
-            Vm.AddLog("Couldn't find Next automatically — use F8 to calibrate.");
-            await RecalibrateWithF8Async();
-        }
-    }
-
     private async Task RecalibrateWithF8Async()
     {
         _calibrateHotkey?.Disarm();   // it shares the F8 id, and two registrations cannot coexist
@@ -543,13 +586,16 @@ public sealed partial class LiveCaptureView : UserControl
             ApplyNextPoint(captured.Task.Result);
     }
 
+    /// <summary>Resolves the top-level window under a physical-pixel point.</summary>
+    private static IntPtr SenderWindowAt((int X, int Y) point) =>
+        NativeMethods.GetAncestor(
+            NativeMethods.WindowFromPoint(new NativeMethods.POINT { X = point.X, Y = point.Y }),
+            NativeMethods.GA_ROOT);
+
     /// <summary>The region to capture: the sender's window, found from the calibrated Next point, so
     /// every frame size it can draw is inside it. Falls back to the calibrated region.</summary>
-    private RectInt32 CaptureRegionCoveringSender((int X, int Y) nextPoint)
+    private RectInt32 CaptureRegionCoveringSender(IntPtr sender)
     {
-        var sender = NativeMethods.GetAncestor(
-            NativeMethods.WindowFromPoint(new NativeMethods.POINT { X = nextPoint.X, Y = nextPoint.Y }),
-            NativeMethods.GA_ROOT);
         if (sender == IntPtr.Zero || !NativeMethods.GetWindowRect(sender, out var box))
             return _region;
 
@@ -569,43 +615,6 @@ public sealed partial class LiveCaptureView : UserControl
     // frame 0's bootstrap grid stays in the list in case the sender was stepped back to the start.
     private IReadOnlyList<FrameLayout> LocatableLayouts() =>
         _loop is { } loop ? [loop.PayloadLayout, BootstrapFrame.Layout] : [BootstrapFrame.Layout];
-
-    /// <summary>Re-locates the frame and adopts it with no prompting, taking the largest candidate.
-    /// Returns true only when the region actually changed, so a caller can fall back.</summary>
-    private async Task<bool> TryRefreshRegionAsync()
-    {
-        Vm.AddLog("Re-finding the frame — payload frames use a different grid than the first frame.");
-        var virtualScreen = DpiUtil.GetVirtualScreenPhysical();
-        using var shot = await CaptureWithShellHiddenAsync(virtualScreen);
-
-        var layouts = LocatableLayouts();
-        var regions = await Task.Run(() => new FrameLocator(ColorMap.Default).Locate(shot, layouts));
-        if (regions.Count == 0)
-        {
-            Vm.AddLog("No frame found on screen.");
-            return false;
-        }
-
-        var chosen = regions[0];
-        foreach (var candidate in regions)
-        {
-            if ((long)candidate.Width * candidate.Height > (long)chosen.Width * chosen.Height)
-                chosen = candidate;
-        }
-
-        var updated = new RectInt32(
-            virtualScreen.X + chosen.X, virtualScreen.Y + chosen.Y, chosen.Width, chosen.Height);
-        if (updated.X == _region.X && updated.Y == _region.Y
-            && updated.Width == _region.Width && updated.Height == _region.Height)
-        {
-            Vm.AddLog("The frame is still where it was.");
-            return false;
-        }
-
-        ApplyLiveRegion(updated);
-        Vm.AddLog($"Region updated to {updated.Width}×{updated.Height} — continuing.");
-        return true;
-    }
 
     // Retargets the running capture as well as the readout.
     private void ApplyLiveRegion(RectInt32 region)
@@ -655,6 +664,8 @@ public sealed partial class LiveCaptureView : UserControl
 
         if (report.State != CaptureLoopState.Complete || report.Assembler is null || report.Metadata is null)
         {
+            if (report.State is CaptureLoopState.Failed or CaptureLoopState.Stopped && report.FramesReceived > 0)
+                Vm.AddLog("The frames received so far are kept — resume this reception from the Received tab.");
             report.Assembler?.Dispose();
             return;
         }

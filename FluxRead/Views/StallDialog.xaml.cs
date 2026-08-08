@@ -8,32 +8,44 @@ namespace FluxRead.Views;
 public enum StallChoice
 {
     Retry,
-    RecalibrateNext,
-    AdjustRegion,
-    Cancel,
+    Manual,
+    Stop,
 }
 
-/// <summary>Actionable prompt shown when the sender stops advancing.</summary>
+/// <summary>
+/// Actionable prompt shown when the loop has diagnosed a failure and run out of automatic
+/// retries. Title, detail, and the manual-calibration action are cause-specific; the manual
+/// button is hidden for causes with no manual remedy (unexpected errors).
+/// </summary>
 public sealed partial class StallDialog : FluxDialog
 {
-    public StallDialog(string detail)
+    public StallDialog(string title, string detail, string? manualLabel = null, string? manualHint = null)
     {
         InitializeComponent();
+        Title = title;
         DetailText.Text = detail;
+        if (manualLabel is null)
+        {
+            ManualButton.Visibility = Visibility.Collapsed;
+            ManualHint.Visibility = Visibility.Collapsed;
+        }
+        else
+        {
+            ManualButton.Content = manualLabel;
+            ManualHint.Text = manualHint ?? "";
+        }
     }
 
-    public StallChoice Choice { get; private set; } = StallChoice.Cancel;
+    public StallChoice Choice { get; private set; } = StallChoice.Stop;
 
     private void OnOpened(ContentDialog sender, ContentDialogOpenedEventArgs args) =>
         RetryButton.Focus(FocusState.Programmatic);
 
     private void OnRetry(object sender, RoutedEventArgs e) => Choose(StallChoice.Retry);
 
-    private void OnRecalibrateNext(object sender, RoutedEventArgs e) => Choose(StallChoice.RecalibrateNext);
+    private void OnManual(object sender, RoutedEventArgs e) => Choose(StallChoice.Manual);
 
-    private void OnAdjustRegion(object sender, RoutedEventArgs e) => Choose(StallChoice.AdjustRegion);
-
-    private void OnCancel(object sender, RoutedEventArgs e) => Choose(StallChoice.Cancel);
+    private void OnStop(object sender, RoutedEventArgs e) => Choose(StallChoice.Stop);
 
     private void Choose(StallChoice choice)
     {
